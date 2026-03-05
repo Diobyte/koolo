@@ -275,6 +275,19 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	ctx := context.NewContext(supervisorName)
 
 	hidM := game.NewHID(gr, gi)
+
+	// Configure SigmaDrift human-like mouse movement if enabled.
+	if config.Koolo.SigmaDrift.Enabled {
+		sdCfg := game.DefaultSigmaDriftConfig()
+		if config.Koolo.SigmaDrift.SpeedMultiplier > 0 {
+			sdCfg.SpeedMultiplier = config.Koolo.SigmaDrift.SpeedMultiplier
+		}
+		hidM.SetSigmaDrift(true, sdCfg)
+		logger.Info("SigmaDrift mouse movement enabled",
+			slog.Float64("speedMultiplier", sdCfg.SpeedMultiplier),
+		)
+	}
+
 	pf := pather.NewPathFinder(gr, ctx.Data, hidM, cfg)
 
 	bm := health.NewBeltManager(ctx.Data, hidM, logger, supervisorName)

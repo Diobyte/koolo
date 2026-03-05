@@ -99,6 +99,10 @@ type KooloCfg struct {
 	} `yaml:"autoStart"`
 	RunewordFavoriteRecipes []string `yaml:"runewordFavoriteRecipes"`
 	RunFavoriteRuns         []string `yaml:"runFavoriteRuns"`
+	SigmaDrift              struct {
+		Enabled         bool    `yaml:"enabled"`
+		SpeedMultiplier float64 `yaml:"speedMultiplier"` // 1.0 = realistic human speed, lower = faster (default 0.5)
+	} `yaml:"sigmaDrift"`
 }
 
 type Day struct {
