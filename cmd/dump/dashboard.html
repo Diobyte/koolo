@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>D2R Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--card:#161b22;--border:#30363d;
+  --text:#c9d1d9;--dim:#8b949e;--heading:#f0f6fc;
+  --green:#3fb950;--yellow:#d29922;--red:#f85149;
+  --blue:#58a6ff;--purple:#bc8cff;--cyan:#39d2c0;
+}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);
+  padding:1rem;max-width:1200px;margin:0 auto;
+  line-height:1.4;
+}
+.header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border);
+}
+h1{font-size:1.4rem;color:var(--heading);display:flex;align-items:center;gap:.5rem}
+.status{display:flex;align-items:center;gap:.5rem;color:var(--dim);font-size:.85rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
+.dot.ok{background:var(--green)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.card.full{grid-column:1/-1}
+.card-head{
+  padding:.6rem 1rem;font-weight:600;font-size:.9rem;color:var(--heading);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.4rem;
+}
+.card-head .badge{font-size:.75rem;color:var(--dim);font-weight:400;margin-left:auto}
+.card-body{padding:.75rem 1rem}
+
+/* player */
+.p-name{font-size:1.1rem;font-weight:700;color:var(--heading);margin-bottom:.4rem}
+.p-stats{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem;margin-bottom:.6rem}
+.p-stats b{color:var(--heading)}
+.bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.8rem}
+.bar-label{width:24px;text-align:right;font-weight:600}
+.bar-track{flex:1;height:14px;background:#21262d;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease,background .4s}
+.bar-val{width:36px;text-align:right;font-size:.8rem}
+.hp-fill{background:var(--green)}
+.mp-fill{background:var(--blue)}
+
+/* game */
+.g-row{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem;margin-bottom:.3rem}
+.g-row b{color:var(--heading)}
+.flag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75rem;font-weight:600}
+.flag.on{background:rgba(63,185,80,.15);color:var(--green)}
+.flag.off{background:rgba(139,148,158,.1);color:var(--dim)}
+
+/* quests */
+.quest-acts{display:flex;gap:1rem;flex-wrap:wrap}
+.quest-act{flex:1;min-width:160px}
+.quest-act h3{font-size:.8rem;color:var(--dim);margin-bottom:.3rem;letter-spacing:.05em}
+.q{font-size:.8rem;padding:2px 0;display:flex;align-items:center;gap:.3rem}
+.q .sym{width:14px;text-align:center;font-weight:700}
+.q.done .sym{color:var(--green)}
+.q.wip .sym{color:var(--yellow)}
+.q.none .sym{color:var(--dim)}
+.q.done .qn{color:var(--text)}
+.q.wip .qn{color:var(--yellow)}
+.q.none .qn{color:var(--dim)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;color:var(--dim);font-weight:600;padding:4px 8px;border-bottom:1px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+td{padding:4px 8px;border-bottom:1px solid rgba(48,54,61,.5)}
+tr:hover td{background:rgba(88,166,255,.04)}
+.type-unique,.type-superunique{color:var(--yellow);font-weight:600}
+.type-champion{color:var(--blue)}
+.type-minion{color:var(--dim)}
+.q-unique{color:var(--yellow);font-weight:600}
+.q-set{color:var(--green);font-weight:600}
+.q-rare{color:var(--purple)}
+.q-magic{color:var(--blue)}
+.q-normal,.q-low{color:var(--dim)}
+.sel-yes{color:var(--green)}
+.sel-no{color:var(--dim)}
+.mini-bar{display:inline-block;width:60px;height:8px;background:#21262d;border-radius:2px;overflow:hidden;vertical-align:middle}
+.mini-fill{height:100%;border-radius:2px}
+
+/* menus */
+.menu-grid{display:flex;gap:.5rem;flex-wrap:wrap}
+.menu-badge{padding:4px 12px;border-radius:4px;font-size:.8rem;font-weight:600}
+.menu-badge.on{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.menu-badge.off{background:rgba(139,148,158,.08);color:var(--dim);border:1px solid var(--border)}
+
+.empty{color:var(--dim);font-size:.85rem;padding:.5rem 0}
+#err-banner{display:none;background:rgba(248,81,73,.15);border:1px solid var(--red);color:var(--red);padding:.5rem 1rem;border-radius:6px;margin-bottom:.75rem;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#9876; D2R Dashboard</h1>
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span id="clock">&mdash;</span>
+  </div>
+</div>
+
+<div id="err-banner"></div>
+
+<div class="grid">
+
+  <!-- Player -->
+  <div class="card">
+    <div class="card-head">&#129497; Player</div>
+    <div class="card-body">
+      <div class="p-name" id="p-name">&mdash;</div>
+      <div class="p-stats">
+        <span>Class: <b id="p-class">&mdash;</b></span>
+        <span>Level: <b id="p-level">&mdash;</b></span>
+        <span>Area: <b id="p-area">&mdash;</b></span>
+        <span>Mode: <b id="p-mode">&mdash;</b></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">HP</span>
+        <div class="bar-track"><div class="bar-fill hp-fill" id="hp-bar" style="width:0"></div></div>
+        <span class="bar-val" id="hp-val">0%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">MP</span>
+        <div class="bar-track"><div class="bar-fill mp-fill" id="mp-bar" style="width:0"></div></div>
+        <span class="bar-val" id="mp-val">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div class="card">
+    <div class="card-head">&#127918; Game</div>
+    <div class="card-body">
+      <div class="g-row"><span>Game: <b id="g-name">&mdash;</b></span></div>
+      <div class="g-row">
+        <span>FPS: <b id="g-fps">&mdash;</b></span>
+        <span>Ping: <b id="g-ping">&mdash;</b></span>
+      </div>
+      <div class="g-row" style="margin-top:.4rem;display:flex;gap:.4rem">
+        <span class="flag off" id="f-ingame">InGame</span>
+        <span class="flag off" id="f-merc">Merc</span>
+        <span class="flag off" id="f-legacy">Legacy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quests -->
+  <div class="card full">
+    <div class="card-head">&#128220; Quests</div>
+    <div class="card-body">
+      <div class="quest-acts" id="quest-acts"></div>
+    </div>
+  </div>
+
+  <!-- Monsters -->
+  <div class="card full">
+    <div class="card-head">&#128121; Monsters <span class="badge" id="m-count">0</span></div>
+    <div class="card-body" id="monsters-body">
+      <div class="empty">no data</div>
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="card full">
+    <div class="card-head">&#127890; Items <span class="badge" id="i-count">0</span></div>
+    <div class="card-body" id="items-body">
+      <div class="empty">no data</div>
+    </div>
+  </div>
+
+  <!-- Objects -->
+  <div class="card full">
+    <div class="card-head">&#127963; Objects <span class="badge" id="o-count">0</span></div>
+    <div class="card-body" id="objects-body">
+      <div class="empty">no data</div>
+    </div>
+  </div>
+
+  <!-- Menus -->
+  <div class="card full">
+    <div class="card-head">&#128203; Menus</div>
+    <div class="card-body">
+      <div class="menu-grid" id="menu-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function hpColor(pct) {
+  if (pct < 25) return '#f85149';
+  if (pct < 50) return '#d29922';
+  return '#3fb950';
+}
+
+function typeClass(t) {
+  const tl = t.toLowerCase();
+  if (tl === 'superunique') return 'type-superunique';
+  if (tl === 'unique') return 'type-unique';
+  if (tl === 'champion') return 'type-champion';
+  if (tl === 'minion') return 'type-minion';
+  return '';
+}
+
+function qualityClass(q) {
+  const ql = q.toLowerCase();
+  if (ql === 'unique') return 'q-unique';
+  if (ql === 'set') return 'q-set';
+  if (ql === 'rare') return 'q-rare';
+  if (ql === 'magic') return 'q-magic';
+  return 'q-normal';
+}
+
+function setFlag(id, on) {
+  $(id).className = 'flag ' + (on ? 'on' : 'off');
+}
+
+function renderQuests(quests) {
+  const acts = {};
+  for (const q of quests) {
+    if (!acts[q.act]) acts[q.act] = [];
+    acts[q.act].push(q);
+  }
+  let html = '';
+  for (const act of ['I','II','III','IV','V']) {
+    if (!acts[act]) continue;
+    html += '<div class="quest-act"><h3>ACT ' + act + '</h3>';
+    for (const q of acts[act]) {
+      const sym = q.status === 'done' ? '&#10003;' : q.status === 'wip' ? '&#9678;' : '&#9675;';
+      html += '<div class="q ' + q.status + '"><span class="sym">' + sym + '</span><span class="qn">' + q.name + '</span></div>';
+    }
+    html += '</div>';
+  }
+  $('quest-acts').innerHTML = html;
+}
+
+function renderMonsters(monsters) {
+  $('m-count').textContent = monsters.length;
+  if (!monsters.length) {
+    $('monsters-body').innerHTML = '<div class="empty">no monsters in range</div>';
+    return;
+  }
+  let html = '<table><tr><th>Type</th><th>Name</th><th>Position</th><th>HP</th></tr>';
+  for (const m of monsters) {
+    const tc = typeClass(m.type);
+    const hc = hpColor(m.hpPct);
+    html += '<tr>'
+      + '<td class="' + tc + '">' + m.type + '</td>'
+      + '<td>' + m.name + '</td>'
+      + '<td>' + m.x + ', ' + m.y + '</td>'
+      + '<td><div class="mini-bar"><div class="mini-fill" style="width:' + m.hpPct + '%;background:' + hc + '"></div></div> ' + m.hpPct + '%</td>'
+      + '</tr>';
+  }
+  html += '</table>';
+  $('monsters-body').innerHTML = html;
+}
+
+function renderItems(items) {
+  $('i-count').textContent = items.length;
+  if (!items.length) {
+    $('items-body').innerHTML = '<div class="empty">no items</div>';
+    return;
+  }
+  let html = '<table><tr><th>Name</th><th>Quality</th><th>Location</th></tr>';
+  for (const it of items) {
+    const qc = qualityClass(it.quality);
+    html += '<tr><td class="' + qc + '">' + it.name + '</td><td class="' + qc + '">' + it.quality + '</td><td>' + it.location + '</td></tr>';
+  }
+  html += '</table>';
+  $('items-body').innerHTML = html;
+}
+
+function renderObjects(objects) {
+  $('o-count').textContent = objects.length;
+  if (!objects.length) {
+    $('objects-body').innerHTML = '<div class="empty">no objects</div>';
+    return;
+  }
+  let html = '<table><tr><th>Name</th><th>Position</th><th>Selectable</th></tr>';
+  for (const o of objects) {
+    const sc = o.selectable ? 'sel-yes' : 'sel-no';
+    html += '<tr><td>' + o.name + '</td><td>' + o.x + ', ' + o.y + '</td><td class="' + sc + '">' + (o.selectable ? 'Yes' : 'No') + '</td></tr>';
+  }
+  html += '</table>';
+  $('objects-body').innerHTML = html;
+}
+
+function renderMenus(menus) {
+  const entries = [
+    ['Inventory', menus.inventory], ['Stash', menus.stash],
+    ['SkillTree', menus.skillTree], ['NPCShop', menus.npcShop],
+    ['Waypoint', menus.waypoint], ['QuitMenu', menus.quitMenu],
+    ['Map', menus.mapShown]
+  ];
+  let html = '';
+  for (const [name, on] of entries) {
+    html += '<span class="menu-badge ' + (on ? 'on' : 'off') + '">' + name + '</span>';
+  }
+  $('menu-grid').innerHTML = html;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/data');
+    const d = await r.json();
+
+    if (!d.ok) {
+      $('err-banner').style.display = 'block';
+      $('err-banner').textContent = d.error || 'unknown error';
+      $('dot').className = 'dot';
+      return;
+    }
+
+    $('err-banner').style.display = 'none';
+    $('dot').className = 'dot ok';
+    $('clock').textContent = d.ts;
+
+    // Player
+    $('p-name').textContent = d.player.name || '\u2014';
+    $('p-class').textContent = d.player.class;
+    $('p-level').textContent = d.player.level;
+    $('p-area').textContent = d.player.area;
+    $('p-mode').textContent = d.player.mode;
+
+    var hp = d.player.hp;
+    var mp = d.player.mp;
+    $('hp-bar').style.width = hp + '%';
+    $('hp-bar').style.background = hpColor(hp);
+    $('hp-val').textContent = hp + '%';
+    $('mp-bar').style.width = mp + '%';
+    $('mp-val').textContent = mp + '%';
+
+    // Game
+    $('g-name').textContent = d.game.name || '\u2014';
+    $('g-fps').textContent = d.game.fps;
+    $('g-ping').textContent = d.game.ping + 'ms';
+    setFlag('f-ingame', d.game.inGame);
+    setFlag('f-merc', d.game.hasMerc);
+    setFlag('f-legacy', d.game.legacy);
+
+    // Sections
+    renderQuests(d.quests || []);
+    renderMonsters(d.monsters || []);
+    renderItems(d.items || []);
+    renderObjects(d.objects || []);
+    renderMenus(d.menus);
+
+  } catch (e) {
+    $('dot').className = 'dot';
+    $('err-banner').style.display = 'block';
+    $('err-banner').textContent = 'connection lost: ' + e.message;
+  }
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

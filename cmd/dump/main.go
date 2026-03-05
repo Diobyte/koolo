@@ -3,440 +3,284 @@
 package main
 
 import (
+	_ "embed"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
-	"strings"
+	"os/exec"
+	"sync"
 	"time"
 
-	"github.com/hectorgimenez/d2go/pkg/data"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/memory"
 )
 
-// ── ANSI ──────────────────────────────────────────────────────────────────────
-const (
-	ansiReset  = "\033[0m"
-	ansiBold   = "\033[1m"
-	ansiRed    = "\033[31m"
-	ansiGreen  = "\033[32m"
-	ansiYellow = "\033[33m"
-	ansiCyan   = "\033[36m"
-	ansiWhite  = "\033[97m"
-	ansiGray   = "\033[90m"
-	ansiClear  = "\033[2J\033[H"
-	w          = 80 // total box width including borders
-)
+//go:embed dashboard.html
+var dashboardHTML []byte
 
-// ── box helpers ───────────────────────────────────────────────────────────────
-func top()    { fmt.Printf("╔%s╗\n", strings.Repeat("═", w-2)) }
-func bottom() { fmt.Printf("╚%s╝\n", strings.Repeat("═", w-2)) }
-func divider() {
-	fmt.Printf("╠%s╣\n", strings.Repeat("═", w-2))
-}
-func midDivider(leftW int) {
-	right := w - 2 - leftW - 1
-	fmt.Printf("╠%s╤%s╣\n", strings.Repeat("═", leftW), strings.Repeat("═", right))
-}
-func bottomSplit(leftW int) {
-	right := w - 2 - leftW - 1
-	fmt.Printf("╚%s╧%s╝\n", strings.Repeat("═", leftW), strings.Repeat("═", right))
+// ── JSON response types ──────────────────────────────────────────────────────
+
+type apiResponse struct {
+	OK        bool          `json:"ok"`
+	Timestamp string        `json:"ts"`
+	Player    playerInfo    `json:"player"`
+	Game      gameInfo      `json:"game"`
+	Quests    []questInfo   `json:"quests"`
+	Monsters  []monsterInfo `json:"monsters"`
+	Items     []itemInfo    `json:"items"`
+	Objects   []objectInfo  `json:"objects"`
+	Menus     menuInfo      `json:"menus"`
+	Error     string        `json:"error,omitempty"`
 }
 
-// row prints a full-width bordered row, padding to w-2 inner chars.
-func row(content string) {
-	inner := stripAnsi(content)
-	pad := w - 2 - len(inner)
-	if pad < 0 {
-		pad = 0
-	}
-	fmt.Printf("║%s%s║\n", content, strings.Repeat(" ", pad))
+type playerInfo struct {
+	Name  string `json:"name"`
+	Class string `json:"class"`
+	Level int    `json:"level"`
+	Area  string `json:"area"`
+	HP    int    `json:"hp"`
+	MP    int    `json:"mp"`
+	Mode  string `json:"mode"`
 }
 
-// twoCol prints a bordered split row.
-func twoCol(left, right string, leftW int) {
-	lInner := stripAnsi(left)
-	rInner := stripAnsi(right)
-	rightW := w - 2 - leftW - 1
-	lPad := leftW - len(lInner)
-	rPad := rightW - len(rInner)
-	if lPad < 0 {
-		lPad = 0
-	}
-	if rPad < 0 {
-		rPad = 0
-	}
-	fmt.Printf("║%s%s│%s%s║\n", left, strings.Repeat(" ", lPad), right, strings.Repeat(" ", rPad))
+type gameInfo struct {
+	Name    string `json:"name"`
+	FPS     int    `json:"fps"`
+	Ping    int    `json:"ping"`
+	HasMerc bool   `json:"hasMerc"`
+	InGame  bool   `json:"inGame"`
+	Legacy  bool   `json:"legacy"`
 }
 
-func header(title string) {
-	centered := center(ansiBold+ansiCyan+title+ansiReset, w-2)
-	fmt.Printf("║%s║\n", centered)
+type questInfo struct {
+	Act    string `json:"act"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Raw    uint16 `json:"raw"`
 }
 
-func sectionLabel(label string) {
-	row(" " + ansiBold + ansiYellow + label + ansiReset)
+type monsterInfo struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	X     int    `json:"x"`
+	Y     int    `json:"y"`
+	HPPct int    `json:"hpPct"`
 }
 
-// center pads s to width n accounting for invisible ANSI bytes.
-func center(s string, n int) string {
-	vis := len(stripAnsi(s))
-	total := n - vis
-	if total <= 0 {
-		return s
-	}
-	left := total / 2
-	right := total - left
-	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
+type itemInfo struct {
+	Name     string `json:"name"`
+	Quality  string `json:"quality"`
+	Location string `json:"location"`
 }
 
-// stripAnsi removes escape sequences for length calculation.
-func stripAnsi(s string) string {
-	out := make([]byte, 0, len(s))
-	esc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == 0x1b {
-			esc = true
-			continue
-		}
-		if esc {
-			if c == 'm' {
-				esc = false
-			}
-			continue
-		}
-		// skip multi-byte UTF-8 continuation bytes
-		if c&0xC0 == 0x80 {
-			continue
-		}
-		// box-drawing / emoji are ≥3 bytes; count as 1 visual char
-		if c >= 0xE2 {
-			out = append(out, ' ')
-			i += 2
-			continue
-		}
-		out = append(out, c)
-	}
-	return string(out)
+type objectInfo struct {
+	Name       string `json:"name"`
+	X          int    `json:"x"`
+	Y          int    `json:"y"`
+	Selectable bool   `json:"selectable"`
 }
 
-// ── bar ───────────────────────────────────────────────────────────────────────
-func bar(pct, barWidth int, fillColor string) string {
-	if pct < 0 {
-		pct = 0
-	}
-	if pct > 100 {
-		pct = 100
-	}
-	filled := pct * barWidth / 100
-	empty := barWidth - filled
-	return fillColor + strings.Repeat("█", filled) + ansiGray + strings.Repeat("░", empty) + ansiReset
+type menuInfo struct {
+	Inventory bool `json:"inventory"`
+	Stash     bool `json:"stash"`
+	SkillTree bool `json:"skillTree"`
+	NPCShop   bool `json:"npcShop"`
+	Waypoint  bool `json:"waypoint"`
+	QuitMenu  bool `json:"quitMenu"`
+	MapShown  bool `json:"mapShown"`
 }
 
-// ── quest helpers ─────────────────────────────────────────────────────────────
-var questShortNames = []string{
-	"DenOfEvil", "SistersBurial", "ToolsOfTrade", "SearchForCain", "ForgottenTower", "SistersSlaughter",
-	"RadamentsLair", "HoradricStaff", "TaintedSun", "ArcaneSanctuary", "TheSummoner", "SevenTombs",
-	"LamEsensTome", "KhalimsWill", "BladeOldReligion", "GoldenBird", "BlackenedTemple", "TheGuardian",
-	"FallenAngel", "HellForge", "TerrorsEnd",
-	"SiegeHarrogath", "RescueArreat", "PrisonOfIce", "BetrayalHarrogath", "RiteOfPassage", "EveOfDestruction",
+// ── quest definitions ────────────────────────────────────────────────────────
+
+type questDef struct {
+	act  string
+	name string
+	id   quest.Quest
 }
 
-var questActBoundaries = []struct {
-	start int
-	label string
-}{
-	{0, "ACT I"}, {6, "ACT II"}, {12, "ACT III"}, {18, "ACT IV"}, {21, "ACT V"},
+var questDefs = []questDef{
+	{"I", "Den of Evil", quest.Act1DenOfEvil},
+	{"I", "Sisters' Burial Grounds", quest.Act1SistersBurialGrounds},
+	{"I", "Tools of the Trade", quest.Act1ToolsOfTheTrade},
+	{"I", "Search for Cain", quest.Act1TheSearchForCain},
+	{"I", "Forgotten Tower", quest.Act1TheForgottenTower},
+	{"I", "Sisters to the Slaughter", quest.Act1SistersToTheSlaughter},
+	{"II", "Radament's Lair", quest.Act2RadamentsLair},
+	{"II", "Horadric Staff", quest.Act2TheHoradricStaff},
+	{"II", "Tainted Sun", quest.Act2TaintedSun},
+	{"II", "Arcane Sanctuary", quest.Act2ArcaneSanctuary},
+	{"II", "The Summoner", quest.Act2TheSummoner},
+	{"II", "Seven Tombs", quest.Act2TheSevenTombs},
+	{"III", "Lam Esen's Tome", quest.Act3LamEsensTome},
+	{"III", "Khalim's Will", quest.Act3KhalimsWill},
+	{"III", "Blade of the Old Religion", quest.Act3BladeOfTheOldReligion},
+	{"III", "Golden Bird", quest.Act3TheGoldenBird},
+	{"III", "Blackened Temple", quest.Act3TheBlackenedTemple},
+	{"III", "The Guardian", quest.Act3TheGuardian},
+	{"IV", "Fallen Angel", quest.Act4TheFallenAngel},
+	{"IV", "Hell's Forge", quest.Act4HellForge},
+	{"IV", "Terror's End", quest.Act4TerrorsEnd},
+	{"V", "Siege on Harrogath", quest.Act5SiegeOnHarrogath},
+	{"V", "Rescue on Mt. Arreat", quest.Act5RescueOnMountArreat},
+	{"V", "Prison of Ice", quest.Act5PrisonOfIce},
+	{"V", "Betrayal of Harrogath", quest.Act5BetrayalOfHarrogath},
+	{"V", "Rite of Passage", quest.Act5RiteOfPassage},
+	{"V", "Eve of Destruction", quest.Act5EveOfDestruction},
 }
 
-var questOrder = []quest.Quest{
-	quest.Act1DenOfEvil, quest.Act1SistersBurialGrounds, quest.Act1ToolsOfTheTrade,
-	quest.Act1TheSearchForCain, quest.Act1TheForgottenTower, quest.Act1SistersToTheSlaughter,
-	quest.Act2RadamentsLair, quest.Act2TheHoradricStaff, quest.Act2TaintedSun,
-	quest.Act2ArcaneSanctuary, quest.Act2TheSummoner, quest.Act2TheSevenTombs,
-	quest.Act3LamEsensTome, quest.Act3KhalimsWill, quest.Act3BladeOfTheOldReligion,
-	quest.Act3TheGoldenBird, quest.Act3TheBlackenedTemple, quest.Act3TheGuardian,
-	quest.Act4TheFallenAngel, quest.Act4HellForge, quest.Act4TerrorsEnd,
-	quest.Act5SiegeOnHarrogath, quest.Act5RescueOnMountArreat, quest.Act5PrisonOfIce,
-	quest.Act5BetrayalOfHarrogath, quest.Act5RiteOfPassage, quest.Act5EveOfDestruction,
-}
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-func questSymbol(s quest.Status) string {
-	switch {
-	case s.Completed():
-		return ansiGreen + "✓" + ansiReset
-	case !s.NotStarted():
-		return ansiYellow + "·" + ansiReset
-	default:
-		return ansiGray + "-" + ansiReset
-	}
-}
-
-// ── item quality color ────────────────────────────────────────────────────────
-func qualityColor(q item.Quality) string {
-	switch q {
-	case item.QualityUnique:
-		return ansiYellow
-	case item.QualitySet:
-		return ansiGreen
-	case item.QualityRare:
-		return "\033[93m"
-	case item.QualityMagic:
-		return "\033[34m"
-	default:
-		return ansiGray
-	}
-}
-
-// ── npc name ──────────────────────────────────────────────────────────────────
-func npcName(id npc.ID) string {
+func npcDisplayName(id npc.ID) string {
 	if flags, ok := npc.MonStatsFlagsByID[id]; ok && flags.Name != "" {
 		return flags.Name
 	}
 	return fmt.Sprintf("NPC#%d", id)
 }
 
-// ── render ────────────────────────────────────────────────────────────────────
-func render(gr *memory.GameReader, sections map[string]bool) {
+// ── data collection ──────────────────────────────────────────────────────────
+
+var grMu sync.Mutex
+
+func collectData(gr *memory.GameReader) (resp apiResponse) {
+	grMu.Lock()
+	defer grMu.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			resp = apiResponse{OK: false, Error: fmt.Sprintf("%v", r)}
+		}
+	}()
+
 	d := gr.GetData()
-	ts := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Print(ansiClear)
+	resp.OK = true
+	resp.Timestamp = time.Now().Format("15:04:05")
 
-	// ── title ────────────────────────────────────────────────────────────────
-	top()
-	header(fmt.Sprintf("D2R MEMORY DUMP  ·  %s", ts))
-
-	// ── player ───────────────────────────────────────────────────────────────
-	if sections["player"] || sections["all"] {
-		divider()
-		sectionLabel("PLAYER")
-		lvl, _ := d.PlayerUnit.FindStat(stat.Level, 0)
-		classStr := fmt.Sprintf("%v", d.PlayerUnit.Class)
-		nameStr := fmt.Sprintf("%s%-16s%s", ansiWhite, d.PlayerUnit.Name, ansiReset)
-		areaStr := fmt.Sprintf("Area: %s%v%s", ansiCyan, d.PlayerUnit.Area, ansiReset)
-		row(fmt.Sprintf(" %s  %s  Class: %s%-12s%s  Lvl: %s%d%s",
-			nameStr, areaStr,
-			ansiCyan, classStr, ansiReset,
-			ansiWhite, lvl.Value, ansiReset))
-		hp := d.PlayerUnit.HPPercent()
-		mp := d.PlayerUnit.MPPercent()
-		hpColor := ansiGreen
-		if hp < 50 {
-			hpColor = ansiYellow
-		}
-		if hp < 25 {
-			hpColor = ansiRed
-		}
-		hpBar := bar(hp, 20, hpColor)
-		mpBar := bar(mp, 20, "\033[34m")
-		row(fmt.Sprintf("  HP [%s] %3d%%   MP [%s] %3d%%   Mode: %s%v%s",
-			hpBar, hp, mpBar, mp, ansiGray, d.PlayerUnit.Mode, ansiReset))
+	lvl, _ := d.PlayerUnit.FindStat(stat.Level, 0)
+	resp.Player = playerInfo{
+		Name:  d.PlayerUnit.Name,
+		Class: fmt.Sprintf("%v", d.PlayerUnit.Class),
+		Level: lvl.Value,
+		Area:  fmt.Sprintf("%v", d.PlayerUnit.Area),
+		HP:    d.PlayerUnit.HPPercent(),
+		MP:    d.PlayerUnit.MPPercent(),
+		Mode:  fmt.Sprintf("%v", d.PlayerUnit.Mode),
 	}
 
-	// ── game ─────────────────────────────────────────────────────────────────
-	if sections["game"] || sections["all"] {
-		divider()
-		sectionLabel("GAME")
-		merc := ansiGray + "no " + ansiReset
-		if d.HasMerc {
-			merc = ansiGreen + "yes" + ansiReset
-		}
-		ingame := ansiGray + "no " + ansiReset
-		if d.IsIngame {
-			ingame = ansiGreen + "yes" + ansiReset
-		}
-		legacy := ansiGray + "no " + ansiReset
-		if d.LegacyGraphics {
-			legacy = ansiYellow + "yes" + ansiReset
-		}
-		row(fmt.Sprintf("  Game: %s%-20s%s  FPS: %s%3d%s  Ping: %s%4dms%s  Merc: %s  InGame: %s  Legacy: %s",
-			ansiWhite, d.Game.LastGameName, ansiReset,
-			ansiCyan, d.Game.FPS, ansiReset,
-			ansiCyan, d.Game.Ping, ansiReset,
-			merc, ingame, legacy))
+	resp.Game = gameInfo{
+		Name:    d.Game.LastGameName,
+		FPS:     d.Game.FPS,
+		Ping:    d.Game.Ping,
+		HasMerc: d.HasMerc,
+		InGame:  d.IsIngame,
+		Legacy:  d.LegacyGraphics,
 	}
 
-	// ── quests ───────────────────────────────────────────────────────────────
-	if sections["quests"] || sections["all"] {
-		divider()
-		sectionLabel(fmt.Sprintf("QUESTS  %s✓ complete%s  %s· started%s  %s- not started%s",
-			ansiGreen, ansiReset, ansiYellow, ansiReset, ansiGray, ansiReset))
-		actIdx := 0
-		for i, q := range questOrder {
-			for actIdx+1 < len(questActBoundaries) && questActBoundaries[actIdx+1].start == i {
-				actIdx++
-			}
-			if actIdx < len(questActBoundaries) && questActBoundaries[actIdx].start == i {
-				row(fmt.Sprintf("  %s── %s ─────────────────────────────────────────%s",
-					ansiGray, questActBoundaries[actIdx].label, ansiReset))
-			}
-			s := d.Quests[q]
-			name := ""
-			if i < len(questShortNames) {
-				name = questShortNames[i]
-			}
-			sym := questSymbol(s)
-			row(fmt.Sprintf("   %s %-22s  %sraw:0x%04X%s",
-				sym, name, ansiGray, uint16(s), ansiReset))
+	for _, qd := range questDefs {
+		s := d.Quests[qd.id]
+		status := "none"
+		if s.Completed() {
+			status = "done"
+		} else if !s.NotStarted() {
+			status = "wip"
 		}
+		resp.Quests = append(resp.Quests, questInfo{
+			Act:    qd.act,
+			Name:   qd.name,
+			Status: status,
+			Raw:    uint16(s),
+		})
 	}
 
-	// ── monsters ─────────────────────────────────────────────────────────────
-	if sections["monsters"] || sections["all"] {
-		enemies := d.Monsters.Enemies()
-		divider()
-		sectionLabel(fmt.Sprintf("MONSTERS  %s%d total  %d alive%s",
-			ansiCyan, len(d.Monsters), len(enemies), ansiReset))
-		shown := 0
-		for _, m := range d.Monsters {
-			if shown >= 15 {
-				row(fmt.Sprintf("  %s… %d more …%s", ansiGray, len(d.Monsters)-shown, ansiReset))
-				break
-			}
-			maxLife := m.Stats[stat.MaxLife]
-			life := m.Stats[stat.Life]
-			lifePct := 0
-			if maxLife > 0 {
-				lifePct = life * 100 / maxLife
-			}
-			typeStr := fmt.Sprintf("%-10s", string(m.Type))
-			typeColor := ansiGray
-			if m.Type == data.MonsterTypeUnique || m.Type == data.MonsterTypeSuperUnique {
-				typeColor = ansiYellow
-			} else if m.Type == data.MonsterTypeChampion {
-				typeColor = ansiCyan
-			}
-			lifeColor := ansiGreen
-			if lifePct < 50 {
-				lifeColor = ansiYellow
-			}
-			if lifePct < 25 {
-				lifeColor = ansiRed
-			}
-			row(fmt.Sprintf("  %s%s%s %-22s  X:%-5d Y:%-5d  HP:%s%3d%%%s",
-				typeColor, typeStr, ansiReset,
-				npcName(m.Name),
-				m.Position.X, m.Position.Y,
-				lifeColor, lifePct, ansiReset))
-			shown++
+	for _, m := range d.Monsters {
+		maxHP := m.Stats[stat.MaxLife]
+		curHP := m.Stats[stat.Life]
+		pct := 0
+		if maxHP > 0 {
+			pct = curHP * 100 / maxHP
 		}
-		if len(d.Monsters) == 0 {
-			row(fmt.Sprintf("  %sno monsters in range%s", ansiGray, ansiReset))
-		}
+		resp.Monsters = append(resp.Monsters, monsterInfo{
+			Name:  npcDisplayName(m.Name),
+			Type:  string(m.Type),
+			X:     m.Position.X,
+			Y:     m.Position.Y,
+			HPPct: pct,
+		})
 	}
 
-	// ── objects ──────────────────────────────────────────────────────────────
-	if sections["objects"] || sections["all"] {
-		divider()
-		sectionLabel(fmt.Sprintf("OBJECTS  %s%d%s", ansiCyan, len(d.Objects), ansiReset))
-		shown := 0
-		for _, o := range d.Objects {
-			if shown >= 10 {
-				row(fmt.Sprintf("  %s… %d more …%s", ansiGray, len(d.Objects)-shown, ansiReset))
-				break
-			}
-			sel := ansiGray + "[ ]" + ansiReset
-			if o.Selectable {
-				sel = ansiGreen + "[✓]" + ansiReset
-			}
-			row(fmt.Sprintf("  %s %-28v  X:%-5d Y:%d",
-				sel, o.Name, o.Position.X, o.Position.Y))
-			shown++
-		}
-		if len(d.Objects) == 0 {
-			row(fmt.Sprintf("  %snone%s", ansiGray, ansiReset))
-		}
+	for _, it := range d.Inventory.AllItems {
+		resp.Items = append(resp.Items, itemInfo{
+			Name:     string(it.Name),
+			Quality:  it.Quality.ToString(),
+			Location: fmt.Sprintf("%v", it.Location.LocationType),
+		})
 	}
 
-	// ── items ─────────────────────────────────────────────────────────────────
-	if sections["items"] || sections["all"] {
-		inv := d.Inventory.AllItems
-		divider()
-		sectionLabel(fmt.Sprintf("ITEMS  %s%d%s", ansiCyan, len(inv), ansiReset))
-		shown := 0
-		for _, it := range inv {
-			if shown >= 12 {
-				row(fmt.Sprintf("  %s… %d more …%s", ansiGray, len(inv)-shown, ansiReset))
-				break
-			}
-			qc := qualityColor(it.Quality)
-			row(fmt.Sprintf("  %s%-24s%s  %-10v  loc:%-10v",
-				qc, it.Name, ansiReset, it.Quality.ToString(), it.Location.LocationType))
-			shown++
-		}
-		if len(inv) == 0 {
-			row(fmt.Sprintf("  %sempty%s", ansiGray, ansiReset))
-		}
+	for _, o := range d.Objects {
+		resp.Objects = append(resp.Objects, objectInfo{
+			Name:       fmt.Sprintf("%v", o.Name),
+			X:          o.Position.X,
+			Y:          o.Position.Y,
+			Selectable: o.Selectable,
+		})
 	}
 
-	// ── menus (split with flags) ──────────────────────────────────────────────
-	if sections["menus"] || sections["all"] {
-		const lw = 38
-		midDivider(lw)
-		boolStr := func(b bool) string {
-			if b {
-				return ansiGreen + "YES" + ansiReset
-			}
-			return ansiGray + "no " + ansiReset
-		}
-		om := d.OpenMenus
-		twoCol(
-			fmt.Sprintf(" %sMENUS%s", ansiBold+ansiYellow, ansiReset),
-			fmt.Sprintf(" %sFLAGS%s", ansiBold+ansiYellow, ansiReset),
-			lw)
-		twoCol(
-			fmt.Sprintf("  Inventory:  %s  NPCShop: %s", boolStr(om.Inventory), boolStr(om.NPCShop)),
-			fmt.Sprintf("  Ingame:  %s  Legacy: %s", boolStr(d.IsIngame), boolStr(d.LegacyGraphics)),
-			lw)
-		twoCol(
-			fmt.Sprintf("  Stash:      %s  Waypoint:%s", boolStr(om.Stash), boolStr(om.Waypoint)),
-			fmt.Sprintf("  Merc:    %s  MapShown:%s", boolStr(d.HasMerc), boolStr(om.MapShown)),
-			lw)
-		twoCol(
-			fmt.Sprintf("  SkillTree:  %s  QuitMenu:%s", boolStr(om.SkillTree), boolStr(om.QuitMenu)),
-			fmt.Sprintf("  FPS: %s%4d%s   Ping: %s%4dms%s", ansiCyan, d.Game.FPS, ansiReset, ansiCyan, d.Game.Ping, ansiReset),
-			lw)
-		bottomSplit(lw)
-	} else {
-		bottom()
+	om := d.OpenMenus
+	resp.Menus = menuInfo{
+		Inventory: om.Inventory,
+		Stash:     om.Stash,
+		SkillTree: om.SkillTree,
+		NPCShop:   om.NPCShop,
+		Waypoint:  om.Waypoint,
+		QuitMenu:  om.QuitMenu,
+		MapShown:  om.MapShown,
 	}
+
+	return resp
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
-func main() {
-	filter := flag.String("filter", "all", "sections: player,quests,monsters,items,objects,menus,game,all")
-	watch := flag.Int("watch", 1, "refresh interval in seconds (0 = once and exit)")
-	flag.Parse()
 
-	sections := parseSections(*filter)
+func main() {
+	port := flag.Int("port", 0, "HTTP port (0 = auto-assign)")
+	noBrowser := flag.Bool("no-browser", false, "skip auto-open")
+	flag.Parse()
 
 	proc, err := memory.NewProcess()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "attach failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "attach: %v\n", err)
 		os.Exit(1)
 	}
 	defer proc.Close()
 
 	gr := memory.NewGameReader(proc)
 
-	render(gr, sections)
-	if *watch > 0 {
-		ticker := time.NewTicker(time.Duration(*watch) * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			render(gr, sections)
-		}
-	}
-}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html;charset=utf-8")
+		w.Write(dashboardHTML)
+	})
+	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(collectData(gr))
+	})
 
-func parseSections(s string) map[string]bool {
-	m := map[string]bool{}
-	for _, part := range strings.Split(s, ",") {
-		m[strings.TrimSpace(strings.ToLower(part))] = true
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
+		os.Exit(1)
 	}
-	return m
+
+	url := "http://" + ln.Addr().String()
+	fmt.Println("D2R Dashboard:", url)
+
+	if !*noBrowser {
+		_ = exec.Command("cmd", "/c", "start", url).Start()
+	}
+
+	fmt.Println("Ctrl+C to stop")
+	_ = http.Serve(ln, mux)
 }
