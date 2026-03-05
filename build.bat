@@ -17,6 +17,11 @@ for /f "delims=" %%b in ('powershell "Get-Date -Format 'o'"') do set "BUILD_TIME
 echo Generating per-build noise...
 powershell -ExecutionPolicy Bypass -File "%~dp0generate_noise.ps1"
 
+echo Regenerating Windows resources (no icon)...
+pushd cmd\koolo
+go-winres make --in winres/winres.json > NUL 2>&1 || echo WARNING: go-winres not found, using existing .syso
+popd
+
 echo Building Koolo binary...
 if "%1"=="" (set VERSION=dev) else (set VERSION=%1)
 garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "build\%BUILD_ID%.exe" ./cmd/koolo > NUL || goto :error

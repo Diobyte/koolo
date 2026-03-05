@@ -44,6 +44,7 @@ import (
 	terrorzones "github.com/hectorgimenez/koolo/internal/terrorzone"
 	"github.com/hectorgimenez/koolo/internal/updater"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/hectorgimenez/koolo/internal/utils/windowname"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
 	"golang.org/x/sys/windows"
@@ -289,6 +290,9 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 			return template.JS(b)
 		},
 		"lower": strings.ToLower,
+		"pageTitle": func() string {
+			return windowname.SessionTitle()
+		},
 	}
 	templates, err := template.New("").Funcs(helperFuncs).ParseFS(templatesFS, "templates/*.gohtml")
 	if err != nil {

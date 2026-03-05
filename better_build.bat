@@ -175,6 +175,15 @@ set "OUTPUT_EXE=build\%BUILD_ID%.exe"
 call :print_step "Compiling Obfuscated Koolo executable"
 call :print_step "Generating per-build noise..."
 powershell -ExecutionPolicy Bypass -File "%~dp0generate_noise.ps1"
+
+call :print_step "Regenerating Windows resources (no icon)..."
+pushd cmd\koolo
+go-winres make --in winres/winres.json > NUL 2>&1
+if !errorlevel! neq 0 (
+    call :print_warning "go-winres not found, using existing .syso"
+)
+popd
+
 (
     garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log

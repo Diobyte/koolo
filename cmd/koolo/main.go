@@ -24,6 +24,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/remote/telegram"
 	"github.com/hectorgimenez/koolo/internal/server"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/hectorgimenez/koolo/internal/utils/windowname"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/inkeliz/gowebview"
 	"golang.org/x/sync/errgroup"
@@ -33,31 +34,6 @@ var (
 	buildID   string
 	buildTime string
 )
-
-// windowTitles is a pool of plausible-looking application names used to
-// rotate the Koolo window title at runtime, reducing its visibility.
-var windowTitles = []string{
-	"Microsoft Visual Studio Code",
-	"Windows PowerShell",
-	"File Explorer",
-	"Notepad",
-	"Calculator",
-	"Resource Monitor",
-	"System Information",
-	"Microsoft Edge",
-	"Task Scheduler",
-	"Performance Monitor",
-	"Event Viewer",
-	"Device Manager",
-	"Disk Management",
-	"Services",
-	"Registry Editor",
-	"Command Prompt",
-	"Windows Security",
-	"Settings",
-	"Control Panel",
-	"Paint",
-}
 
 // wrapWithRecover wraps a function with panic recovery logic
 func wrapWithRecover(logger *slog.Logger, f func() error) func() error {
@@ -172,7 +148,7 @@ func main() {
 		}
 
 		w, err := gowebview.New(&gowebview.Config{URL: "http://localhost:8087", WindowConfig: &gowebview.WindowConfig{
-			Title: "Koolo Resurrected",
+			Title: windowname.SessionTitle(),
 			Size: &gowebview.Point{
 				X: int64(float64(width) * displayScale),
 				Y: int64(float64(height) * displayScale),
@@ -236,7 +212,7 @@ func main() {
 		go func() {
 			handle := w.Window()
 			for {
-				titlePtr, err := syscall.UTF16PtrFromString(windowTitles[rand.Intn(len(windowTitles))])
+				titlePtr, err := syscall.UTF16PtrFromString(windowname.RandomWebviewTitle())
 				if err == nil {
 					winproc.SetWindowText.Call(handle, uintptr(unsafe.Pointer(titlePtr)))
 				}
