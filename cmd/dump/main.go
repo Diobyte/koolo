@@ -11,11 +11,15 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sort"
 	"sync"
 	"time"
 
+	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/entrance"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
+	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/memory"
 )
@@ -36,6 +40,24 @@ type apiResponse struct {
 	Objects   []objectInfo  `json:"objects"`
 	Menus     menuInfo      `json:"menus"`
 	Error     string        `json:"error,omitempty"`
+
+	// Extended data for technical view
+	PlayerStats playerStatsInfo  `json:"playerStats"`
+	PlayerPos   positionInfo     `json:"playerPos"`
+	AreaOrigin  positionInfo     `json:"areaOrigin"`
+	Skills      []skillInfo      `json:"skills"`
+	States      []string         `json:"states"`
+	Corpse      corpseInfo       `json:"corpse"`
+	Corpses     []monsterInfo    `json:"corpses"`
+	Entrances   []entranceInfo   `json:"entrances"`
+	AdjLevels   []adjLevelInfo   `json:"adjLevels"`
+	Rooms       []roomInfo       `json:"rooms"`
+	TerrorZones []terrorZoneInfo `json:"terrorZones"`
+	Roster      []rosterInfo     `json:"roster"`
+	Hover       hoverInfo        `json:"hover"`
+	Gold        goldInfo         `json:"gold"`
+	WeaponSlot  int              `json:"weaponSlot"`
+	MercHP      int              `json:"mercHP"`
 }
 
 type playerInfo struct {
@@ -46,6 +68,7 @@ type playerInfo struct {
 	HP    int    `json:"hp"`
 	MP    int    `json:"mp"`
 	Mode  string `json:"mode"`
+	Dead  bool   `json:"dead"`
 }
 
 type gameInfo struct {
@@ -73,9 +96,14 @@ type monsterInfo struct {
 }
 
 type itemInfo struct {
-	Name     string `json:"name"`
-	Quality  string `json:"quality"`
-	Location string `json:"location"`
+	Name       string `json:"name"`
+	Quality    string `json:"quality"`
+	Location   string `json:"location"`
+	Ethereal   bool   `json:"ethereal"`
+	Identified bool   `json:"identified"`
+	Sockets    int    `json:"sockets"`
+	Runeword   string `json:"runeword,omitempty"`
+	LevelReq   int    `json:"levelReq"`
 }
 
 type objectInfo struct {
@@ -86,13 +114,126 @@ type objectInfo struct {
 }
 
 type menuInfo struct {
-	Inventory bool `json:"inventory"`
-	Stash     bool `json:"stash"`
-	SkillTree bool `json:"skillTree"`
-	NPCShop   bool `json:"npcShop"`
-	Waypoint  bool `json:"waypoint"`
-	QuitMenu  bool `json:"quitMenu"`
-	MapShown  bool `json:"mapShown"`
+	Inventory     bool `json:"inventory"`
+	Stash         bool `json:"stash"`
+	SkillTree     bool `json:"skillTree"`
+	NPCShop       bool `json:"npcShop"`
+	Waypoint      bool `json:"waypoint"`
+	QuitMenu      bool `json:"quitMenu"`
+	MapShown      bool `json:"mapShown"`
+	Character     bool `json:"character"`
+	Cube          bool `json:"cube"`
+	MercInventory bool `json:"mercInventory"`
+	QuestLog      bool `json:"questLog"`
+	ChatOpen      bool `json:"chatOpen"`
+	LoadingScreen bool `json:"loadingScreen"`
+	Cinematic     bool `json:"cinematic"`
+}
+
+type playerStatsInfo struct {
+	Strength  int `json:"strength"`
+	Dexterity int `json:"dexterity"`
+	Vitality  int `json:"vitality"`
+	Energy    int `json:"energy"`
+
+	Life    int `json:"life"`
+	MaxLife int `json:"maxLife"`
+	Mana    int `json:"mana"`
+	MaxMana int `json:"maxMana"`
+	Stamina int `json:"stamina"`
+	MaxStam int `json:"maxStamina"`
+
+	FireRes      int `json:"fireRes"`
+	MaxFireRes   int `json:"maxFireRes"`
+	ColdRes      int `json:"coldRes"`
+	MaxColdRes   int `json:"maxColdRes"`
+	LightRes     int `json:"lightRes"`
+	MaxLightRes  int `json:"maxLightRes"`
+	PoisonRes    int `json:"poisonRes"`
+	MaxPoisonRes int `json:"maxPoisonRes"`
+	MagicRes     int `json:"magicRes"`
+
+	Defense int `json:"defense"`
+	FCR     int `json:"fcr"`
+	FHR     int `json:"fhr"`
+	FRW     int `json:"frw"`
+	IAS     int `json:"ias"`
+	FBR     int `json:"fbr"`
+	MF      int `json:"mf"`
+	GF      int `json:"gf"`
+
+	Experience int `json:"experience"`
+	NextExp    int `json:"nextExp"`
+	LastExp    int `json:"lastExp"`
+
+	StatPoints  int `json:"statPoints"`
+	SkillPoints int `json:"skillPoints"`
+	CastFrames  int `json:"castFrames"`
+
+	AllSkills int  `json:"allSkills"`
+	HasDebuff bool `json:"hasDebuff"`
+}
+
+type positionInfo struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type skillInfo struct {
+	Name    string `json:"name"`
+	ID      int    `json:"id"`
+	Level   int    `json:"level"`
+	Charges int    `json:"charges,omitempty"`
+	Left    bool   `json:"left"`
+	Right   bool   `json:"right"`
+}
+
+type corpseInfo struct {
+	Found    bool         `json:"found"`
+	Position positionInfo `json:"position"`
+}
+
+type entranceInfo struct {
+	Name       string       `json:"name"`
+	Position   positionInfo `json:"position"`
+	Selectable bool         `json:"selectable"`
+}
+
+type adjLevelInfo struct {
+	Area       string       `json:"area"`
+	Position   positionInfo `json:"position"`
+	IsEntrance bool         `json:"isEntrance"`
+}
+
+type roomInfo struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"w"`
+	Height int `json:"h"`
+}
+
+type terrorZoneInfo struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type rosterInfo struct {
+	Name     string       `json:"name"`
+	Area     string       `json:"area"`
+	Position positionInfo `json:"position"`
+}
+
+type hoverInfo struct {
+	IsHovered bool   `json:"isHovered"`
+	UnitID    int    `json:"unitId"`
+	UnitType  string `json:"unitType"`
+}
+
+type goldInfo struct {
+	Inventory int `json:"inventory"`
+	Stash     int `json:"stash"`
+	Total     int `json:"total"`
+	Max       int `json:"max"`
 }
 
 // ── quest definitions ────────────────────────────────────────────────────────
@@ -142,6 +283,76 @@ func npcDisplayName(id npc.ID) string {
 	return fmt.Sprintf("NPC#%d", id)
 }
 
+func entranceDisplayName(n entrance.Name) string {
+	if d, ok := entrance.Desc[int(n)]; ok && d.Name != "" {
+		return d.Name
+	}
+	return fmt.Sprintf("Entrance#%d", n)
+}
+
+func areaDisplayName(id area.ID) string {
+	if a, ok := area.Areas[id]; ok && a.Name != "" {
+		return a.Name
+	}
+	return fmt.Sprintf("Area#%d", id)
+}
+
+func skillDisplayName(id skill.ID) string {
+	if s, ok := skill.Skills[id]; ok && s.Name != "" {
+		return s.Name
+	}
+	return fmt.Sprintf("Skill#%d", id)
+}
+
+func unitTypeName(ut int) string {
+	switch ut {
+	case 0:
+		return "Player"
+	case 1:
+		return "Monster"
+	case 2:
+		return "Object"
+	case 3:
+		return "Missile"
+	case 4:
+		return "Item"
+	case 5:
+		return "Tile"
+	default:
+		return fmt.Sprintf("Type#%d", ut)
+	}
+}
+
+// stateNames maps commonly encountered state IDs to readable names.
+var stateNames = map[uint]string{
+	0: "None", 1: "Freeze", 2: "Poison", 3: "ResistFire", 4: "ResistCold",
+	5: "ResistLightning", 6: "ResistMagic", 8: "ResistAll", 9: "AmplifyDamage",
+	10: "FrozenArmor", 11: "Cold", 14: "BoneArmor", 15: "Concentrate",
+	16: "Enchant", 17: "InnerSight", 19: "Weaken", 20: "ChillingArmor",
+	21: "Stunned", 24: "Slowed", 26: "Shout", 28: "Conviction", 29: "Convicted",
+	30: "EnergyShield", 32: "BattleOrders", 33: "Might", 35: "HolyFire",
+	36: "Thorns", 37: "Defiance", 38: "Thunderstorm", 40: "BlessedAim",
+	42: "Concentration", 45: "Cleansing", 46: "HolyShock", 47: "Sanctuary",
+	48: "Meditation", 49: "Fanaticism", 50: "Redemption", 51: "BattleCommand",
+	55: "IronMaiden", 58: "LifeTap", 60: "Decrepify", 61: "LowerResist",
+	62: "OpenWounds", 70: "Warmth", 80: "IncreasedStamina", 82: "IncreasedSpeed",
+	101: "Fade", 102: "BurstOfSpeed",
+}
+
+func stateName(s uint) string {
+	if n, ok := stateNames[s]; ok {
+		return n
+	}
+	return fmt.Sprintf("State#%d", s)
+}
+
+func findStat(pu interface {
+	FindStat(stat.ID, int) (stat.Data, bool)
+}, id stat.ID) int {
+	s, _ := pu.FindStat(id, 0)
+	return s.Value
+}
+
 // ── data collection ──────────────────────────────────────────────────────────
 
 var grMu sync.Mutex
@@ -159,15 +370,18 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 	resp.OK = true
 	resp.Timestamp = time.Now().Format("15:04:05")
 
-	lvl, _ := d.PlayerUnit.FindStat(stat.Level, 0)
+	pu := d.PlayerUnit
+	lvl := findStat(pu, stat.Level)
+
 	resp.Player = playerInfo{
-		Name:  d.PlayerUnit.Name,
-		Class: fmt.Sprintf("%v", d.PlayerUnit.Class),
-		Level: lvl.Value,
-		Area:  fmt.Sprintf("%v", d.PlayerUnit.Area),
-		HP:    d.PlayerUnit.HPPercent(),
-		MP:    d.PlayerUnit.MPPercent(),
-		Mode:  fmt.Sprintf("%v", d.PlayerUnit.Mode),
+		Name:  pu.Name,
+		Class: fmt.Sprintf("%v", pu.Class),
+		Level: lvl,
+		Area:  areaDisplayName(pu.Area),
+		HP:    pu.HPPercent(),
+		MP:    pu.MPPercent(),
+		Mode:  fmt.Sprintf("%v", pu.Mode),
+		Dead:  pu.IsDead(),
 	}
 
 	resp.Game = gameInfo{
@@ -179,6 +393,97 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		Legacy:  d.LegacyGraphics,
 	}
 
+	// ── Player stats (technical) ──
+	resp.PlayerStats = playerStatsInfo{
+		Strength:  findStat(pu, stat.Strength),
+		Dexterity: findStat(pu, stat.Dexterity),
+		Vitality:  findStat(pu, stat.Vitality),
+		Energy:    findStat(pu, stat.Energy),
+
+		Life:    findStat(pu, stat.Life),
+		MaxLife: findStat(pu, stat.MaxLife),
+		Mana:    findStat(pu, stat.Mana),
+		MaxMana: findStat(pu, stat.MaxMana),
+		Stamina: findStat(pu, stat.Stamina),
+		MaxStam: findStat(pu, stat.MaxStamina),
+
+		FireRes:      findStat(pu, stat.FireResist),
+		MaxFireRes:   findStat(pu, stat.MaxFireResist),
+		ColdRes:      findStat(pu, stat.ColdResist),
+		MaxColdRes:   findStat(pu, stat.MaxColdResist),
+		LightRes:     findStat(pu, stat.LightningResist),
+		MaxLightRes:  findStat(pu, stat.MaxLightningResist),
+		PoisonRes:    findStat(pu, stat.PoisonResist),
+		MaxPoisonRes: findStat(pu, stat.MaxPoisonResist),
+		MagicRes:     findStat(pu, stat.MagicResist),
+
+		Defense: findStat(pu, stat.Defense),
+		FCR:     findStat(pu, stat.FasterCastRate),
+		FHR:     findStat(pu, stat.FasterHitRecovery),
+		FRW:     findStat(pu, stat.FasterRunWalk),
+		IAS:     findStat(pu, stat.IncreasedAttackSpeed),
+		FBR:     findStat(pu, stat.FasterBlockRate),
+		MF:      findStat(pu, stat.MagicFind),
+		GF:      findStat(pu, stat.GoldFind),
+
+		Experience: findStat(pu, stat.Experience),
+		NextExp:    findStat(pu, stat.NextExp),
+		LastExp:    findStat(pu, stat.LastExp),
+
+		StatPoints:  findStat(pu, stat.StatPoints),
+		SkillPoints: findStat(pu, stat.SkillPoints),
+		CastFrames:  pu.CastingFrames(),
+
+		AllSkills: findStat(pu, stat.AllSkills),
+		HasDebuff: pu.HasDebuff(),
+	}
+
+	// ── Position ──
+	resp.PlayerPos = positionInfo{X: pu.Position.X, Y: pu.Position.Y}
+	resp.AreaOrigin = positionInfo{X: d.AreaOrigin.X, Y: d.AreaOrigin.Y}
+
+	// ── Active states ──
+	for _, s := range pu.States {
+		resp.States = append(resp.States, stateName(uint(s)))
+	}
+
+	// ── Skills ──
+	type skillEntry struct {
+		id   skill.ID
+		info skillInfo
+	}
+	var skillEntries []skillEntry
+	for sid, pts := range pu.Skills {
+		if pts.Level == 0 && pts.Charges == 0 {
+			continue
+		}
+		se := skillEntry{
+			id: sid,
+			info: skillInfo{
+				Name:    skillDisplayName(sid),
+				ID:      int(sid),
+				Level:   int(pts.Level),
+				Charges: int(pts.Charges),
+				Left:    sid == pu.LeftSkill,
+				Right:   sid == pu.RightSkill,
+			},
+		}
+		skillEntries = append(skillEntries, se)
+	}
+	sort.Slice(skillEntries, func(i, j int) bool {
+		return skillEntries[i].id < skillEntries[j].id
+	})
+	for _, se := range skillEntries {
+		resp.Skills = append(resp.Skills, se.info)
+	}
+
+	// ── Corpse ──
+	resp.Corpse = corpseInfo{
+		Found:    d.Corpse.Found,
+		Position: positionInfo{X: d.Corpse.Position.X, Y: d.Corpse.Position.Y},
+	}
+
+	// ── Quests ──
 	for _, qd := range questDefs {
 		s := d.Quests[qd.id]
 		status := "none"
@@ -195,6 +500,7 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		})
 	}
 
+	// ── Monsters ──
 	for _, m := range d.Monsters {
 		maxHP := m.Stats[stat.MaxLife]
 		curHP := m.Stats[stat.Life]
@@ -211,14 +517,35 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		})
 	}
 
-	for _, it := range d.Inventory.AllItems {
-		resp.Items = append(resp.Items, itemInfo{
-			Name:     string(it.Name),
-			Quality:  it.Quality.ToString(),
-			Location: fmt.Sprintf("%v", it.Location.LocationType),
+	// ── Corpses (dead monsters) ──
+	for _, m := range d.Corpses {
+		resp.Corpses = append(resp.Corpses, monsterInfo{
+			Name:  npcDisplayName(m.Name),
+			Type:  string(m.Type),
+			X:     m.Position.X,
+			Y:     m.Position.Y,
+			HPPct: 0,
 		})
 	}
 
+	// ── Items ──
+	for _, it := range d.Inventory.AllItems {
+		ii := itemInfo{
+			Name:       string(it.Name),
+			Quality:    it.Quality.ToString(),
+			Location:   fmt.Sprintf("%v", it.Location.LocationType),
+			Ethereal:   it.Ethereal,
+			Identified: it.Identified,
+			Sockets:    len(it.Sockets),
+			LevelReq:   it.LevelReq,
+		}
+		if it.IsRuneword {
+			ii.Runeword = string(it.RunewordName)
+		}
+		resp.Items = append(resp.Items, ii)
+	}
+
+	// ── Objects ──
 	for _, o := range d.Objects {
 		resp.Objects = append(resp.Objects, objectInfo{
 			Name:       fmt.Sprintf("%v", o.Name),
@@ -228,15 +555,89 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		})
 	}
 
+	// ── Entrances ──
+	for _, e := range d.Entrances {
+		resp.Entrances = append(resp.Entrances, entranceInfo{
+			Name:       entranceDisplayName(e.Name),
+			Position:   positionInfo{X: e.Position.X, Y: e.Position.Y},
+			Selectable: e.Selectable,
+		})
+	}
+
+	// ── Adjacent levels ──
+	for _, lvl := range d.AdjacentLevels {
+		resp.AdjLevels = append(resp.AdjLevels, adjLevelInfo{
+			Area:       areaDisplayName(lvl.Area),
+			Position:   positionInfo{X: lvl.Position.X, Y: lvl.Position.Y},
+			IsEntrance: lvl.IsEntrance,
+		})
+	}
+
+	// ── Rooms ──
+	for _, r := range d.Rooms {
+		resp.Rooms = append(resp.Rooms, roomInfo{
+			X:      r.Position.X,
+			Y:      r.Position.Y,
+			Width:  r.Width,
+			Height: r.Height,
+		})
+	}
+
+	// ── Terror Zones ──
+	for _, tz := range d.TerrorZones {
+		resp.TerrorZones = append(resp.TerrorZones, terrorZoneInfo{
+			ID:   int(tz),
+			Name: areaDisplayName(tz),
+		})
+	}
+
+	// ── Roster ──
+	for _, rm := range d.Roster {
+		resp.Roster = append(resp.Roster, rosterInfo{
+			Name:     rm.Name,
+			Area:     areaDisplayName(rm.Area),
+			Position: positionInfo{X: rm.Position.X, Y: rm.Position.Y},
+		})
+	}
+
+	// ── Hover ──
+	resp.Hover = hoverInfo{
+		IsHovered: d.HoverData.IsHovered,
+		UnitID:    int(d.HoverData.UnitID),
+		UnitType:  unitTypeName(d.HoverData.UnitType),
+	}
+
+	// ── Gold ──
+	invGold := findStat(pu, stat.Gold)
+	stashGold := findStat(pu, stat.StashGold)
+	resp.Gold = goldInfo{
+		Inventory: invGold,
+		Stash:     stashGold,
+		Total:     pu.TotalPlayerGold(),
+		Max:       pu.MaxGold(),
+	}
+
+	// ── Weapon slot & merc ──
+	resp.WeaponSlot = d.ActiveWeaponSlot
+	resp.MercHP = d.MercHPPercent()
+
+	// ── Menus ──
 	om := d.OpenMenus
 	resp.Menus = menuInfo{
-		Inventory: om.Inventory,
-		Stash:     om.Stash,
-		SkillTree: om.SkillTree,
-		NPCShop:   om.NPCShop,
-		Waypoint:  om.Waypoint,
-		QuitMenu:  om.QuitMenu,
-		MapShown:  om.MapShown,
+		Inventory:     om.Inventory,
+		Stash:         om.Stash,
+		SkillTree:     om.SkillTree,
+		NPCShop:       om.NPCShop,
+		Waypoint:      om.Waypoint,
+		QuitMenu:      om.QuitMenu,
+		MapShown:      om.MapShown,
+		Character:     om.Character,
+		Cube:          om.Cube,
+		MercInventory: om.MercInventory,
+		QuestLog:      om.QuestLog,
+		ChatOpen:      om.ChatOpen,
+		LoadingScreen: om.LoadingScreen,
+		Cinematic:     om.Cinematic,
 	}
 
 	return resp
