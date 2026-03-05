@@ -14,6 +14,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
+	"github.com/hectorgimenez/koolo/internal/config"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
@@ -114,6 +115,17 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 		action.SwitchToLegacyMode()
 	}
 	b.ctx.RefreshGameData()
+
+	// Open overlay map after game is fully loaded and legacy mode is set
+	if config.Koolo.Debug.OpenOverlayMapOnGameStart {
+		automapKB := b.ctx.Data.KeyBindings.Automap
+		if automapKB.Key1[0] != 0 || automapKB.Key2[0] != 0 {
+			b.ctx.HID.PressKeyBinding(automapKB)
+			utils.PingSleep(utils.Light, 50)
+		} else {
+			b.ctx.Logger.Debug("Open overlay map on game start is enabled, but no automap key binding is set")
+		}
+	}
 
 	b.ctx.Logger.Info("Game loaded", slog.String("expansion", b.ctx.Data.ExpCharLabel()))
 
