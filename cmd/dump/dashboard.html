@@ -146,6 +146,25 @@ tr:hover td{background:rgba(88,166,255,.04)}
 .minimap-container{position:relative;background:#21262d;border-radius:6px;overflow:hidden;min-height:200px}
 .minimap-container canvas{display:block;width:100%;height:auto}
 
+/* ── Map tab ── */
+.map-wrap{display:flex;flex-direction:column;gap:.75rem}
+.map-toolbar{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.map-toggle{display:flex;align-items:center;gap:.25rem;font-size:.78rem;color:var(--dim);cursor:pointer;user-select:none}
+.map-toggle input{accent-color:var(--blue);cursor:pointer}
+.map-toggle:hover{color:var(--text)}
+.map-btn{padding:3px 10px;font-size:.75rem;font-weight:600;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--dim);cursor:pointer;font-family:inherit}
+.map-btn:hover{color:var(--text);border-color:var(--blue)}
+.map-canvas-wrap{position:relative;background:#0d1117;border-radius:6px;border:1px solid var(--border);overflow:hidden}
+.map-canvas-wrap canvas{display:block;width:100%;height:600px;cursor:grab}
+.map-canvas-wrap canvas:active{cursor:grabbing}
+.map-legend{display:flex;gap:.75rem;flex-wrap:wrap;padding:.5rem .75rem;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:.73rem;color:var(--dim)}
+.map-legend-item{display:flex;align-items:center;gap:.25rem}
+.map-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.map-legend-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.map-legend-diamond{width:8px;height:8px;transform:rotate(45deg);flex-shrink:0}
+.map-footer{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.78rem;color:var(--dim)}
+.map-footer b{color:var(--heading)}
+
 /* ── Misc ── */
 .empty{color:var(--dim);font-size:.85rem;padding:.5rem 0}
 #err-banner{display:none;background:rgba(248,81,73,.15);border:1px solid var(--red);color:var(--red);padding:.5rem 1rem;border-radius:6px;margin-bottom:.75rem;font-size:.85rem}
@@ -175,6 +194,7 @@ tr:hover td{background:rgba(88,166,255,.04)}
   <button class="tab-btn active" data-tab="overview">&#127968; Overview</button>
   <button class="tab-btn" data-tab="combat">&#9876; Combat</button>
   <button class="tab-btn" data-tab="inventory">&#127890; Inventory</button>
+  <button class="tab-btn" data-tab="map">&#128506; Map</button>
   <button class="tab-btn" data-tab="technical">&#128736; Technical</button>
 </div>
 
@@ -308,6 +328,47 @@ tr:hover td{background:rgba(88,166,255,.04)}
   </div>
 </div>
 
+<!-- ════════════════════ MAP TAB ════════════════════ -->
+<div class="tab-panel" id="tab-map">
+  <div class="card full">
+    <div class="card-head">&#128506; Area Map <span class="badge" id="map-room-count">0</span></div>
+    <div class="card-body">
+      <div class="map-wrap">
+        <div class="map-toolbar">
+          <label class="map-toggle"><input type="checkbox" id="map-show-monsters" checked> Monsters</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-objects" checked> Objects</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-entrances" checked> Entrances</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-roster" checked> Roster</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-corpse" checked> Corpse</label>
+          <label class="map-toggle"><input type="checkbox" id="map-follow-player" checked> Follow Player</label>
+          <button class="map-btn" id="map-reset-btn">Reset View</button>
+        </div>
+        <div class="map-canvas-wrap">
+          <canvas id="map-canvas"></canvas>
+        </div>
+        <div class="map-legend">
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#3fb950"></span> Player</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#8b949e"></span> Normal</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#58a6ff"></span> Champion</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#d29922"></span> Unique</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#f85149"></span> Super Unique</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#555d6e"></span> Minion</span>
+          <span class="map-legend-item"><span class="map-legend-sq" style="background:#39d2c0"></span> Object</span>
+          <span class="map-legend-item"><span class="map-legend-sq" style="background:#bc8cff"></span> Entrance</span>
+          <span class="map-legend-item"><span class="map-legend-sq" style="background:#d18616"></span> Exit</span>
+        </div>
+        <div class="map-footer">
+          <span>Cursor: <b id="map-mouse-pos">&mdash;</b></span>
+          <span>Zoom: <b id="map-zoom-level">1.0x</b></span>
+          <span>Monsters: <b id="map-monster-count">0</b></span>
+          <span>Objects: <b id="map-object-count">0</b></span>
+          <span style="color:var(--dim);margin-left:auto;font-size:.72rem">scroll to zoom &middot; drag to pan &middot; double-click to reset</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════ TECHNICAL TAB ════════════════════ -->
 <div class="tab-panel" id="tab-technical">
   <div class="grid">
@@ -421,6 +482,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     $('tab-' + btn.dataset.tab).classList.add('active');
+    // Resize map canvas when its tab becomes visible
+    if (btn.dataset.tab === 'map') {
+      setTimeout(function() { if (typeof resizeMapCanvas === 'function') resizeMapCanvas(); }, 20);
+    }
   });
 });
 
@@ -845,6 +910,393 @@ function renderPlayerCorpse(corpse) {
   $('corpse-info').innerHTML = '<div class="stat-grid"><div class="stat-item"><span class="stat-label">Position</span><span class="stat-val" style="color:var(--red)">' + corpse.position.x + ', ' + corpse.position.y + '</span></div></div>';
 }
 
+// ── Interactive Map ──
+const mapState = {
+  viewX: 0, viewY: 0,
+  zoom: 1,
+  baseScale: 1,
+  dragging: false,
+  dragStartX: 0, dragStartY: 0,
+  dragViewX: 0, dragViewY: 0,
+  initialized: false,
+  data: null
+};
+
+// Exposed globally so tab-switch can call it
+var resizeMapCanvas = null;
+
+(function initMapControls() {
+  const canvas = $('map-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    var w = Math.floor(rect.width * dpr);
+    if (w < 10) return; // tab still hidden, skip
+    canvas.width = w;
+    canvas.height = Math.floor(600 * dpr);
+    canvas.style.height = '600px';
+    renderMap();
+  }
+  resizeMapCanvas = resizeCanvas;
+  window.addEventListener('resize', resizeCanvas);
+  setTimeout(resizeCanvas, 100);
+
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var mx = (e.clientX - rect.left) * dpr;
+    var my = (e.clientY - rect.top) * dpr;
+    var W = canvas.width, H = canvas.height;
+    var bs = mapState.baseScale, z = mapState.zoom;
+    if (bs === 0) return;
+    var wx = mapState.viewX + (mx - W / 2) / (bs * z);
+    var wy = mapState.viewY + (my - H / 2) / (bs * z);
+    var factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    var nz = Math.max(0.1, Math.min(30, z * factor));
+    mapState.viewX = wx - (mx - W / 2) / (bs * nz);
+    mapState.viewY = wy - (my - H / 2) / (bs * nz);
+    mapState.zoom = nz;
+    renderMap();
+  }, { passive: false });
+
+  canvas.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    mapState.dragging = true;
+    mapState.dragStartX = e.clientX;
+    mapState.dragStartY = e.clientY;
+    mapState.dragViewX = mapState.viewX;
+    mapState.dragViewY = mapState.viewY;
+    $('map-follow-player').checked = false;
+  });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!mapState.dragging) return;
+    var dx = (e.clientX - mapState.dragStartX) * dpr;
+    var dy = (e.clientY - mapState.dragStartY) * dpr;
+    var s = mapState.baseScale * mapState.zoom;
+    if (s === 0) return;
+    mapState.viewX = mapState.dragViewX - dx / s;
+    mapState.viewY = mapState.dragViewY - dy / s;
+    renderMap();
+  });
+
+  window.addEventListener('mouseup', function() {
+    mapState.dragging = false;
+  });
+
+  canvas.addEventListener('dblclick', function() {
+    mapState.zoom = 1;
+    mapState.initialized = false;
+    $('map-follow-player').checked = true;
+    renderMap();
+  });
+
+  $('map-reset-btn').addEventListener('click', function() {
+    mapState.zoom = 1;
+    mapState.initialized = false;
+    $('map-follow-player').checked = true;
+    renderMap();
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    if (mapState.dragging) return;
+    var rect = canvas.getBoundingClientRect();
+    var mx = (e.clientX - rect.left) * dpr;
+    var my = (e.clientY - rect.top) * dpr;
+    var bs = mapState.baseScale, z = mapState.zoom;
+    if (bs === 0 || z === 0) return;
+    var wx = Math.round(mapState.viewX + (mx - canvas.width / 2) / (bs * z));
+    var wy = Math.round(mapState.viewY + (my - canvas.height / 2) / (bs * z));
+    $('map-mouse-pos').textContent = wx + ', ' + wy;
+  });
+
+  // Redraw when toggles change
+  var toggleIds = ['map-show-monsters','map-show-objects','map-show-entrances','map-show-roster','map-show-corpse','map-follow-player'];
+  for (var i = 0; i < toggleIds.length; i++) {
+    $(toggleIds[i]).addEventListener('change', function() { renderMap(); });
+  }
+})();
+
+function updateMapData(d) {
+  mapState.data = d;
+  // Ensure canvas is sized (may have been hidden on first load)
+  var mc = $('map-canvas');
+  if (mc && mc.width < 10 && typeof resizeMapCanvas === 'function') resizeMapCanvas();
+  var rooms = d.rooms || [];
+  var playerPos = d.playerPos;
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (var i = 0; i < rooms.length; i++) {
+    var r = rooms[i];
+    if (r.x < minX) minX = r.x;
+    if (r.y < minY) minY = r.y;
+    if (r.x + r.w > maxX) maxX = r.x + r.w;
+    if (r.y + r.h > maxY) maxY = r.y + r.h;
+  }
+  if (playerPos) {
+    minX = Math.min(minX, playerPos.x - 10);
+    minY = Math.min(minY, playerPos.y - 10);
+    maxX = Math.max(maxX, playerPos.x + 10);
+    maxY = Math.max(maxY, playerPos.y + 10);
+  }
+  if (minX === Infinity) { minX = 0; minY = 0; maxX = 100; maxY = 100; }
+  var canvas = $('map-canvas');
+  var W = canvas.width || 1000;
+  var H = canvas.height || 600;
+  var rangeX = maxX - minX || 1;
+  var rangeY = maxY - minY || 1;
+  var pad = 40;
+  mapState.baseScale = Math.min((W - pad * 2) / rangeX, (H - pad * 2) / rangeY);
+  if (!mapState.initialized) {
+    var cx = (minX + maxX) / 2;
+    var cy = (minY + maxY) / 2;
+    mapState.viewX = playerPos ? playerPos.x : cx;
+    mapState.viewY = playerPos ? playerPos.y : cy;
+    mapState.initialized = true;
+  }
+  if ($('map-follow-player').checked && playerPos) {
+    mapState.viewX = playerPos.x;
+    mapState.viewY = playerPos.y;
+  }
+  renderMap();
+}
+
+function renderMap() {
+  var d = mapState.data;
+  if (!d) return;
+  var canvas = $('map-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  if (!W || !H) return;
+  var dpr = window.devicePixelRatio || 1;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, W, H);
+
+  var rooms = d.rooms || [];
+  var playerPos = d.playerPos;
+  var monsters = d.monsters || [];
+  var objects = d.objects || [];
+  var entrances = d.entrances || [];
+  var adjLevels = d.adjLevels || [];
+  var corpse = d.corpse;
+  var roster = d.roster || [];
+
+  $('map-room-count').textContent = rooms.length;
+  $('map-monster-count').textContent = monsters.length;
+  $('map-object-count').textContent = objects.length;
+
+  if (!rooms.length && !playerPos) {
+    ctx.fillStyle = '#8b949e';
+    ctx.font = (16 * dpr) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No map data available', W / 2, H / 2);
+    return;
+  }
+
+  var bs = mapState.baseScale;
+  var z = mapState.zoom;
+  var es = bs * z;
+
+  function tx(wx) { return W / 2 + (wx - mapState.viewX) * es; }
+  function ty(wy) { return H / 2 + (wy - mapState.viewY) * es; }
+
+  // ── Rooms ──
+  var roomColors = ['rgba(88,166,255,0.12)', 'rgba(63,185,80,0.08)', 'rgba(188,140,255,0.08)'];
+  for (var i = 0; i < rooms.length; i++) {
+    var r = rooms[i];
+    var rx = tx(r.x), ry = ty(r.y);
+    var rw = r.w * es, rh = r.h * es;
+    ctx.fillStyle = roomColors[i % roomColors.length];
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.strokeStyle = 'rgba(88,166,255,0.25)';
+    ctx.lineWidth = dpr;
+    ctx.strokeRect(rx, ry, rw, rh);
+  }
+
+  // ── Monsters ──
+  if ($('map-show-monsters').checked) {
+    var zCap = Math.min(z, 3);
+    for (var i = 0; i < monsters.length; i++) {
+      var m = monsters[i];
+      var mx = tx(m.x), my = ty(m.y);
+      if (mx < -30 || mx > W + 30 || my < -30 || my > H + 30) continue;
+      var mr = Math.max(3, 4 * zCap) * dpr;
+      var tl = m.type.toLowerCase();
+      var color = '#8b949e';
+      if (tl === 'champion') color = '#58a6ff';
+      else if (tl === 'unique') color = '#d29922';
+      else if (tl === 'superunique') color = '#f85149';
+      else if (tl === 'minion') color = '#555d6e';
+
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      if (tl === 'champion' || tl === 'unique' || tl === 'superunique') {
+        var bw = Math.max(14, 22 * zCap) * dpr;
+        var bh = Math.max(2, 3) * dpr;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(mx - bw / 2, my + mr + 2 * dpr, bw, bh);
+        ctx.fillStyle = hpColor(m.hpPct);
+        ctx.fillRect(mx - bw / 2, my + mr + 2 * dpr, bw * m.hpPct / 100, bh);
+      }
+      if (z > 2 && tl !== 'normal' && tl !== 'minion') {
+        ctx.fillStyle = color;
+        ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(m.name, mx, my - mr - 4 * dpr);
+      }
+    }
+  }
+
+  // ── Objects ──
+  if ($('map-show-objects').checked) {
+    var zCap = Math.min(z, 3);
+    for (var i = 0; i < objects.length; i++) {
+      var o = objects[i];
+      var ox = tx(o.x), oy = ty(o.y);
+      if (ox < -30 || ox > W + 30 || oy < -30 || oy > H + 30) continue;
+      var sz = Math.max(3, 4 * zCap) * dpr;
+      ctx.fillStyle = o.selectable ? '#39d2c0' : 'rgba(57,210,192,0.3)';
+      ctx.fillRect(ox - sz / 2, oy - sz / 2, sz, sz);
+      if (z > 2.5 && o.selectable) {
+        ctx.fillStyle = '#39d2c0';
+        ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(o.name, ox, oy - sz / 2 - 4 * dpr);
+      }
+    }
+  }
+
+  // ── Entrances & Adjacent Levels ──
+  if ($('map-show-entrances').checked) {
+    var zCap = Math.min(z, 3);
+    for (var i = 0; i < entrances.length; i++) {
+      var e = entrances[i];
+      var ex = tx(e.position.x), ey = ty(e.position.y);
+      if (ex < -60 || ex > W + 60 || ey < -60 || ey > H + 60) continue;
+      var sz = Math.max(5, 6 * zCap) * dpr;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey - sz);
+      ctx.lineTo(ex + sz, ey);
+      ctx.lineTo(ex, ey + sz);
+      ctx.lineTo(ex - sz, ey);
+      ctx.closePath();
+      ctx.fillStyle = '#bc8cff';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(188,140,255,0.6)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+      if (z > 0.6) {
+        ctx.fillStyle = '#bc8cff';
+        ctx.font = 'bold ' + Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(e.name, ex, ey - sz - 5 * dpr);
+      }
+    }
+    for (var i = 0; i < adjLevels.length; i++) {
+      var al = adjLevels[i];
+      var ax = tx(al.position.x), ay = ty(al.position.y);
+      if (ax < -60 || ax > W + 60 || ay < -60 || ay > H + 60) continue;
+      var sz = Math.max(5, 6 * zCap) * dpr;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - sz);
+      ctx.lineTo(ax + sz * 0.87, ay + sz * 0.5);
+      ctx.lineTo(ax - sz * 0.87, ay + sz * 0.5);
+      ctx.closePath();
+      ctx.fillStyle = al.isEntrance ? '#d18616' : 'rgba(209,134,22,0.5)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(209,134,22,0.6)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+      if (z > 0.6) {
+        ctx.fillStyle = '#d18616';
+        ctx.font = 'bold ' + Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(al.area, ax, ay - sz - 5 * dpr);
+      }
+    }
+  }
+
+  // ── Roster Members ──
+  if ($('map-show-roster').checked) {
+    var zCap = Math.min(z, 3);
+    for (var i = 0; i < roster.length; i++) {
+      var rm = roster[i];
+      var rx = tx(rm.position.x), ry = ty(rm.position.y);
+      if (rx < -30 || rx > W + 30 || ry < -30 || ry > H + 30) continue;
+      var sz = Math.max(4, 5 * zCap) * dpr;
+      ctx.beginPath();
+      ctx.arc(rx, ry, sz, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(63,185,80,0.5)';
+      ctx.fill();
+      ctx.strokeStyle = '#3fb950';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.stroke();
+      ctx.fillStyle = '#3fb950';
+      ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(rm.name, rx, ry - sz - 4 * dpr);
+    }
+  }
+
+  // ── Player Corpse ──
+  if ($('map-show-corpse').checked && corpse && corpse.found) {
+    var cx = tx(corpse.position.x), cy = ty(corpse.position.y);
+    var zCap = Math.min(z, 3);
+    var sz = Math.max(5, 7 * zCap) * dpr;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sz, 0, Math.PI * 2);
+    ctx.fillStyle = '#f85149';
+    ctx.fill();
+    ctx.strokeStyle = '#f0f6fc';
+    ctx.lineWidth = 2 * dpr;
+    ctx.stroke();
+    var half = sz * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - half, cy - half);
+    ctx.lineTo(cx + half, cy + half);
+    ctx.moveTo(cx + half, cy - half);
+    ctx.lineTo(cx - half, cy + half);
+    ctx.strokeStyle = '#f0f6fc';
+    ctx.lineWidth = 2 * dpr;
+    ctx.stroke();
+    ctx.fillStyle = '#f85149';
+    ctx.font = 'bold ' + Math.max(10, 11 * zCap) * dpr + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CORPSE', cx, cy - sz - 5 * dpr);
+  }
+
+  // ── Player (always on top) ──
+  if (playerPos) {
+    var px = tx(playerPos.x), py = ty(playerPos.y);
+    var zCap = Math.min(z, 3);
+    var pr = Math.max(5, 7 * zCap) * dpr;
+    ctx.beginPath();
+    ctx.arc(px, py, pr + 4 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(63,185,80,0.15)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
+    ctx.fillStyle = '#3fb950';
+    ctx.fill();
+    ctx.strokeStyle = '#f0f6fc';
+    ctx.lineWidth = 2 * dpr;
+    ctx.stroke();
+    ctx.fillStyle = '#f0f6fc';
+    ctx.font = 'bold ' + Math.max(11, 13 * zCap) * dpr + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('You', px, py - pr - 7 * dpr);
+  }
+
+  $('map-zoom-level').textContent = z.toFixed(1) + 'x';
+}
+
 // ── Main refresh ──
 async function refresh() {
   try {
@@ -915,6 +1367,7 @@ async function refresh() {
     renderRoster(d.roster || []);
     renderMinimap(d.rooms || [], d.playerPos);
     renderPlayerCorpse(d.corpse);
+    updateMapData(d);
 
   } catch (e) {
     $('dot').className = 'dot';
