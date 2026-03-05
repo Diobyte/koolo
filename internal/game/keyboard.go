@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -32,9 +33,13 @@ func (hid *HID) KeySequence(keysToPress ...byte) {
 
 // PressKeyWithModifier works the same as PressKey but with a modifier key (shift, ctrl, alt)
 func (hid *HID) PressKeyWithModifier(key byte, modifier ModifierKey) {
-	hid.gi.OverrideGetKeyState(byte(modifier))
+	if err := hid.gi.OverrideGetKeyState(byte(modifier)); err != nil {
+		hid.gi.logger.Error(fmt.Sprintf("override key state failed: %v", err))
+	}
 	hid.PressKey(key)
-	hid.gi.RestoreGetKeyState()
+	if err := hid.gi.RestoreGetKeyState(); err != nil {
+		hid.gi.logger.Error(fmt.Sprintf("restore key state failed: %v", err))
+	}
 }
 
 func (hid *HID) PressKeyBinding(kb data.KeyBinding) {

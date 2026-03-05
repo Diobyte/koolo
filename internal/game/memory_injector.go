@@ -177,15 +177,15 @@ func (i *MemoryInjector) OverrideSetCursorPos() error {
 }
 
 func (i *MemoryInjector) RestoreGetKeyState() error {
-	return ntWriteMemory(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)))
+	return ntWriteCode(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)))
 }
 
 func (i *MemoryInjector) RestoreGetCursorPosAddr() error {
-	return ntWriteMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)))
+	return ntWriteCode(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)))
 }
 
 func (i *MemoryInjector) RestoreSetCursorPosAddr() error {
-	return ntWriteMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)))
+	return ntWriteCode(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)))
 }
 
 func (i *MemoryInjector) CursorOverrideActive() bool {
@@ -215,5 +215,5 @@ func (i *MemoryInjector) stopTrackingMouseLeaveEvents() error {
 
 	hook := append(disableMouseLeaveRequest, injectBytes...)
 
-	return ntWriteMemory(i.handle, i.trackMouseEventAddr, &hook[0], uintptr(len(hook)))
+	return ntWriteCode(i.handle, i.trackMouseEventAddr, &hook[0], uintptr(len(hook)))
 }
