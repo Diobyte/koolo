@@ -226,8 +226,11 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 	// Use SharedStashPages from memory to determine actual count.
 	sharedPages := ctx.Data.Inventory.SharedStashPages
 	if sharedPages == 0 {
-		// Fallback: assume 3 pages if not detected
-		sharedPages = 3
+		if ctx.Data.IsDLC() {
+			sharedPages = 5
+		} else {
+			sharedPages = 3
+		}
 	}
 	maxTab := 1 + sharedPages // personal (1) + all shared pages
 
@@ -680,7 +683,11 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			// navigate forward to the target page.
 			sharedPages := ctx.Data.Inventory.SharedStashPages
 			if sharedPages == 0 {
-				sharedPages = 3
+				if ctx.Data.IsDLC() {
+					sharedPages = 5
+				} else {
+					sharedPages = 3
+				}
 			}
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
@@ -746,7 +753,11 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 			// navigate forward to the target page.
 			sharedPages := ctx.Data.Inventory.SharedStashPages
 			if sharedPages == 0 {
-				sharedPages = 3
+				if ctx.Data.IsDLC() {
+					sharedPages = 5
+				} else {
+					sharedPages = 3
+				}
 			}
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
