@@ -7,12 +7,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -22,6 +26,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/memory"
+	"github.com/hectorgimenez/d2go/pkg/utils"
 )
 
 //go:embed dashboard.html
@@ -58,6 +63,9 @@ type apiResponse struct {
 	Gold        goldInfo         `json:"gold"`
 	WeaponSlot  int              `json:"weaponSlot"`
 	MercHP      int              `json:"mercHP"`
+
+	// Collision grid for the current area
+	CollisionGrid *collisionGridInfo `json:"collisionGrid,omitempty"`
 }
 
 type playerInfo struct {
@@ -236,6 +244,37 @@ type goldInfo struct {
 	Max       int `json:"max"`
 }
 
+// collisionGridInfo holds RLE-encoded collision data for the current area.
+// Data is a run-length encoded byte array: each pair [walkable_count, non_walkable_count]
+// is packed row by row. The frontend decodes this to render the map background.
+type collisionGridInfo struct {
+	OffsetX int   `json:"ox"`
+	OffsetY int   `json:"oy"`
+	Width   int   `json:"w"`
+	Height  int   `json:"h"`
+	Data    []int `json:"data"` // RLE: alternating runs of walkable/non-walkable per row
+	AreaID  int   `json:"areaId"`
+}
+
+// ── map data cache ───────────────────────────────────────────────────────────
+
+// mapLevel holds decoded collision data for one area from koolo-map.exe output.
+type mapLevel struct {
+	ID     int
+	Name   string
+	OX, OY int
+	W, H   int
+	Grid   [][]bool // [y][x] true = walkable
+}
+
+var (
+	mapCacheMu    sync.RWMutex
+	mapCacheSeed  uint
+	mapCacheData  map[area.ID]*mapLevel
+	d2lodPath     string
+	difficultyNum string
+)
+
 // ── quest definitions ────────────────────────────────────────────────────────
 
 type questDef struct {
@@ -351,6 +390,168 @@ func findStat(pu interface {
 }, id stat.ID) int {
 	s, _ := pu.FindStat(id, 0)
 	return s.Value
+}
+
+// ── map seed & collision grid ────────────────────────────────────────────────
+
+// getMapSeed reads the map seed from the D2R process memory using the same
+// pointer chain as internal/game/memory_reader.go:getMapSeed.
+func getMapSeed(proc *memory.Process, playerUnitAddr uintptr) (uint, error) {
+	actPtr := uintptr(proc.ReadUInt(playerUnitAddr+0x20, memory.Uint64))
+	actMiscPtr := uintptr(proc.ReadUInt(actPtr+0x70, memory.Uint64))
+
+	dwInitSeedHash1 := proc.ReadUInt(actMiscPtr+0x840, memory.Uint32)
+	dwEndSeedHash1 := proc.ReadUInt(actMiscPtr+0x860, memory.Uint32)
+
+	seed, found := utils.GetMapSeed(dwInitSeedHash1, dwEndSeedHash1)
+	if !found {
+		return 0, fmt.Errorf("could not calculate map seed")
+	}
+	return seed, nil
+}
+
+// serverLevel mirrors map_client.serverLevel for JSON parsing of koolo-map.exe output.
+type serverLevel struct {
+	Type   string `json:"type"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Offset struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"offset"`
+	Size struct {
+		Width  int `json:"width"`
+		Height int `json:"height"`
+	} `json:"size"`
+	Map [][]int `json:"map"`
+}
+
+// decodeCollisionGrid decodes the RLE map data from koolo-map.exe into a
+// boolean grid where true = walkable. Logic matches map_client.CollisionGrid().
+func decodeCollisionGrid(lvl serverLevel) [][]bool {
+	cg := make([][]bool, lvl.Size.Height)
+	for y := 0; y < lvl.Size.Height; y++ {
+		row := make([]bool, lvl.Size.Width)
+		if y < len(lvl.Map) {
+			mapRow := lvl.Map[y]
+			isWalkable := false
+			xPos := 0
+			for k, xs := range mapRow {
+				if k != 0 {
+					for xOff := 0; xOff < xs && xPos+xOff < lvl.Size.Width; xOff++ {
+						row[xPos+xOff] = isWalkable
+					}
+				}
+				isWalkable = !isWalkable
+				xPos += xs
+			}
+			for xPos < len(row) {
+				row[xPos] = isWalkable
+				xPos++
+			}
+		}
+		cg[y] = row
+	}
+	return cg
+}
+
+// fetchMapData runs koolo-map.exe and caches collision grids keyed by area ID.
+// It only re-fetches when the seed changes.
+func fetchMapData(seed uint) {
+	mapCacheMu.Lock()
+	defer mapCacheMu.Unlock()
+
+	if mapCacheSeed == seed && mapCacheData != nil {
+		return
+	}
+
+	if d2lodPath == "" {
+		log.Println("map: D2 LoD path not configured (-d2lod flag), skipping map data")
+		return
+	}
+
+	cmd := exec.Command("./tools/koolo-map.exe", d2lodPath, "-s", strconv.FormatUint(uint64(seed), 10), "-d", difficultyNum)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Printf("map: koolo-map.exe error: %v", err)
+		return
+	}
+
+	levels := make(map[area.ID]*mapLevel)
+	for _, line := range strings.Split(string(stdout), "\r\n") {
+		var lvl serverLevel
+		if err := json.Unmarshal([]byte(line), &lvl); err != nil {
+			continue
+		}
+		if lvl.Type == "" || len(lvl.Map) == 0 {
+			continue
+		}
+		levels[area.ID(lvl.ID)] = &mapLevel{
+			ID:   lvl.ID,
+			Name: lvl.Name,
+			OX:   lvl.Offset.X,
+			OY:   lvl.Offset.Y,
+			W:    lvl.Size.Width,
+			H:    lvl.Size.Height,
+			Grid: decodeCollisionGrid(lvl),
+		}
+	}
+
+	mapCacheSeed = seed
+	mapCacheData = levels
+	log.Printf("map: loaded %d areas for seed %d", len(levels), seed)
+}
+
+// rleEncodeGrid produces a compact RLE representation of a walkable grid.
+// Format: flat array of run lengths, starting with a walkable run (may be 0).
+// Alternates walkable / non-walkable run lengths, row by row concatenated.
+func rleEncodeGrid(grid [][]bool, w, h int) []int {
+	var rle []int
+	for y := 0; y < h; y++ {
+		if y >= len(grid) {
+			// Missing row: entire row non-walkable (0 walkable, w non-walkable)
+			rle = append(rle, 0, w)
+			continue
+		}
+		row := grid[y]
+		x := 0
+		for x < w {
+			// Count walkable run
+			wRun := 0
+			for x+wRun < w && x+wRun < len(row) && row[x+wRun] {
+				wRun++
+			}
+			// Count non-walkable run
+			nRun := 0
+			for x+wRun+nRun < w && (x+wRun+nRun >= len(row) || !row[x+wRun+nRun]) {
+				nRun++
+			}
+			rle = append(rle, wRun, nRun)
+			x += wRun + nRun
+		}
+	}
+	return rle
+}
+
+// getCollisionGrid returns the collision grid info for the given area, or nil.
+func getCollisionGrid(areaID area.ID) *collisionGridInfo {
+	mapCacheMu.RLock()
+	defer mapCacheMu.RUnlock()
+
+	lvl, ok := mapCacheData[areaID]
+	if !ok || lvl == nil {
+		return nil
+	}
+
+	return &collisionGridInfo{
+		OffsetX: lvl.OX,
+		OffsetY: lvl.OY,
+		Width:   lvl.W,
+		Height:  lvl.H,
+		Data:    rleEncodeGrid(lvl.Grid, lvl.W, lvl.H),
+		AreaID:  lvl.ID,
+	}
 }
 
 // ── data collection ──────────────────────────────────────────────────────────
@@ -640,6 +841,16 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		Cinematic:     om.Cinematic,
 	}
 
+	// ── Collision grid (map background) ──
+	if d2lodPath != "" && pu.Address != 0 {
+		seed, err := getMapSeed(gr.Process, pu.Address)
+		if err == nil && seed != 0 {
+			// Fetch map data in background if seed changed (blocks only first time)
+			go fetchMapData(seed)
+			resp.CollisionGrid = getCollisionGrid(pu.Area)
+		}
+	}
+
 	return resp
 }
 
@@ -648,7 +859,16 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 func main() {
 	port := flag.Int("port", 0, "HTTP port (0 = auto-assign)")
 	noBrowser := flag.Bool("no-browser", false, "skip auto-open")
+	d2lod := flag.String("d2lod", "", "path to D2 LoD 1.13c installation (enables map backgrounds)")
+	diff := flag.String("difficulty", "0", "game difficulty: 0=Normal, 1=Nightmare, 2=Hell")
 	flag.Parse()
+
+	d2lodPath = strings.TrimSpace(*d2lod)
+	if d2lodPath != "" {
+		d2lodPath = strings.ReplaceAll(strings.ToLower(d2lodPath), "game.exe", "")
+		log.Printf("map: D2 LoD path: %s, difficulty: %s", d2lodPath, *diff)
+	}
+	difficultyNum = *diff
 
 	proc, err := memory.NewProcess()
 	if err != nil {

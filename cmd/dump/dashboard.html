@@ -143,27 +143,28 @@ tr:hover td{background:rgba(88,166,255,.04)}
 .state-badge.debuff{background:rgba(248,81,73,.12);color:var(--red);border-color:rgba(248,81,73,.25)}
 
 /* ── Room minimap ── */
-.minimap-container{position:relative;background:#21262d;border-radius:6px;overflow:hidden;min-height:200px}
+.minimap-container{position:relative;background:#080c12;border-radius:8px;overflow:hidden;min-height:200px;box-shadow:inset 0 0 20px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(48,54,61,.5)}
 .minimap-container canvas{display:block;width:100%;height:auto}
 
 /* ── Map tab ── */
-.map-wrap{display:flex;flex-direction:column;gap:.75rem}
-.map-toolbar{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
-.map-toggle{display:flex;align-items:center;gap:.25rem;font-size:.78rem;color:var(--dim);cursor:pointer;user-select:none}
-.map-toggle input{accent-color:var(--blue);cursor:pointer}
-.map-toggle:hover{color:var(--text)}
-.map-btn{padding:3px 10px;font-size:.75rem;font-weight:600;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--dim);cursor:pointer;font-family:inherit}
-.map-btn:hover{color:var(--text);border-color:var(--blue)}
-.map-canvas-wrap{position:relative;background:#0d1117;border-radius:6px;border:1px solid var(--border);overflow:hidden}
+.map-wrap{display:flex;flex-direction:column;gap:.5rem}
+.map-toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;padding:.4rem .5rem;background:rgba(22,27,34,.8);border-radius:6px;border:1px solid var(--border)}
+.map-toggle{display:flex;align-items:center;gap:.25rem;font-size:.75rem;color:var(--dim);cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;transition:all .15s}
+.map-toggle input{accent-color:var(--blue);cursor:pointer;width:13px;height:13px}
+.map-toggle:hover{color:var(--text);background:rgba(88,166,255,.06)}
+.map-btn{padding:4px 12px;font-size:.73rem;font-weight:600;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-family:inherit;transition:all .15s}
+.map-btn:hover{color:var(--text);border-color:var(--blue);background:rgba(88,166,255,.08)}
+.map-canvas-wrap{position:relative;background:#080c12;border-radius:8px;border:1px solid var(--border);overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
 .map-canvas-wrap canvas{display:block;width:100%;height:600px;cursor:grab}
 .map-canvas-wrap canvas:active{cursor:grabbing}
-.map-legend{display:flex;gap:.75rem;flex-wrap:wrap;padding:.5rem .75rem;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:.73rem;color:var(--dim)}
-.map-legend-item{display:flex;align-items:center;gap:.25rem}
-.map-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.map-legend{display:flex;gap:.6rem;flex-wrap:wrap;padding:.5rem .75rem;background:rgba(22,27,34,.85);border:1px solid var(--border);border-radius:6px;font-size:.7rem;color:var(--dim)}
+.map-legend-item{display:flex;align-items:center;gap:.3rem;padding:1px 4px;border-radius:3px}
+.map-legend-item:hover{background:rgba(255,255,255,.04)}
+.map-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 3px currentColor}
 .map-legend-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.map-legend-diamond{width:8px;height:8px;transform:rotate(45deg);flex-shrink:0}
-.map-footer{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.78rem;color:var(--dim)}
-.map-footer b{color:var(--heading)}
+.map-legend-diamond{width:7px;height:7px;transform:rotate(45deg);flex-shrink:0}
+.map-footer{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.75rem;color:var(--dim);padding:.2rem 0}
+.map-footer b{color:var(--heading);font-variant-numeric:tabular-nums}
 
 /* ── Misc ── */
 .empty{color:var(--dim);font-size:.85rem;padding:.5rem 0}
@@ -331,38 +332,44 @@ tr:hover td{background:rgba(88,166,255,.04)}
 <!-- ════════════════════ MAP TAB ════════════════════ -->
 <div class="tab-panel" id="tab-map">
   <div class="card full">
-    <div class="card-head">&#128506; Area Map <span class="badge" id="map-room-count">0</span></div>
-    <div class="card-body">
+    <div class="card-head">&#128506; Area Map <span class="badge" id="map-area-name"></span> <span class="badge" id="map-room-count">0</span></div>
+    <div class="card-body" style="padding:.5rem">
       <div class="map-wrap">
         <div class="map-toolbar">
+          <label class="map-toggle"><input type="checkbox" id="map-show-terrain" checked> Terrain</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-rooms"> Rooms</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-monsters" checked> Monsters</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-objects" checked> Objects</label>
-          <label class="map-toggle"><input type="checkbox" id="map-show-entrances" checked> Entrances</label>
-          <label class="map-toggle"><input type="checkbox" id="map-show-roster" checked> Roster</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-entrances" checked> Exits</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-roster" checked> Party</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-corpse" checked> Corpse</label>
-          <label class="map-toggle"><input type="checkbox" id="map-follow-player" checked> Follow Player</label>
-          <button class="map-btn" id="map-reset-btn">Reset View</button>
+          <label class="map-toggle"><input type="checkbox" id="map-follow-player" checked> Follow</label>
+          <button class="map-btn" id="map-reset-btn">Reset</button>
         </div>
         <div class="map-canvas-wrap">
           <canvas id="map-canvas"></canvas>
         </div>
         <div class="map-legend">
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#3fb950"></span> Player</span>
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#8b949e"></span> Normal</span>
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#58a6ff"></span> Champion</span>
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#d29922"></span> Unique</span>
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#f85149"></span> Super Unique</span>
-          <span class="map-legend-item"><span class="map-legend-dot" style="background:#555d6e"></span> Minion</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#3fb950;box-shadow:0 0 6px #3fb950"></span> You</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:rgb(180,185,195)"></span> Normal</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#5c9aff;box-shadow:0 0 4px #5c9aff"></span> Champion</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#e8b339;box-shadow:0 0 4px #e8b339"></span> Unique</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#ff6b6b;box-shadow:0 0 5px #ff6b6b"></span> Super Unique</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:rgb(120,120,140)"></span> Minion</span>
           <span class="map-legend-item"><span class="map-legend-sq" style="background:#39d2c0"></span> Object</span>
-          <span class="map-legend-item"><span class="map-legend-sq" style="background:#bc8cff"></span> Entrance</span>
-          <span class="map-legend-item"><span class="map-legend-sq" style="background:#d18616"></span> Exit</span>
+          <span class="map-legend-item"><span class="map-legend-diamond" style="background:#c870f0"></span> Entrance</span>
+          <span class="map-legend-item"><span class="map-legend-diamond" style="background:#f0a030"></span> Exit</span>
+          <span class="map-legend-item"><span class="map-legend-sq" style="background:rgb(38,55,82)"></span> Walkable</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(63,185,80,0.5)"></span> Party</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#f85149;box-shadow:0 0 4px #f85149"></span> Corpse</span>
         </div>
         <div class="map-footer">
-          <span>Cursor: <b id="map-mouse-pos">&mdash;</b></span>
+          <span>Pos: <b id="map-mouse-pos">&mdash;</b></span>
           <span>Zoom: <b id="map-zoom-level">1.0x</b></span>
           <span>Monsters: <b id="map-monster-count">0</b></span>
           <span>Objects: <b id="map-object-count">0</b></span>
-          <span style="color:var(--dim);margin-left:auto;font-size:.72rem">scroll to zoom &middot; drag to pan &middot; double-click to reset</span>
+          <span>Entrances: <b id="map-entrance-count">0</b></span>
+          <span style="color:var(--dim);margin-left:auto;font-size:.68rem">scroll=zoom · drag=pan · dbl-click=reset</span>
         </div>
       </div>
     </div>
@@ -831,18 +838,26 @@ function renderMinimap(rooms, playerPos) {
   const W = 400, H = 300;
   canvas.width = W;
   canvas.height = H;
-  ctx.fillStyle = '#21262d';
+  ctx.fillStyle = '#080c12';
   ctx.fillRect(0, 0, W, H);
 
-  if (!rooms.length) {
-    ctx.fillStyle = '#8b949e';
-    ctx.font = '13px sans-serif';
+  var d = mapState.data || {};
+  var monsters = d.monsters || [];
+  var objects = d.objects || [];
+  var entrances = d.entrances || [];
+  var adjLevels = d.adjLevels || [];
+  var roster = d.roster || [];
+  var corpse = d.corpse;
+
+  if (!rooms.length && !playerPos) {
+    ctx.fillStyle = '#484f58';
+    ctx.font = '12px "Segoe UI", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('no room data', W / 2, H / 2);
+    ctx.fillText('Waiting for map data...', W / 2, H / 2);
     return;
   }
 
-  // Calculate bounds
+  // Calculate bounds from all data sources
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const r of rooms) {
     if (r.x < minX) minX = r.x;
@@ -850,17 +865,23 @@ function renderMinimap(rooms, playerPos) {
     if (r.x + r.w > maxX) maxX = r.x + r.w;
     if (r.y + r.h > maxY) maxY = r.y + r.h;
   }
-  // Include player pos in bounds
+  if (d.collisionGrid) {
+    var cg = d.collisionGrid;
+    if (cg.ox < minX) minX = cg.ox;
+    if (cg.oy < minY) minY = cg.oy;
+    if (cg.ox + cg.w > maxX) maxX = cg.ox + cg.w;
+    if (cg.oy + cg.h > maxY) maxY = cg.oy + cg.h;
+  }
   if (playerPos) {
-    if (playerPos.x < minX) minX = playerPos.x - 5;
-    if (playerPos.y < minY) minY = playerPos.y - 5;
-    if (playerPos.x > maxX) maxX = playerPos.x + 5;
-    if (playerPos.y > maxY) maxY = playerPos.y + 5;
+    if (playerPos.x - 5 < minX) minX = playerPos.x - 5;
+    if (playerPos.y - 5 < minY) minY = playerPos.y - 5;
+    if (playerPos.x + 5 > maxX) maxX = playerPos.x + 5;
+    if (playerPos.y + 5 > maxY) maxY = playerPos.y + 5;
   }
 
   const rangeX = maxX - minX || 1;
   const rangeY = maxY - minY || 1;
-  const pad = 15;
+  const pad = 12;
   const scaleX = (W - pad * 2) / rangeX;
   const scaleY = (H - pad * 2) / rangeY;
   const scale = Math.min(scaleX, scaleY);
@@ -871,34 +892,117 @@ function renderMinimap(rooms, playerPos) {
   function tx(x) { return offX + (x - minX) * scale; }
   function ty(y) { return offY + (y - minY) * scale; }
 
-  // Draw rooms
-  const colors = ['rgba(88,166,255,0.15)', 'rgba(63,185,80,0.1)', 'rgba(188,140,255,0.1)'];
-  for (let i = 0; i < rooms.length; i++) {
-    const r = rooms[i];
-    const rx = tx(r.x), ry = ty(r.y);
-    const rw = r.w * scale, rh = r.h * scale;
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fillRect(rx, ry, rw, rh);
-    ctx.strokeStyle = 'rgba(88,166,255,0.35)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(rx, ry, rw, rh);
+  // Layer 1: Collision grid
+  if (gridCache.canvas && d.collisionGrid) {
+    var cgData = d.collisionGrid;
+    var gx = tx(cgData.ox), gy = ty(cgData.oy);
+    var gw = cgData.w * scale, gh = cgData.h * scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(gridCache.canvas, gx, gy, gw, gh);
+    ctx.imageSmoothingEnabled = true;
   }
 
-  // Draw player position
+  // Layer 2: Room outlines (very subtle)
+  for (let i = 0; i < rooms.length; i++) {
+    const r = rooms[i];
+    ctx.strokeStyle = 'rgba(88,166,255,0.12)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(tx(r.x), ty(r.y), r.w * scale, r.h * scale);
+  }
+
+  // Layer 3: Objects (small dots)
+  for (let i = 0; i < objects.length; i++) {
+    var o = objects[i];
+    if (!o.selectable) continue;
+    ctx.fillStyle = 'rgba(57,210,192,0.6)';
+    ctx.fillRect(tx(o.x) - 1, ty(o.y) - 1, 2, 2);
+  }
+
+  // Layer 4: Entrances (small diamonds)
+  for (let i = 0; i < entrances.length; i++) {
+    var e = entrances[i];
+    var ex = tx(e.position.x), ey = ty(e.position.y);
+    ctx.save();
+    ctx.shadowColor = '#c870f0';
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = '#c870f0';
+    ctx.beginPath();
+    ctx.moveTo(ex, ey - 3); ctx.lineTo(ex + 2, ey);
+    ctx.lineTo(ex, ey + 3); ctx.lineTo(ex - 2, ey);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  for (let i = 0; i < adjLevels.length; i++) {
+    var al = adjLevels[i];
+    var ax = tx(al.position.x), ay = ty(al.position.y);
+    ctx.fillStyle = al.isEntrance ? '#f0a030' : 'rgba(240,160,48,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(ax, ay - 3); ctx.lineTo(ax + 2.5, ay + 1.5);
+    ctx.lineTo(ax - 2.5, ay + 1.5); ctx.closePath();
+    ctx.fill();
+  }
+
+  // Layer 5: Monsters (tiny dots, color-coded)
+  for (let i = 0; i < monsters.length; i++) {
+    var m = monsters[i];
+    var mx = tx(m.x), my = ty(m.y);
+    var tl = m.type.toLowerCase();
+    if (tl === 'champion') ctx.fillStyle = '#5c9aff';
+    else if (tl === 'unique') ctx.fillStyle = '#e8b339';
+    else if (tl === 'superunique') ctx.fillStyle = '#ff6b6b';
+    else if (tl === 'minion') ctx.fillStyle = 'rgba(120,120,140,0.5)';
+    else ctx.fillStyle = 'rgba(180,185,195,0.4)';
+    var dotSz = (tl === 'normal' || tl === 'minion') ? 1 : 2;
+    ctx.fillRect(mx - dotSz / 2, my - dotSz / 2, dotSz, dotSz);
+  }
+
+  // Layer 6: Roster (green hollow circles)
+  for (let i = 0; i < roster.length; i++) {
+    var rm = roster[i];
+    var rx = tx(rm.position.x), ry = ty(rm.position.y);
+    ctx.beginPath();
+    ctx.arc(rx, ry, 3, 0, Math.PI * 2);
+    ctx.strokeStyle = '#3fb950';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Layer 7: Corpse
+  if (corpse && corpse.found) {
+    var cx = tx(corpse.position.x), cy = ty(corpse.position.y);
+    ctx.save();
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur = 5;
+    ctx.fillStyle = '#f85149';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#f0f6fc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 2, cy - 2); ctx.lineTo(cx + 2, cy + 2);
+    ctx.moveTo(cx + 2, cy - 2); ctx.lineTo(cx - 2, cy + 2);
+    ctx.stroke();
+  }
+
+  // Layer 8: Player (green dot with glow)
   if (playerPos) {
     const px = tx(playerPos.x), py = ty(playerPos.y);
+    ctx.save();
+    ctx.shadowColor = '#3fb950';
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     ctx.arc(px, py, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#3fb950';
     ctx.fill();
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
     ctx.strokeStyle = '#f0f6fc';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    // Label
-    ctx.fillStyle = '#f0f6fc';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('You', px, py - 8);
   }
 }
 
@@ -921,6 +1025,61 @@ const mapState = {
   initialized: false,
   data: null
 };
+
+// ── Collision grid image cache ──
+var gridCache = {
+  areaId: -1,
+  canvas: null  // offscreen canvas with rendered collision grid (1 pixel per tile)
+};
+
+// Decode the RLE collision grid from API into an offscreen canvas.
+// RLE format: alternating [walkableRun, nonWalkableRun] packed row-by-row.
+function buildGridCanvas(cg) {
+  if (!cg || !cg.data || !cg.w || !cg.h) return null;
+  var w = cg.w, h = cg.h;
+  var oc = document.createElement('canvas');
+  oc.width = w;
+  oc.height = h;
+  var octx = oc.getContext('2d');
+  var img = octx.createImageData(w, h);
+  var pixels = img.data;
+  // D2R-style colors: walkable = dark blue-gray terrain, non-walkable = void
+  var wR = 38, wG = 55, wB = 82, wA = 255;   // walkable: muted slate-blue
+  var nR = 10, nG = 14, nB = 22, nA = 255;    // non-walkable: near-black
+  // Fill entire image with non-walkable
+  for (var p = 0; p < w * h; p++) {
+    var off = p * 4;
+    pixels[off] = nR; pixels[off+1] = nG; pixels[off+2] = nB; pixels[off+3] = nA;
+  }
+  // Paint walkable pixels
+  var idx = 0;
+  var rle = cg.data;
+  for (var i = 0; i < rle.length; i += 2) {
+    var wRun = rle[i] || 0;
+    var nRun = (i + 1 < rle.length) ? rle[i + 1] : 0;
+    for (var p = 0; p < wRun && idx < w * h; p++, idx++) {
+      var off = idx * 4;
+      pixels[off] = wR; pixels[off+1] = wG; pixels[off+2] = wB; pixels[off+3] = wA;
+    }
+    idx += nRun;
+  }
+  octx.putImageData(img, 0, 0);
+  return oc;
+}
+
+// roundRect polyfill for older browsers
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = [r, r, r, r];
+    if (Array.isArray(r)) { while (r.length < 4) r.push(r[r.length - 1] || 0); }
+    this.moveTo(x + r[0], y);
+    this.arcTo(x + w, y, x + w, y + h, r[1]);
+    this.arcTo(x + w, y + h, x, y + h, r[2]);
+    this.arcTo(x, y + h, x, y, r[3]);
+    this.arcTo(x, y, x + w, y, r[0]);
+    return this;
+  };
+}
 
 // Exposed globally so tab-switch can call it
 var resizeMapCanvas = null;
@@ -1013,7 +1172,7 @@ var resizeMapCanvas = null;
   });
 
   // Redraw when toggles change
-  var toggleIds = ['map-show-monsters','map-show-objects','map-show-entrances','map-show-roster','map-show-corpse','map-follow-player'];
+  var toggleIds = ['map-show-terrain','map-show-rooms','map-show-monsters','map-show-objects','map-show-entrances','map-show-roster','map-show-corpse','map-follow-player'];
   for (var i = 0; i < toggleIds.length; i++) {
     $(toggleIds[i]).addEventListener('change', function() { renderMap(); });
   }
@@ -1024,9 +1183,27 @@ function updateMapData(d) {
   // Ensure canvas is sized (may have been hidden on first load)
   var mc = $('map-canvas');
   if (mc && mc.width < 10 && typeof resizeMapCanvas === 'function') resizeMapCanvas();
+
+  // Update collision grid cache when area changes
+  var cg = d.collisionGrid;
+  if (cg && cg.areaId !== gridCache.areaId) {
+    gridCache.areaId = cg.areaId;
+    gridCache.canvas = buildGridCanvas(cg);
+  } else if (!cg) {
+    gridCache.areaId = -1;
+    gridCache.canvas = null;
+  }
+
   var rooms = d.rooms || [];
   var playerPos = d.playerPos;
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  // Include collision grid bounds
+  if (cg && cg.w && cg.h) {
+    minX = Math.min(minX, cg.ox);
+    minY = Math.min(minY, cg.oy);
+    maxX = Math.max(maxX, cg.ox + cg.w);
+    maxY = Math.max(maxY, cg.oy + cg.h);
+  }
   for (var i = 0; i < rooms.length; i++) {
     var r = rooms[i];
     if (r.x < minX) minX = r.x;
@@ -1072,8 +1249,9 @@ function renderMap() {
   if (!W || !H) return;
   var dpr = window.devicePixelRatio || 1;
 
+  // Dark background
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#0d1117';
+  ctx.fillStyle = '#080c12';
   ctx.fillRect(0, 0, W, H);
 
   var rooms = d.rooms || [];
@@ -1085,15 +1263,22 @@ function renderMap() {
   var corpse = d.corpse;
   var roster = d.roster || [];
 
-  $('map-room-count').textContent = rooms.length;
+  // Update area name
+  var areaName = $('map-area-name');
+  if (areaName) areaName.textContent = d.player ? d.player.area : '';
+  $('map-room-count').textContent = rooms.length + ' rooms';
   $('map-monster-count').textContent = monsters.length;
   $('map-object-count').textContent = objects.length;
+  $('map-entrance-count').textContent = entrances.length + (adjLevels ? adjLevels.length : 0);
 
-  if (!rooms.length && !playerPos) {
-    ctx.fillStyle = '#8b949e';
-    ctx.font = (16 * dpr) + 'px sans-serif';
+  if (!rooms.length && !playerPos && !(d.collisionGrid)) {
+    ctx.fillStyle = '#484f58';
+    ctx.font = (14 * dpr) + 'px "Segoe UI", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('No map data available', W / 2, H / 2);
+    ctx.fillText('Waiting for map data...', W / 2, H / 2);
+    ctx.font = (11 * dpr) + 'px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = '#30363d';
+    ctx.fillText('Enter a game to see the map', W / 2, H / 2 + 20 * dpr);
     return;
   }
 
@@ -1104,194 +1289,348 @@ function renderMap() {
   function tx(wx) { return W / 2 + (wx - mapState.viewX) * es; }
   function ty(wy) { return H / 2 + (wy - mapState.viewY) * es; }
 
-  // ── Rooms ──
-  var roomColors = ['rgba(88,166,255,0.12)', 'rgba(63,185,80,0.08)', 'rgba(188,140,255,0.08)'];
-  for (var i = 0; i < rooms.length; i++) {
-    var r = rooms[i];
-    var rx = tx(r.x), ry = ty(r.y);
-    var rw = r.w * es, rh = r.h * es;
-    ctx.fillStyle = roomColors[i % roomColors.length];
-    ctx.fillRect(rx, ry, rw, rh);
-    ctx.strokeStyle = 'rgba(88,166,255,0.25)';
-    ctx.lineWidth = dpr;
-    ctx.strokeRect(rx, ry, rw, rh);
+  // ── Layer 1: Collision grid (terrain) ──
+  if ($('map-show-terrain').checked && gridCache.canvas && d.collisionGrid) {
+    var cg = d.collisionGrid;
+    var gx = tx(cg.ox);
+    var gy = ty(cg.oy);
+    var gw = cg.w * es;
+    var gh = cg.h * es;
+    if (gx + gw > 0 && gx < W && gy + gh > 0 && gy < H) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(gridCache.canvas, gx, gy, gw, gh);
+      ctx.imageSmoothingEnabled = true;
+    }
   }
 
-  // ── Monsters ──
+  // ── Layer 2: Room outlines (optional, subtle) ──
+  if ($('map-show-rooms').checked) {
+    for (var i = 0; i < rooms.length; i++) {
+      var r = rooms[i];
+      var rx = tx(r.x), ry = ty(r.y);
+      var rw = r.w * es, rh = r.h * es;
+      ctx.strokeStyle = 'rgba(88,166,255,0.15)';
+      ctx.lineWidth = dpr;
+      ctx.strokeRect(rx, ry, rw, rh);
+    }
+  }
+
+  // ── Layer 3: Objects (shrines, chests, wells, etc.) ──
+  if ($('map-show-objects').checked) {
+    var zCap = Math.min(z, 4);
+    for (var i = 0; i < objects.length; i++) {
+      var o = objects[i];
+      var ox = tx(o.x), oy = ty(o.y);
+      if (ox < -40 || ox > W + 40 || oy < -40 || oy > H + 40) continue;
+      var sz = Math.max(3, 3.5 * zCap) * dpr;
+
+      if (o.selectable) {
+        // Glowing cross for interactable objects
+        ctx.save();
+        ctx.shadowColor = '#39d2c0';
+        ctx.shadowBlur = 4 * dpr;
+        ctx.strokeStyle = '#39d2c0';
+        ctx.lineWidth = Math.max(1.5, 2 * (zCap / 3)) * dpr;
+        ctx.beginPath();
+        ctx.moveTo(ox - sz, oy); ctx.lineTo(ox + sz, oy);
+        ctx.moveTo(ox, oy - sz); ctx.lineTo(ox, oy + sz);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // Dim dot for non-interactable
+        ctx.fillStyle = 'rgba(57,210,192,0.2)';
+        ctx.fillRect(ox - 1.5 * dpr, oy - 1.5 * dpr, 3 * dpr, 3 * dpr);
+      }
+
+      if (z > 2 && o.selectable) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 3 * dpr;
+        ctx.fillStyle = '#5eeacc';
+        ctx.font = Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(o.name, ox, oy - sz - 4 * dpr);
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── Layer 4: Entrances & Adjacent Levels (doors, warps) ──
+  if ($('map-show-entrances').checked) {
+    var zCap = Math.min(z, 4);
+
+    // Entrance diamonds (purple)
+    for (var i = 0; i < entrances.length; i++) {
+      var e = entrances[i];
+      var ex = tx(e.position.x), ey = ty(e.position.y);
+      if (ex < -80 || ex > W + 80 || ey < -80 || ey > H + 80) continue;
+      var sz = Math.max(5, 6 * zCap) * dpr;
+
+      ctx.save();
+      ctx.shadowColor = '#e07cff';
+      ctx.shadowBlur = 6 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey - sz);
+      ctx.lineTo(ex + sz * 0.7, ey);
+      ctx.lineTo(ex, ey + sz);
+      ctx.lineTo(ex - sz * 0.7, ey);
+      ctx.closePath();
+      ctx.fillStyle = '#c870f0';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(224,124,255,0.5)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+      ctx.restore();
+
+      if (z > 0.5) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 4 * dpr;
+        ctx.fillStyle = '#e8a0ff';
+        ctx.font = 'bold ' + Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(e.name, ex, ey - sz - 5 * dpr);
+        ctx.restore();
+      }
+    }
+
+    // Adjacent level triangles (orange/gold)
+    for (var i = 0; i < adjLevels.length; i++) {
+      var al = adjLevels[i];
+      var ax = tx(al.position.x), ay = ty(al.position.y);
+      if (ax < -80 || ax > W + 80 || ay < -80 || ay > H + 80) continue;
+      var sz = Math.max(5, 6.5 * zCap) * dpr;
+
+      ctx.save();
+      ctx.shadowColor = '#f0a030';
+      ctx.shadowBlur = al.isEntrance ? 8 * dpr : 3 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - sz);
+      ctx.lineTo(ax + sz * 0.8, ay + sz * 0.6);
+      ctx.lineTo(ax - sz * 0.8, ay + sz * 0.6);
+      ctx.closePath();
+      ctx.fillStyle = al.isEntrance ? '#f0a030' : 'rgba(240,160,48,0.4)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(240,160,48,0.5)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+      ctx.restore();
+
+      if (z > 0.5) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 4 * dpr;
+        ctx.fillStyle = al.isEntrance ? '#ffc040' : 'rgba(255,192,64,0.6)';
+        ctx.font = 'bold ' + Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(al.area, ax, ay - sz - 5 * dpr);
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── Layer 5: Monsters ──
   if ($('map-show-monsters').checked) {
-    var zCap = Math.min(z, 3);
+    var zCap = Math.min(z, 4);
+
+    // Draw normals and minions first (less important)
     for (var i = 0; i < monsters.length; i++) {
       var m = monsters[i];
-      var mx = tx(m.x), my = ty(m.y);
-      if (mx < -30 || mx > W + 30 || my < -30 || my > H + 30) continue;
-      var mr = Math.max(3, 4 * zCap) * dpr;
       var tl = m.type.toLowerCase();
-      var color = '#8b949e';
-      if (tl === 'champion') color = '#58a6ff';
-      else if (tl === 'unique') color = '#d29922';
-      else if (tl === 'superunique') color = '#f85149';
-      else if (tl === 'minion') color = '#555d6e';
+      if (tl !== 'normal' && tl !== 'minion') continue;
+      var mx = tx(m.x), my = ty(m.y);
+      if (mx < -20 || mx > W + 20 || my < -20 || my > H + 20) continue;
+      var mr = Math.max(2, 2.5 * zCap) * dpr;
 
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fillStyle = tl === 'minion' ? 'rgba(120,120,140,0.6)' : 'rgba(180,185,195,0.5)';
+      ctx.fill();
+    }
+
+    // Draw elites on top (champions, uniques, super uniques)
+    for (var i = 0; i < monsters.length; i++) {
+      var m = monsters[i];
+      var tl = m.type.toLowerCase();
+      if (tl === 'normal' || tl === 'minion') continue;
+      var mx = tx(m.x), my = ty(m.y);
+      if (mx < -40 || mx > W + 40 || my < -40 || my > H + 40) continue;
+      var mr = Math.max(3.5, 4.5 * zCap) * dpr;
+
+      var color, glow;
+      if (tl === 'champion') { color = '#5c9aff'; glow = '#5c9aff'; }
+      else if (tl === 'unique') { color = '#e8b339'; glow = '#e8b339'; }
+      else { color = '#ff6b6b'; glow = '#ff5555'; } // superunique
+
+      // Glow ring
+      ctx.save();
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = (tl === 'superunique' ? 10 : 6) * dpr;
       ctx.beginPath();
       ctx.arc(mx, my, mr, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
+      ctx.restore();
 
-      if (tl === 'champion' || tl === 'unique' || tl === 'superunique') {
-        var bw = Math.max(14, 22 * zCap) * dpr;
-        var bh = Math.max(2, 3) * dpr;
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(mx - bw / 2, my + mr + 2 * dpr, bw, bh);
-        ctx.fillStyle = hpColor(m.hpPct);
-        ctx.fillRect(mx - bw / 2, my + mr + 2 * dpr, bw * m.hpPct / 100, bh);
-      }
-      if (z > 2 && tl !== 'normal' && tl !== 'minion') {
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(mx, my, mr + 1 * dpr, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = dpr;
+      ctx.stroke();
+
+      // HP bar beneath
+      var bw = Math.max(16, 24 * zCap) * dpr;
+      var bh = Math.max(2.5, 3) * dpr;
+      var by = my + mr + 3 * dpr;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.beginPath();
+      ctx.roundRect(mx - bw / 2 - 1, by - 0.5, bw + 2, bh + 1, 1.5);
+      ctx.fill();
+      ctx.fillStyle = hpColor(m.hpPct);
+      ctx.beginPath();
+      ctx.roundRect(mx - bw / 2, by, bw * m.hpPct / 100, bh, 1);
+      ctx.fill();
+
+      // Name label
+      if (z > 1.2) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 3 * dpr;
         ctx.fillStyle = color;
-        ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+        ctx.font = 'bold ' + Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(m.name, mx, my - mr - 4 * dpr);
+        ctx.fillText(m.name, mx, my - mr - 5 * dpr);
+        ctx.restore();
       }
     }
   }
 
-  // ── Objects ──
-  if ($('map-show-objects').checked) {
-    var zCap = Math.min(z, 3);
-    for (var i = 0; i < objects.length; i++) {
-      var o = objects[i];
-      var ox = tx(o.x), oy = ty(o.y);
-      if (ox < -30 || ox > W + 30 || oy < -30 || oy > H + 30) continue;
-      var sz = Math.max(3, 4 * zCap) * dpr;
-      ctx.fillStyle = o.selectable ? '#39d2c0' : 'rgba(57,210,192,0.3)';
-      ctx.fillRect(ox - sz / 2, oy - sz / 2, sz, sz);
-      if (z > 2.5 && o.selectable) {
-        ctx.fillStyle = '#39d2c0';
-        ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(o.name, ox, oy - sz / 2 - 4 * dpr);
-      }
-    }
-  }
-
-  // ── Entrances & Adjacent Levels ──
-  if ($('map-show-entrances').checked) {
-    var zCap = Math.min(z, 3);
-    for (var i = 0; i < entrances.length; i++) {
-      var e = entrances[i];
-      var ex = tx(e.position.x), ey = ty(e.position.y);
-      if (ex < -60 || ex > W + 60 || ey < -60 || ey > H + 60) continue;
-      var sz = Math.max(5, 6 * zCap) * dpr;
-      ctx.beginPath();
-      ctx.moveTo(ex, ey - sz);
-      ctx.lineTo(ex + sz, ey);
-      ctx.lineTo(ex, ey + sz);
-      ctx.lineTo(ex - sz, ey);
-      ctx.closePath();
-      ctx.fillStyle = '#bc8cff';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(188,140,255,0.6)';
-      ctx.lineWidth = dpr;
-      ctx.stroke();
-      if (z > 0.6) {
-        ctx.fillStyle = '#bc8cff';
-        ctx.font = 'bold ' + Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(e.name, ex, ey - sz - 5 * dpr);
-      }
-    }
-    for (var i = 0; i < adjLevels.length; i++) {
-      var al = adjLevels[i];
-      var ax = tx(al.position.x), ay = ty(al.position.y);
-      if (ax < -60 || ax > W + 60 || ay < -60 || ay > H + 60) continue;
-      var sz = Math.max(5, 6 * zCap) * dpr;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay - sz);
-      ctx.lineTo(ax + sz * 0.87, ay + sz * 0.5);
-      ctx.lineTo(ax - sz * 0.87, ay + sz * 0.5);
-      ctx.closePath();
-      ctx.fillStyle = al.isEntrance ? '#d18616' : 'rgba(209,134,22,0.5)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(209,134,22,0.6)';
-      ctx.lineWidth = dpr;
-      ctx.stroke();
-      if (z > 0.6) {
-        ctx.fillStyle = '#d18616';
-        ctx.font = 'bold ' + Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(al.area, ax, ay - sz - 5 * dpr);
-      }
-    }
-  }
-
-  // ── Roster Members ──
+  // ── Layer 6: Roster (party members) ──
   if ($('map-show-roster').checked) {
-    var zCap = Math.min(z, 3);
+    var zCap = Math.min(z, 4);
     for (var i = 0; i < roster.length; i++) {
       var rm = roster[i];
       var rx = tx(rm.position.x), ry = ty(rm.position.y);
       if (rx < -30 || rx > W + 30 || ry < -30 || ry > H + 30) continue;
       var sz = Math.max(4, 5 * zCap) * dpr;
+
+      ctx.save();
+      ctx.shadowColor = '#3fb950';
+      ctx.shadowBlur = 5 * dpr;
       ctx.beginPath();
       ctx.arc(rx, ry, sz, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(63,185,80,0.5)';
+      ctx.fillStyle = 'rgba(63,185,80,0.4)';
       ctx.fill();
       ctx.strokeStyle = '#3fb950';
       ctx.lineWidth = 1.5 * dpr;
       ctx.stroke();
-      ctx.fillStyle = '#3fb950';
-      ctx.font = Math.max(9, 10 * zCap) * dpr + 'px sans-serif';
+      ctx.restore();
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 3 * dpr;
+      ctx.fillStyle = '#6ee77a';
+      ctx.font = Math.max(9, 10 * zCap) * dpr + 'px "Segoe UI", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(rm.name, rx, ry - sz - 4 * dpr);
+      ctx.restore();
     }
   }
 
-  // ── Player Corpse ──
+  // ── Layer 7: Player Corpse ──
   if ($('map-show-corpse').checked && corpse && corpse.found) {
     var cx = tx(corpse.position.x), cy = ty(corpse.position.y);
-    var zCap = Math.min(z, 3);
-    var sz = Math.max(5, 7 * zCap) * dpr;
+    var zCap = Math.min(z, 4);
+    var sz = Math.max(6, 8 * zCap) * dpr;
+
+    // Pulsing red glow
+    ctx.save();
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur = 12 * dpr;
     ctx.beginPath();
     ctx.arc(cx, cy, sz, 0, Math.PI * 2);
-    ctx.fillStyle = '#f85149';
+    ctx.fillStyle = 'rgba(248,81,73,0.3)';
     ctx.fill();
-    ctx.strokeStyle = '#f0f6fc';
-    ctx.lineWidth = 2 * dpr;
-    ctx.stroke();
-    var half = sz * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - half, cy - half);
-    ctx.lineTo(cx + half, cy + half);
-    ctx.moveTo(cx + half, cy - half);
-    ctx.lineTo(cx - half, cy + half);
-    ctx.strokeStyle = '#f0f6fc';
-    ctx.lineWidth = 2 * dpr;
-    ctx.stroke();
     ctx.fillStyle = '#f85149';
-    ctx.font = 'bold ' + Math.max(10, 11 * zCap) * dpr + 'px sans-serif';
+    ctx.beginPath();
+    ctx.arc(cx, cy, sz * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // White X
+    var half = sz * 0.4;
+    ctx.strokeStyle = '#f0f6fc';
+    ctx.lineWidth = 2.5 * dpr;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - half, cy - half); ctx.lineTo(cx + half, cy + half);
+    ctx.moveTo(cx + half, cy - half); ctx.lineTo(cx - half, cy + half);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 3 * dpr;
+    ctx.fillStyle = '#ff8080';
+    ctx.font = 'bold ' + Math.max(10, 11 * zCap) * dpr + 'px "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('CORPSE', cx, cy - sz - 5 * dpr);
+    ctx.fillText('CORPSE', cx, cy - sz - 6 * dpr);
+    ctx.restore();
   }
 
-  // ── Player (always on top) ──
+  // ── Layer 8: Player (always on top) ──
   if (playerPos) {
     var px = tx(playerPos.x), py = ty(playerPos.y);
-    var zCap = Math.min(z, 3);
+    var zCap = Math.min(z, 4);
     var pr = Math.max(5, 7 * zCap) * dpr;
+
+    // Outer pulse ring
+    ctx.save();
+    ctx.shadowColor = '#3fb950';
+    ctx.shadowBlur = 12 * dpr;
     ctx.beginPath();
-    ctx.arc(px, py, pr + 4 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(63,185,80,0.15)';
+    ctx.arc(px, py, pr + 5 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(63,185,80,0.08)';
     ctx.fill();
+    ctx.restore();
+
+    // Direction indicator circle
+    ctx.beginPath();
+    ctx.arc(px, py, pr + 2 * dpr, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(63,185,80,0.3)';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.stroke();
+
+    // Main dot with glow
+    ctx.save();
+    ctx.shadowColor = '#3fb950';
+    ctx.shadowBlur = 8 * dpr;
     ctx.beginPath();
     ctx.arc(px, py, pr, 0, Math.PI * 2);
-    ctx.fillStyle = '#3fb950';
+    var grad = ctx.createRadialGradient(px - pr * 0.3, py - pr * 0.3, 0, px, py, pr);
+    grad.addColorStop(0, '#7aff8e');
+    grad.addColorStop(1, '#3fb950');
+    ctx.fillStyle = grad;
     ctx.fill();
+    ctx.restore();
+
+    // Bright border
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
     ctx.strokeStyle = '#f0f6fc';
     ctx.lineWidth = 2 * dpr;
     ctx.stroke();
+
+    // Label
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4 * dpr;
     ctx.fillStyle = '#f0f6fc';
-    ctx.font = 'bold ' + Math.max(11, 13 * zCap) * dpr + 'px sans-serif';
+    ctx.font = 'bold ' + Math.max(11, 12 * zCap) * dpr + 'px "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('You', px, py - pr - 7 * dpr);
+    ctx.fillText(d.player ? d.player.name || 'You' : 'You', px, py - pr - 8 * dpr);
+    ctx.restore();
   }
 
   $('map-zoom-level').textContent = z.toFixed(1) + 'x';
@@ -1365,9 +1704,9 @@ async function refresh() {
     renderTerrorZones(d.terrorZones || []);
     renderEntrances(d.entrances || [], d.adjLevels || []);
     renderRoster(d.roster || []);
+    updateMapData(d);
     renderMinimap(d.rooms || [], d.playerPos);
     renderPlayerCorpse(d.corpse);
-    updateMapData(d);
 
   } catch (e) {
     $('dot').className = 'dot';
