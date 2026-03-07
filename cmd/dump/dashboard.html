@@ -209,6 +209,104 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
 
 /* ── Toolbar separator ── */
 .map-toolbar-sep{width:1px;height:16px;background:var(--border);margin:0 .15rem;flex-shrink:0}
+
+/* ── Search / Filter inputs ── */
+.filter-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem;flex-wrap:wrap}
+.filter-input{background:#21262d;border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-size:.8rem;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s,box-shadow .2s;min-width:180px;flex:1;max-width:320px}
+.filter-input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(88,166,255,.15)}
+.filter-input::placeholder{color:var(--dim)}
+
+/* ── Quality filter chips ── */
+.quality-chips{display:flex;gap:.3rem;flex-wrap:wrap}
+.quality-chip{padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--dim);transition:all .15s;font-family:inherit;user-select:none}
+.quality-chip:hover{border-color:rgba(88,166,255,.3);color:var(--text)}
+.quality-chip.active{border-color:currentColor;background:rgba(255,255,255,.06)}
+.quality-chip[data-q="unique"].active{color:var(--yellow);border-color:var(--yellow);background:rgba(210,153,34,.12)}
+.quality-chip[data-q="set"].active{color:var(--green);border-color:var(--green);background:rgba(63,185,80,.12)}
+.quality-chip[data-q="rare"].active{color:var(--purple);border-color:var(--purple);background:rgba(188,140,255,.12)}
+.quality-chip[data-q="magic"].active{color:var(--blue);border-color:var(--blue);background:rgba(88,166,255,.12)}
+.quality-chip[data-q="normal"].active{color:var(--dim);border-color:var(--dim);background:rgba(139,148,158,.1)}
+.quality-chip[data-q="all"].active{color:var(--cyan);border-color:var(--cyan);background:rgba(57,210,192,.1)}
+
+/* ── Sortable column headers ── */
+th.sortable{cursor:pointer;user-select:none;position:relative;padding-right:18px;transition:color .15s}
+th.sortable:hover{color:var(--blue)}
+th.sortable::after{content:'⇅';position:absolute;right:2px;top:50%;transform:translateY(-50%);font-size:.65rem;opacity:.4;transition:opacity .15s}
+th.sortable.asc::after{content:'▲';opacity:.8;color:var(--blue)}
+th.sortable.desc::after{content:'▼';opacity:.8;color:var(--blue)}
+
+/* ── Sticky table headers ── */
+.scrollable-table{max-height:400px;overflow-y:auto;border-radius:6px}
+.scrollable-table table{position:relative}
+.scrollable-table thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 1px 0 var(--border)}
+
+/* ── Resistance bars ── */
+.res-bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.82rem}
+.res-bar-label{width:70px;font-weight:600;text-align:right;flex-shrink:0}
+.res-bar-track{flex:1;height:16px;background:#21262d;border-radius:4px;overflow:hidden;position:relative;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.res-bar-fill{height:100%;border-radius:4px;transition:width .4s ease;position:relative}
+.res-bar-fill.fire{background:linear-gradient(90deg,#b83a38,#f85149)}
+.res-bar-fill.cold{background:linear-gradient(90deg,#1a5fc4,#58a6ff)}
+.res-bar-fill.light{background:linear-gradient(90deg,#a87d15,#d29922)}
+.res-bar-fill.poison{background:linear-gradient(90deg,#1f7a3a,#3fb950)}
+.res-bar-fill.magic{background:linear-gradient(90deg,#8a5cc4,#bc8cff)}
+.res-bar-val{width:72px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+.res-bar-max{position:absolute;right:0;top:0;bottom:0;width:2px;background:rgba(240,246,252,.4)}
+
+/* ── Gold progress bar ── */
+.gold-bar-wrap{margin-top:.5rem}
+.gold-bar-track{width:100%;height:14px;background:#21262d;border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.gold-bar-fill{height:100%;background:linear-gradient(90deg,#b87c12,#d29922,#e8b339);border-radius:4px;transition:width .4s ease}
+.gold-bar-label{font-size:.78rem;color:var(--dim);margin-top:.2rem;text-align:center}
+
+/* ── Refresh rate control ── */
+.refresh-ctl{display:flex;align-items:center;gap:.4rem}
+.refresh-select{background:#21262d;border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:.78rem;color:var(--dim);font-family:inherit;cursor:pointer;outline:none;transition:border-color .2s}
+.refresh-select:focus{border-color:var(--blue)}
+
+/* ── Session timer ── */
+.session-timer{font-size:.78rem;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* ── Low HP / Death alerts ── */
+@keyframes hpFlash{0%,100%{box-shadow:inset 0 0 0 0 transparent}50%{box-shadow:inset 0 0 40px rgba(248,81,73,.15)}}
+body.hp-critical{animation:hpFlash 1.5s ease-in-out infinite}
+#death-banner{display:none;background:rgba(248,81,73,.2);border:1px solid var(--red);color:var(--red);padding:.5rem 1rem;border-radius:6px;margin-bottom:.75rem;font-size:.9rem;font-weight:700;text-align:center;animation:deathPulse 2s ease-in-out infinite}
+@keyframes deathPulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+/* ── Monster type summary ── */
+.monster-summary{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;font-size:.8rem}
+.monster-summary-item{display:flex;align-items:center;gap:.3rem;padding:3px 10px;background:#21262d;border-radius:4px;font-weight:600}
+.monster-summary-item .dot-indicator{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── Fullscreen map ── */
+.map-fullscreen{position:fixed!important;top:0;left:0;right:0;bottom:0;z-index:9999;background:var(--bg);border-radius:0!important;border:none!important;margin:0;max-width:none}
+.map-fullscreen .card-body{height:calc(100vh - 44px);padding:.25rem!important}
+.map-fullscreen .map-canvas-wrap canvas{height:calc(100vh - 160px)!important}
+.map-fullscreen .card-head{border-radius:0}
+.map-btn.active-fs{background:rgba(88,166,255,.15);color:var(--blue);border-color:var(--blue)}
+
+/* ── Map tooltip ── */
+.map-tooltip{position:absolute;pointer-events:none;background:rgba(13,17,23,.92);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--text);white-space:nowrap;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(4px);opacity:0;transition:opacity .12s;line-height:1.5}
+.map-tooltip.visible{opacity:1}
+.map-tooltip-name{font-weight:700;color:var(--heading);font-size:.8rem}
+.map-tooltip-type{color:var(--dim);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
+.map-tooltip-dist{color:var(--cyan);font-variant-numeric:tabular-nums}
+.map-tooltip-hp{margin-top:2px}
+.map-tooltip-hp-bar{display:inline-block;width:60px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;vertical-align:middle}
+.map-tooltip-hp-fill{height:100%;border-radius:3px}
+.map-tooltip-sep{height:1px;background:var(--border);margin:3px 0}
+
+/* ── Radar (circular minimap) ── */
+.radar-container{position:relative;width:100%;aspect-ratio:1/1;max-width:400px;margin:0 auto;border-radius:50%;overflow:hidden;background:#080c12;box-shadow:inset 0 0 30px rgba(0,0,0,.6),0 0 0 2px var(--border),0 0 0 3px rgba(88,166,255,.08);border:1px solid rgba(48,54,61,.5)}
+.radar-container canvas{display:block;width:100%;height:100%;border-radius:50%}
+.radar-controls{display:flex;gap:.4rem;align-items:center;justify-content:center;margin-top:.4rem;flex-wrap:wrap}
+.radar-range-btn{padding:2px 10px;font-size:.72rem;font-weight:600;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-family:inherit;transition:all .15s}
+.radar-range-btn:hover{color:var(--text);border-color:var(--blue)}
+.radar-range-btn.active{color:var(--cyan);border-color:var(--cyan);background:rgba(57,210,192,.1)}
+.radar-info{font-size:.72rem;color:var(--dim);text-align:center;margin-top:.3rem;font-variant-numeric:tabular-nums}
+
+/* ── Map distance ring labels ── */
+.map-dist-toggle{font-size:.72rem}
 </style>
 </head>
 <body>
@@ -216,11 +314,21 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
 <div class="header">
   <h1>&#9876; D2R Dashboard</h1>
   <div class="status">
+    <span class="session-timer" id="session-timer" title="Session uptime"></span>
+    <span class="refresh-ctl" title="Auto-refresh interval">
+      <select class="refresh-select" id="refresh-rate">
+        <option value="500">0.5s</option>
+        <option value="1000" selected>1s</option>
+        <option value="2000">2s</option>
+        <option value="5000">5s</option>
+      </select>
+    </span>
     <span class="dot" id="dot"></span>
     <span id="clock">&mdash;</span>
   </div>
 </div>
 
+<div id="death-banner">&#9760; YOU HAVE DIED &#9760;</div>
 <div id="err-banner">&#9888; <span id="err-text"></span></div>
 
 <!-- ── Tab Bar ── -->
@@ -313,8 +421,14 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
     <!-- Monsters -->
     <div class="card full">
       <div class="card-head">&#128121; Monsters <span class="badge" id="m-count">0</span></div>
-      <div class="card-body" id="monsters-body">
-        <div class="empty">no monsters in range</div>
+      <div class="card-body">
+        <div class="monster-summary" id="monster-summary"></div>
+        <div class="filter-row">
+          <input class="filter-input" id="monster-filter" type="text" placeholder="Search monsters...">
+        </div>
+        <div id="monsters-body">
+          <div class="empty">no monsters in range</div>
+        </div>
       </div>
     </div>
 
@@ -349,14 +463,31 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
           <span>Total: <b id="gold-total">0</b></span>
           <span>Max: <b id="gold-max">0</b></span>
         </div>
+        <div class="gold-bar-wrap">
+          <div class="gold-bar-track"><div class="gold-bar-fill" id="gold-bar" style="width:0"></div></div>
+          <div class="gold-bar-label" id="gold-bar-label">0%</div>
+        </div>
       </div>
     </div>
 
     <!-- Items -->
     <div class="card full">
       <div class="card-head">&#127890; Items <span class="badge" id="i-count">0</span></div>
-      <div class="card-body" id="items-body">
-        <div class="empty">no items</div>
+      <div class="card-body">
+        <div class="filter-row">
+          <input class="filter-input" id="item-filter" type="text" placeholder="Search items...">
+          <div class="quality-chips" id="quality-chips">
+            <button class="quality-chip active" data-q="all">All</button>
+            <button class="quality-chip" data-q="unique">Unique</button>
+            <button class="quality-chip" data-q="set">Set</button>
+            <button class="quality-chip" data-q="rare">Rare</button>
+            <button class="quality-chip" data-q="magic">Magic</button>
+            <button class="quality-chip" data-q="normal">Normal</button>
+          </div>
+        </div>
+        <div id="items-body">
+          <div class="empty">no items</div>
+        </div>
       </div>
     </div>
   </div>
@@ -377,12 +508,20 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
           <label class="map-toggle"><input type="checkbox" id="map-show-roster" checked> Party</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-corpse" checked> Corpse</label>
           <span class="map-toolbar-sep"></span>
+          <label class="map-toggle"><input type="checkbox" id="map-show-rings"> Rings</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-grid"> Grid</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-trail" checked> Trail</label>
+          <label class="map-toggle"><input type="checkbox" id="map-show-distances" checked> Distances</label>
+          <span class="map-toolbar-sep"></span>
           <label class="map-toggle"><input type="checkbox" id="map-follow-player" checked> Follow</label>
           <span class="map-toolbar-sep"></span>
           <button class="map-btn" id="map-reset-btn">Reset</button>
+          <button class="map-btn" id="map-screenshot-btn" title="Save map as PNG">&#128247; Save</button>
+          <button class="map-btn" id="map-fullscreen-btn" title="Toggle fullscreen map">&#9974; Fullscreen</button>
         </div>
         <div class="map-canvas-wrap">
           <canvas id="map-canvas"></canvas>
+          <div class="map-tooltip" id="map-tooltip"></div>
         </div>
         <div class="map-legend">
           <span class="map-legend-item"><span class="map-legend-dot" style="background:#3fb950;box-shadow:0 0 6px #3fb950"></span> You</span>
@@ -404,7 +543,8 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
           <span>Monsters: <b id="map-monster-count">0</b></span>
           <span>Objects: <b id="map-object-count">0</b></span>
           <span>Entrances: <b id="map-entrance-count">0</b></span>
-          <span style="color:var(--dim);margin-left:auto;font-size:.68rem">scroll=zoom · drag=pan · dbl-click=reset</span>
+          <span>Nearest: <b id="map-nearest-info" style="color:var(--cyan)">&mdash;</b></span>
+          <span style="color:var(--dim);margin-left:auto;font-size:.68rem">scroll=zoom &middot; drag=pan &middot; dbl-click=reset &middot; right-click=center</span>
         </div>
       </div>
     </div>
@@ -425,7 +565,7 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
     <!-- Resistances -->
     <div class="card">
       <div class="card-head">&#128737; Resistances</div>
-      <div class="card-body">
+      <div class="card-body" id="res-bars-body">
         <div class="stat-grid" id="res-grid"></div>
       </div>
     </div>
@@ -494,13 +634,20 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
       </div>
     </div>
 
-    <!-- Room Minimap -->
+    <!-- Radar -->
     <div class="card">
-      <div class="card-head">&#128506; Room Layout <span class="badge" id="room-count">0</span></div>
+      <div class="card-head">&#128225; Radar <span class="badge" id="room-count">0</span></div>
       <div class="card-body">
-        <div class="minimap-container" id="minimap-container">
-          <canvas id="minimap-canvas" width="400" height="300"></canvas>
+        <div class="radar-container" id="radar-container">
+          <canvas id="radar-canvas"></canvas>
         </div>
+        <div class="radar-controls">
+          <button class="radar-range-btn" data-range="20">20</button>
+          <button class="radar-range-btn active" data-range="40">40</button>
+          <button class="radar-range-btn" data-range="80">80</button>
+          <button class="radar-range-btn" data-range="120">120</button>
+        </div>
+        <div class="radar-info" id="radar-info">Range: 40 tiles &middot; 0 nearby</div>
       </div>
     </div>
 
@@ -516,6 +663,91 @@ tr:nth-child(even) td{background:rgba(22,27,34,.4)}
 
 <script>
 const $ = id => document.getElementById(id);
+
+// ── Session timer ──
+const sessionStart = Date.now();
+function updateSessionTimer() {
+  const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60);
+  const s = elapsed % 60;
+  $('session-timer').textContent = (h > 0 ? h + 'h ' : '') + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's';
+}
+setInterval(updateSessionTimer, 1000);
+updateSessionTimer();
+
+// ── Refresh rate control ──
+var refreshInterval = 1000;
+var refreshTimer = null;
+$('refresh-rate').addEventListener('change', function() {
+  refreshInterval = parseInt(this.value, 10) || 1000;
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(refresh, refreshInterval);
+});
+
+// ── Sort state for tables ──
+var sortState = {};
+function getSortKey(tableId) { return sortState[tableId] || { col: -1, dir: 'asc' }; }
+function toggleSort(tableId, col) {
+  var s = sortState[tableId];
+  if (!s || s.col !== col) { sortState[tableId] = { col: col, dir: 'asc' }; }
+  else if (s.dir === 'asc') { s.dir = 'desc'; }
+  else { sortState[tableId] = { col: -1, dir: 'asc' }; }
+}
+
+function sortRows(rows, col, dir) {
+  return rows.slice().sort(function(a, b) {
+    var va = a[col], vb = b[col];
+    var na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return dir === 'asc' ? na - nb : nb - na;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+}
+
+// ── Stored data for re-filtering/sorting ──
+var cachedMonsters = [];
+var cachedItems = [];
+var activeQualityFilter = 'all';
+
+// ── Quality chip click handler ──
+document.querySelectorAll('.quality-chip').forEach(function(chip) {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('.quality-chip').forEach(function(c) { c.classList.remove('active'); });
+    chip.classList.add('active');
+    activeQualityFilter = chip.dataset.q;
+    renderFilteredItems();
+  });
+});
+
+// ── Search filter listeners ──
+$('monster-filter').addEventListener('input', function() { renderFilteredMonsters(); });
+$('item-filter').addEventListener('input', function() { renderFilteredItems(); });
+
+// ── Player trail (movement history) ──
+var playerTrail = [];   // Array of {x, y, ts}
+var MAX_TRAIL_LEN = 200;
+var TRAIL_MAX_AGE = 30000; // 30s fade
+
+// ── Map tooltip state ──
+var mapTooltipEntity = null; // Closest entity under cursor {name, type, dist, hp, kind}
+
+// ── Radar state ──
+var radarRange = 40;
+var radarSweepAngle = 0;
+document.querySelectorAll('.radar-range-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.radar-range-btn').forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    radarRange = parseInt(this.dataset.range, 10) || 40;
+  });
+});
+
+// ── Distance helper ──
+function tileDist(ax, ay, bx, by) {
+  var dx = ax - bx, dy = ay - by;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 // ── Tab switching ──
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -544,6 +776,24 @@ $('tab-bar').addEventListener('keydown', function(e) {
   else if (e.key === 'Home') next = 0;
   else if (e.key === 'End') next = tabs.length - 1;
   if (next >= 0) { e.preventDefault(); tabs[next].focus(); tabs[next].click(); }
+});
+
+// ── Keyboard shortcuts: 1-5 for tabs, Escape for fullscreen exit ──
+document.addEventListener('keydown', function(e) {
+  // Don't intercept if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  var tabs = Array.from(document.querySelectorAll('.tab-btn'));
+  var idx = parseInt(e.key, 10);
+  if (idx >= 1 && idx <= tabs.length) { e.preventDefault(); tabs[idx - 1].click(); }
+  if (e.key === 'Escape') {
+    var mapCard = document.querySelector('#tab-map .card.full');
+    if (mapCard && mapCard.classList.contains('map-fullscreen')) {
+      mapCard.classList.remove('map-fullscreen');
+      $('map-fullscreen-btn').classList.remove('active-fs');
+      $('map-fullscreen-btn').textContent = '⛶ Fullscreen';
+      setTimeout(function() { if (typeof resizeMapCanvas === 'function') resizeMapCanvas(); }, 50);
+    }
+  }
 });
 
 // ── Helpers ──
@@ -614,24 +864,66 @@ function renderQuests(quests) {
 }
 
 function renderMonsters(monsters) {
+  cachedMonsters = monsters;
   $('m-count').textContent = monsters.length;
+  renderMonsterSummary(monsters);
+  renderFilteredMonsters();
+}
+
+function renderMonsterSummary(monsters) {
+  var counts = { champion: 0, unique: 0, superunique: 0, minion: 0, normal: 0 };
+  var colors = { champion: '#5c9aff', unique: '#e8b339', superunique: '#ff6b6b', minion: 'rgb(120,120,140)', normal: 'rgb(180,185,195)' };
+  for (var i = 0; i < monsters.length; i++) {
+    var t = monsters[i].type.toLowerCase();
+    if (counts[t] !== undefined) counts[t]++;
+    else counts['normal']++;
+  }
+  var html = '';
+  var types = ['superunique', 'unique', 'champion', 'minion', 'normal'];
+  var labels = { superunique: 'Super Unique', unique: 'Unique', champion: 'Champion', minion: 'Minion', normal: 'Normal' };
+  for (var i = 0; i < types.length; i++) {
+    if (counts[types[i]] > 0) {
+      html += '<span class="monster-summary-item"><span class="dot-indicator" style="background:' + colors[types[i]] + ';box-shadow:0 0 4px ' + colors[types[i]] + '"></span> ' + counts[types[i]] + ' ' + labels[types[i]] + '</span>';
+    }
+  }
+  $('monster-summary').innerHTML = html;
+}
+
+function renderFilteredMonsters() {
+  var filter = ($('monster-filter').value || '').toLowerCase();
+  var monsters = cachedMonsters;
+  if (filter) {
+    monsters = monsters.filter(function(m) { return m.name.toLowerCase().indexOf(filter) >= 0 || m.type.toLowerCase().indexOf(filter) >= 0; });
+  }
   if (!monsters.length) {
-    $('monsters-body').innerHTML = '<div class="empty">no monsters in range</div>';
+    $('monsters-body').innerHTML = '<div class="empty">' + (cachedMonsters.length ? 'no matches' : 'no monsters in range') + '</div>';
     return;
   }
-  let html = '<table><tr><th>Type</th><th>Name</th><th>Position</th><th>HP</th></tr>';
-  for (const m of monsters) {
-    const tc = typeClass(m.type);
-    const hc = hpColor(m.hpPct);
+  var sk = getSortKey('monsters');
+  var rows = monsters.map(function(m) { return [m.type, m.name, m.x + ', ' + m.y, m.hpPct]; });
+  if (sk.col >= 0) rows = sortRows(rows, sk.col, sk.dir);
+
+  var headers = ['Type', 'Name', 'Position', 'HP'];
+  var html = '<div class="scrollable-table"><table><thead><tr>';
+  for (var i = 0; i < headers.length; i++) {
+    var cls = 'sortable' + (sk.col === i ? ' ' + sk.dir : '');
+    html += '<th class="' + cls + '" data-table="monsters" data-col="' + i + '">' + headers[i] + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  for (var j = 0; j < rows.length; j++) {
+    var r = rows[j];
+    var tc = typeClass(r[0]);
+    var hc = hpColor(r[3]);
     html += '<tr>'
-      + '<td class="' + tc + '">' + esc(m.type) + '</td>'
-      + '<td>' + esc(m.name) + '</td>'
-      + '<td>' + m.x + ', ' + m.y + '</td>'
-      + '<td><div class="mini-bar"><div class="mini-fill" style="width:' + m.hpPct + '%;background:' + hc + '"></div></div> ' + m.hpPct + '%</td>'
+      + '<td class="' + tc + '">' + esc(r[0]) + '</td>'
+      + '<td>' + esc(r[1]) + '</td>'
+      + '<td>' + esc(r[2]) + '</td>'
+      + '<td><div class="mini-bar"><div class="mini-fill" style="width:' + r[3] + '%;background:' + hc + '"></div></div> ' + r[3] + '%</td>'
       + '</tr>';
   }
-  html += '</table>';
+  html += '</tbody></table></div>';
   $('monsters-body').innerHTML = html;
+  bindSortHeaders('monsters');
 }
 
 function renderCorpses(corpses) {
@@ -650,30 +942,88 @@ function renderCorpses(corpses) {
 }
 
 function renderItems(items) {
+  cachedItems = items;
   $('i-count').textContent = items.length;
+  renderFilteredItems();
+}
+
+function renderFilteredItems() {
+  var filter = ($('item-filter').value || '').toLowerCase();
+  var items = cachedItems;
+  if (activeQualityFilter !== 'all') {
+    items = items.filter(function(it) { return it.quality.toLowerCase() === activeQualityFilter; });
+  }
+  if (filter) {
+    items = items.filter(function(it) {
+      return it.name.toLowerCase().indexOf(filter) >= 0
+        || it.quality.toLowerCase().indexOf(filter) >= 0
+        || it.location.toLowerCase().indexOf(filter) >= 0
+        || (it.runeword && it.runeword.toLowerCase().indexOf(filter) >= 0);
+    });
+  }
   if (!items.length) {
-    $('items-body').innerHTML = '<div class="empty">no items</div>';
+    $('items-body').innerHTML = '<div class="empty">' + (cachedItems.length ? 'no matches' : 'no items') + '</div>';
     return;
   }
-  let html = '<table><tr><th>Name</th><th>Quality</th><th>Location</th><th>Sockets</th><th>Flags</th><th>LvlReq</th></tr>';
-  for (const it of items) {
-    const qc = qualityClass(it.quality);
-    const flags = [];
+  var sk = getSortKey('items');
+  var rows = items.map(function(it) {
+    var flags = [];
     if (it.ethereal) flags.push('<span style="color:var(--cyan)">Eth</span>');
     if (!it.identified) flags.push('<span style="color:var(--red)">Unid</span>');
     if (it.runeword) flags.push('<span style="color:var(--yellow)">' + esc(it.runeword) + '</span>');
-    const name = it.runeword ? esc(it.runeword) + ' <span style="color:var(--dim)">(' + esc(it.name) + ')</span>' : esc(it.name);
+    var name = it.runeword ? esc(it.runeword) + ' <span style="color:var(--dim)">(' + esc(it.name) + ')</span>' : esc(it.name);
+    return { name: name, rawName: it.runeword || it.name, quality: it.quality, location: it.location, sockets: it.sockets, flags: flags, levelReq: it.levelReq };
+  });
+
+  // Sort by raw comparable values
+  if (sk.col >= 0) {
+    var sortedRows = rows.map(function(r, i) { return { r: r, v: [r.rawName, r.quality, r.location, r.sockets, '', r.levelReq][sk.col] }; });
+    sortedRows.sort(function(a, b) {
+      var va = a.v, vb = b.v;
+      var na = parseFloat(va), nb = parseFloat(vb);
+      if (!isNaN(na) && !isNaN(nb)) return sk.dir === 'asc' ? na - nb : nb - na;
+      va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+      return sk.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    rows = sortedRows.map(function(s) { return s.r; });
+  }
+
+  var headers = ['Name', 'Quality', 'Location', 'Sockets', 'Flags', 'LvlReq'];
+  var html = '<div class="scrollable-table"><table><thead><tr>';
+  for (var i = 0; i < headers.length; i++) {
+    var cls = 'sortable' + (sk.col === i ? ' ' + sk.dir : '');
+    html += '<th class="' + cls + '" data-table="items" data-col="' + i + '">' + headers[i] + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  for (var j = 0; j < rows.length; j++) {
+    var r = rows[j];
+    var qc = qualityClass(r.quality);
     html += '<tr>'
-      + '<td class="' + qc + '">' + name + '</td>'
-      + '<td class="' + qc + '">' + esc(it.quality) + '</td>'
-      + '<td>' + esc(it.location) + '</td>'
-      + '<td>' + (it.sockets || '&mdash;') + '</td>'
-      + '<td>' + (flags.length ? flags.join(' ') : '&mdash;') + '</td>'
-      + '<td>' + (it.levelReq || '&mdash;') + '</td>'
+      + '<td class="' + qc + '">' + r.name + '</td>'
+      + '<td class="' + qc + '">' + esc(r.quality) + '</td>'
+      + '<td>' + esc(r.location) + '</td>'
+      + '<td>' + (r.sockets || '&mdash;') + '</td>'
+      + '<td>' + (r.flags.length ? r.flags.join(' ') : '&mdash;') + '</td>'
+      + '<td>' + (r.levelReq || '&mdash;') + '</td>'
       + '</tr>';
   }
-  html += '</table>';
+  html += '</tbody></table></div>';
   $('items-body').innerHTML = html;
+  bindSortHeaders('items');
+}
+
+// ── Sort header click binding ──
+function bindSortHeaders(tableId) {
+  var ths = document.querySelectorAll('th[data-table="' + tableId + '"]');
+  for (var i = 0; i < ths.length; i++) {
+    ths[i].addEventListener('click', function() {
+      var tid = this.getAttribute('data-table');
+      var col = parseInt(this.getAttribute('data-col'), 10);
+      toggleSort(tid, col);
+      if (tid === 'monsters') renderFilteredMonsters();
+      else if (tid === 'items') renderFilteredItems();
+    });
+  }
 }
 
 function renderObjects(objects) {
@@ -747,10 +1097,20 @@ function renderResistances(ps) {
   ];
   let html = '';
   for (const [label, val, max, cls] of items) {
+    const cap = max || 75;
+    const pct = Math.min(100, Math.max(0, (val / cap) * 100));
+    const maxPct = max ? Math.min(100, (max / cap) * 100) : 0;
+    const valColor = val < 0 ? 'var(--red)' : val >= cap ? 'var(--green)' : '';
     const maxStr = max ? ' / ' + max : '';
-    html += '<div class="stat-item"><span class="stat-label">' + label + '</span><span class="stat-val ' + cls + '">' + val + maxStr + '</span></div>';
+    html += '<div class="res-bar-row">'
+      + '<span class="res-bar-label" style="color:var(--' + (cls === 'light' ? 'yellow' : cls === 'fire' ? 'red' : cls === 'cold' ? 'blue' : cls === 'poison' ? 'green' : 'purple') + ')">' + label + '</span>'
+      + '<div class="res-bar-track"><div class="res-bar-fill ' + cls + '" style="width:' + pct + '%"></div>'
+      + (maxPct > 0 ? '<div class="res-bar-max" style="left:' + maxPct + '%"></div>' : '')
+      + '</div>'
+      + '<span class="res-bar-val" style="' + (valColor ? 'color:' + valColor : '') + '">' + val + maxStr + '</span>'
+      + '</div>';
   }
-  $('res-grid').innerHTML = html;
+  $('res-bars-body').innerHTML = html;
 }
 
 function renderSpeedStats(ps) {
@@ -883,13 +1243,12 @@ function renderRoster(roster) {
 
 function renderMinimap(rooms, playerPos) {
   $('room-count').textContent = rooms.length;
-  const canvas = $('minimap-canvas');
-  const ctx = canvas.getContext('2d');
-  const W = 400, H = 300;
-  canvas.width = W;
-  canvas.height = H;
-  ctx.fillStyle = '#080c12';
-  ctx.fillRect(0, 0, W, H);
+  var canvas = $('radar-canvas');
+  var ctx = canvas.getContext('2d');
+  var SIZE = 300;
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  var cx = SIZE / 2, cy = SIZE / 2, R = SIZE / 2 - 2;
 
   var d = mapState.data || {};
   var monsters = d.monsters || [];
@@ -899,161 +1258,244 @@ function renderMinimap(rooms, playerPos) {
   var roster = d.roster || [];
   var corpse = d.corpse;
 
-  if (!rooms.length && !playerPos) {
+  // Clear with dark background
+  ctx.fillStyle = '#080c12';
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Circular clip mask
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Subtle radial gradient background
+  var bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  bgGrad.addColorStop(0, '#0d1117');
+  bgGrad.addColorStop(1, '#060a0f');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  if (!playerPos) {
     ctx.fillStyle = '#484f58';
     ctx.font = '12px "Segoe UI", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Waiting for map data...', W / 2, H / 2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Waiting for player...', cx, cy);
+    ctx.restore();
+    $('radar-info').textContent = 'Range: ' + radarRange + ' tiles \u00b7 0 nearby';
     return;
   }
 
-  // Calculate bounds from all data sources
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const r of rooms) {
-    if (r.x < minX) minX = r.x;
-    if (r.y < minY) minY = r.y;
-    if (r.x + r.w > maxX) maxX = r.x + r.w;
-    if (r.y + r.h > maxY) maxY = r.y + r.h;
-  }
-  if (d.collisionGrid) {
-    var cg = d.collisionGrid;
-    if (cg.ox < minX) minX = cg.ox;
-    if (cg.oy < minY) minY = cg.oy;
-    if (cg.ox + cg.w > maxX) maxX = cg.ox + cg.w;
-    if (cg.oy + cg.h > maxY) maxY = cg.oy + cg.h;
-  }
-  if (playerPos) {
-    if (playerPos.x - 5 < minX) minX = playerPos.x - 5;
-    if (playerPos.y - 5 < minY) minY = playerPos.y - 5;
-    if (playerPos.x + 5 > maxX) maxX = playerPos.x + 5;
-    if (playerPos.y + 5 > maxY) maxY = playerPos.y + 5;
-  }
+  var rng = radarRange;
+  var scale = R / rng;
 
-  const rangeX = maxX - minX || 1;
-  const rangeY = maxY - minY || 1;
-  const pad = 12;
-  const scaleX = (W - pad * 2) / rangeX;
-  const scaleY = (H - pad * 2) / rangeY;
-  const scale = Math.min(scaleX, scaleY);
+  // Helpers: world -> radar pixel
+  function rx(x) { return cx + (x - playerPos.x) * scale; }
+  function ry(y) { return cy + (y - playerPos.y) * scale; }
+  function inRange(x, y) { return tileDist(x, y, playerPos.x, playerPos.y) <= rng; }
 
-  const offX = pad + ((W - pad * 2) - rangeX * scale) / 2;
-  const offY = pad + ((H - pad * 2) - rangeY * scale) / 2;
-
-  function tx(x) { return offX + (x - minX) * scale; }
-  function ty(y) { return offY + (y - minY) * scale; }
-
-  // Layer 1: Collision grid
+  // Layer 0: Collision grid (clipped to radar circle)
   if (gridCache.canvas && d.collisionGrid) {
-    var cgData = d.collisionGrid;
-    var gx = tx(cgData.ox), gy = ty(cgData.oy);
-    var gw = cgData.w * scale, gh = cgData.h * scale;
+    var cg = d.collisionGrid;
+    var gx = rx(cg.ox), gy = ry(cg.oy);
+    var gw = cg.w * scale, gh = cg.h * scale;
+    ctx.globalAlpha = 0.7;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(gridCache.canvas, gx, gy, gw, gh);
     ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 1.0;
   }
 
-  // Layer 2: Room outlines (very subtle)
-  for (let i = 0; i < rooms.length; i++) {
-    const r = rooms[i];
-    ctx.strokeStyle = 'rgba(88,166,255,0.12)';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(tx(r.x), ty(r.y), r.w * scale, r.h * scale);
+  // Layer 1: Range rings
+  var ringDistances = [rng / 3, rng * 2 / 3, rng];
+  for (var ri = 0; ri < ringDistances.length; ri++) {
+    var ringR = ringDistances[ri] * scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = ri === ringDistances.length - 1 ? 'rgba(88,166,255,0.25)' : 'rgba(88,166,255,0.1)';
+    ctx.lineWidth = ri === ringDistances.length - 1 ? 1.2 : 0.5;
+    ctx.stroke();
+  }
+  // Ring distance labels
+  ctx.font = '9px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(88,166,255,0.4)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (var ri = 0; ri < ringDistances.length; ri++) {
+    ctx.fillText(Math.round(ringDistances[ri]), cx, cy - ringDistances[ri] * scale - 2);
   }
 
-  // Layer 3: Objects (small dots)
-  for (let i = 0; i < objects.length; i++) {
+  // Layer 2: Crosshairs
+  ctx.strokeStyle = 'rgba(88,166,255,0.08)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+  ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+  ctx.stroke();
+
+  // Layer 3: Animated sweep line
+  radarSweepAngle = (radarSweepAngle + 0.03) % (Math.PI * 2);
+  var sweepGrad = ctx.createConicalGradient ? null : null; // fallback
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, R, radarSweepAngle - 0.5, radarSweepAngle);
+  ctx.closePath();
+  var sweepG = ctx.createLinearGradient(cx, cy, cx + R * Math.cos(radarSweepAngle), cy + R * Math.sin(radarSweepAngle));
+  sweepG.addColorStop(0, 'rgba(57,210,192,0)');
+  sweepG.addColorStop(1, 'rgba(57,210,192,0.5)');
+  ctx.fillStyle = sweepG;
+  ctx.fill();
+  ctx.restore();
+  // Sweep edge line
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = '#39d2c0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + R * Math.cos(radarSweepAngle), cy + R * Math.sin(radarSweepAngle));
+  ctx.stroke();
+  ctx.restore();
+
+  // Layer 4: Objects
+  var nearbyCount = 0;
+  for (var i = 0; i < objects.length; i++) {
     var o = objects[i];
-    if (!o.selectable) continue;
-    ctx.fillStyle = 'rgba(57,210,192,0.6)';
-    ctx.fillRect(tx(o.x) - 1, ty(o.y) - 1, 2, 2);
+    if (!o.selectable || !inRange(o.x, o.y)) continue;
+    nearbyCount++;
+    ctx.fillStyle = 'rgba(57,210,192,0.7)';
+    ctx.fillRect(rx(o.x) - 1.5, ry(o.y) - 1.5, 3, 3);
   }
 
-  // Layer 4: Entrances (small diamonds)
-  for (let i = 0; i < entrances.length; i++) {
+  // Layer 5: Entrances (diamonds)
+  for (var i = 0; i < entrances.length; i++) {
     var e = entrances[i];
-    var ex = tx(e.position.x), ey = ty(e.position.y);
+    if (!inRange(e.position.x, e.position.y)) continue;
+    nearbyCount++;
+    var ex = rx(e.position.x), ey = ry(e.position.y);
     ctx.save();
-    ctx.shadowColor = '#c870f0';
-    ctx.shadowBlur = 3;
+    ctx.shadowColor = '#c870f0'; ctx.shadowBlur = 4;
     ctx.fillStyle = '#c870f0';
     ctx.beginPath();
-    ctx.moveTo(ex, ey - 3); ctx.lineTo(ex + 2, ey);
-    ctx.lineTo(ex, ey + 3); ctx.lineTo(ex - 2, ey);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(ex, ey - 4); ctx.lineTo(ex + 3, ey);
+    ctx.lineTo(ex, ey + 4); ctx.lineTo(ex - 3, ey);
+    ctx.closePath(); ctx.fill();
     ctx.restore();
   }
-  for (let i = 0; i < adjLevels.length; i++) {
+  for (var i = 0; i < adjLevels.length; i++) {
     var al = adjLevels[i];
-    var ax = tx(al.position.x), ay = ty(al.position.y);
-    ctx.fillStyle = al.isEntrance ? '#f0a030' : 'rgba(240,160,48,0.4)';
+    if (!inRange(al.position.x, al.position.y)) continue;
+    nearbyCount++;
+    var ax = rx(al.position.x), ay = ry(al.position.y);
+    ctx.fillStyle = al.isEntrance ? '#f0a030' : 'rgba(240,160,48,0.5)';
     ctx.beginPath();
-    ctx.moveTo(ax, ay - 3); ctx.lineTo(ax + 2.5, ay + 1.5);
-    ctx.lineTo(ax - 2.5, ay + 1.5); ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(ax, ay - 3.5); ctx.lineTo(ax + 2.5, ay + 1.5);
+    ctx.lineTo(ax - 2.5, ay + 1.5); ctx.closePath(); ctx.fill();
   }
 
-  // Layer 5: Monsters (tiny dots, color-coded)
-  for (let i = 0; i < monsters.length; i++) {
+  // Layer 6: Monsters (color-coded blips)
+  for (var i = 0; i < monsters.length; i++) {
     var m = monsters[i];
-    var mx = tx(m.x), my = ty(m.y);
+    if (!inRange(m.x, m.y)) continue;
+    nearbyCount++;
+    var mx = rx(m.x), my = ry(m.y);
     var tl = m.type.toLowerCase();
-    if (tl === 'champion') ctx.fillStyle = '#5c9aff';
-    else if (tl === 'unique') ctx.fillStyle = '#e8b339';
-    else if (tl === 'superunique') ctx.fillStyle = '#ff6b6b';
-    else if (tl === 'minion') ctx.fillStyle = 'rgba(120,120,140,0.5)';
-    else ctx.fillStyle = 'rgba(180,185,195,0.4)';
-    var dotSz = (tl === 'normal' || tl === 'minion') ? 1 : 2;
-    ctx.fillRect(mx - dotSz / 2, my - dotSz / 2, dotSz, dotSz);
+    var dotR = 2;
+    if (tl === 'champion') { ctx.fillStyle = '#5c9aff'; dotR = 2.5; }
+    else if (tl === 'unique') { ctx.fillStyle = '#e8b339'; dotR = 3; }
+    else if (tl === 'superunique') { ctx.fillStyle = '#ff6b6b'; dotR = 3.5; }
+    else if (tl === 'minion') { ctx.fillStyle = 'rgba(120,120,140,0.6)'; dotR = 1.5; }
+    else { ctx.fillStyle = 'rgba(180,185,195,0.5)'; dotR = 1.5; }
+    ctx.beginPath();
+    ctx.arc(mx, my, dotR, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // Layer 6: Roster (green hollow circles)
-  for (let i = 0; i < roster.length; i++) {
+  // Layer 7: Roster (green hollow circles)
+  for (var i = 0; i < roster.length; i++) {
     var rm = roster[i];
-    var rx = tx(rm.position.x), ry = ty(rm.position.y);
+    if (!inRange(rm.position.x, rm.position.y)) continue;
+    var rrx = rx(rm.position.x), rry = ry(rm.position.y);
     ctx.beginPath();
-    ctx.arc(rx, ry, 3, 0, Math.PI * 2);
+    ctx.arc(rrx, rry, 3.5, 0, Math.PI * 2);
     ctx.strokeStyle = '#3fb950';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  // Layer 7: Corpse
-  if (corpse && corpse.found) {
-    var cx = tx(corpse.position.x), cy = ty(corpse.position.y);
-    ctx.save();
-    ctx.shadowColor = '#ff4444';
-    ctx.shadowBlur = 5;
-    ctx.fillStyle = '#f85149';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = '#f0f6fc';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx - 2, cy - 2); ctx.lineTo(cx + 2, cy + 2);
-    ctx.moveTo(cx + 2, cy - 2); ctx.lineTo(cx - 2, cy + 2);
-    ctx.stroke();
-  }
-
-  // Layer 8: Player (green dot with glow)
-  if (playerPos) {
-    const px = tx(playerPos.x), py = ty(playerPos.y);
-    ctx.save();
-    ctx.shadowColor = '#3fb950';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#3fb950';
-    ctx.fill();
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
-    ctx.strokeStyle = '#f0f6fc';
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+
+  // Layer 8: Corpse
+  if (corpse && corpse.found && inRange(corpse.position.x, corpse.position.y)) {
+    var crx = rx(corpse.position.x), cry = ry(corpse.position.y);
+    ctx.save();
+    ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 5;
+    ctx.fillStyle = '#f85149';
+    ctx.beginPath(); ctx.arc(crx, cry, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#f0f6fc'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(crx - 2, cry - 2); ctx.lineTo(crx + 2, cry + 2);
+    ctx.moveTo(crx + 2, cry - 2); ctx.lineTo(crx - 2, cry + 2);
+    ctx.stroke();
+  }
+
+  // Layer 9: Player trail on radar
+  if (playerTrail.length > 1) {
+    var now = Date.now();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (var i = 1; i < playerTrail.length; i++) {
+      var p = playerTrail[i], pp = playerTrail[i - 1];
+      if (!inRange(p.x, p.y) && !inRange(pp.x, pp.y)) continue;
+      var age = (now - p.ts) / TRAIL_MAX_AGE;
+      var alpha = Math.max(0, 0.5 * (1 - age));
+      ctx.strokeStyle = 'rgba(63,185,80,' + alpha + ')';
+      ctx.lineWidth = 1.5 * (1 - age * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(rx(pp.x), ry(pp.y));
+      ctx.lineTo(rx(p.x), ry(p.y));
+      ctx.stroke();
+    }
+  }
+
+  // Layer 10: Player center dot (always at center)
+  ctx.save();
+  ctx.shadowColor = '#3fb950';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#3fb950';
+  ctx.fill();
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.strokeStyle = '#f0f6fc';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Restore clip
+  ctx.restore();
+
+  // Outer ring border
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(48,54,61,0.8)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Cardinal direction labels
+  ctx.font = 'bold 9px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(139,148,158,0.6)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', cx, 10);
+  ctx.fillText('S', cx, SIZE - 10);
+  ctx.fillText('W', 10, cy);
+  ctx.fillText('E', SIZE - 10, cy);
+
+  // Update info text
+  $('radar-info').textContent = 'Range: ' + rng + ' tiles \u00b7 ' + nearbyCount + ' nearby';
 }
 
 function renderPlayerCorpse(corpse) {
@@ -1209,24 +1651,164 @@ var resizeMapCanvas = null;
     renderMap();
   });
 
+  // ── Fullscreen map toggle ──
+  $('map-fullscreen-btn').addEventListener('click', function() {
+    var mapCard = document.querySelector('#tab-map .card.full');
+    if (!mapCard) return;
+    var isFS = mapCard.classList.toggle('map-fullscreen');
+    this.classList.toggle('active-fs', isFS);
+    this.textContent = isFS ? '\u2715 Exit' : '\u26F6 Fullscreen';
+    setTimeout(function() { if (typeof resizeMapCanvas === 'function') resizeMapCanvas(); }, 50);
+  });
+
+  // ── Screenshot export ──
+  $('map-screenshot-btn').addEventListener('click', function() {
+    var link = document.createElement('a');
+    link.download = 'map-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // ── Right-click to center ──
+  canvas.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var mx = (e.clientX - rect.left) * dpr;
+    var my = (e.clientY - rect.top) * dpr;
+    var bs = mapState.baseScale, z = mapState.zoom;
+    if (bs === 0 || z === 0) return;
+    mapState.viewX = mapState.viewX + (mx - canvas.width / 2) / (bs * z);
+    mapState.viewY = mapState.viewY + (my - canvas.height / 2) / (bs * z);
+    $('map-follow-player').checked = false;
+    renderMap();
+  });
+
+  // ── Tooltip hover detection ──
   canvas.addEventListener('mousemove', function(e) {
     if (mapState.dragging) return;
     var rect = canvas.getBoundingClientRect();
     var mx = (e.clientX - rect.left) * dpr;
     var my = (e.clientY - rect.top) * dpr;
     var bs = mapState.baseScale, z = mapState.zoom;
-    if (bs === 0 || z === 0) return;
-    var wx = Math.round(mapState.viewX + (mx - canvas.width / 2) / (bs * z));
-    var wy = Math.round(mapState.viewY + (my - canvas.height / 2) / (bs * z));
-    $('map-mouse-pos').textContent = wx + ', ' + wy;
+    if (bs === 0 || z === 0) { hideMapTooltip(); return; }
+    var wx = mapState.viewX + (mx - canvas.width / 2) / (bs * z);
+    var wy = mapState.viewY + (my - canvas.height / 2) / (bs * z);
+    $('map-mouse-pos').textContent = Math.round(wx) + ', ' + Math.round(wy);
+
+    var d = mapState.data;
+    if (!d) { hideMapTooltip(); return; }
+    var best = null, bestScreenDist = Infinity;
+    var hitRadius = 20; // pixels
+
+    // Check monsters
+    if ($('map-show-monsters').checked) {
+      var monsters = d.monsters || [];
+      for (var i = 0; i < monsters.length; i++) {
+        var m = monsters[i];
+        var es = bs * z;
+        var sx = canvas.width / 2 + (m.x - mapState.viewX) * es;
+        var sy = canvas.height / 2 + (m.y - mapState.viewY) * es;
+        var sd = Math.sqrt((sx - mx) * (sx - mx) + (sy - my) * (sy - my));
+        if (sd < hitRadius && sd < bestScreenDist) {
+          var pd = d.playerPos ? tileDist(m.x, m.y, d.playerPos.x, d.playerPos.y) : 0;
+          best = { name: m.name, type: m.type, dist: pd, hp: m.hpPct, kind: 'monster', x: m.x, y: m.y };
+          bestScreenDist = sd;
+        }
+      }
+    }
+
+    // Check objects
+    if ($('map-show-objects').checked && !best) {
+      var objects = d.objects || [];
+      for (var i = 0; i < objects.length; i++) {
+        var o = objects[i];
+        if (!o.selectable) continue;
+        var es = bs * z;
+        var sx = canvas.width / 2 + (o.x - mapState.viewX) * es;
+        var sy = canvas.height / 2 + (o.y - mapState.viewY) * es;
+        var sd = Math.sqrt((sx - mx) * (sx - mx) + (sy - my) * (sy - my));
+        if (sd < hitRadius && sd < bestScreenDist) {
+          var pd = d.playerPos ? tileDist(o.x, o.y, d.playerPos.x, d.playerPos.y) : 0;
+          best = { name: o.name, type: 'Object', dist: pd, hp: -1, kind: 'object', x: o.x, y: o.y };
+          bestScreenDist = sd;
+        }
+      }
+    }
+
+    // Check entrances
+    if ($('map-show-entrances').checked && !best) {
+      var entrances = d.entrances || [];
+      for (var i = 0; i < entrances.length; i++) {
+        var en = entrances[i];
+        var es = bs * z;
+        var sx = canvas.width / 2 + (en.position.x - mapState.viewX) * es;
+        var sy = canvas.height / 2 + (en.position.y - mapState.viewY) * es;
+        var sd = Math.sqrt((sx - mx) * (sx - mx) + (sy - my) * (sy - my));
+        if (sd < hitRadius * 1.5 && sd < bestScreenDist) {
+          var pd = d.playerPos ? tileDist(en.position.x, en.position.y, d.playerPos.x, d.playerPos.y) : 0;
+          best = { name: en.name, type: 'Entrance', dist: pd, hp: -1, kind: 'entrance', x: en.position.x, y: en.position.y };
+          bestScreenDist = sd;
+        }
+      }
+      var adjLevels = d.adjLevels || [];
+      for (var i = 0; i < adjLevels.length; i++) {
+        var al = adjLevels[i];
+        var es = bs * z;
+        var sx = canvas.width / 2 + (al.position.x - mapState.viewX) * es;
+        var sy = canvas.height / 2 + (al.position.y - mapState.viewY) * es;
+        var sd = Math.sqrt((sx - mx) * (sx - mx) + (sy - my) * (sy - my));
+        if (sd < hitRadius * 1.5 && sd < bestScreenDist) {
+          var pd = d.playerPos ? tileDist(al.position.x, al.position.y, d.playerPos.x, d.playerPos.y) : 0;
+          best = { name: al.area, type: al.isEntrance ? 'Exit (click)' : 'Adjacent', dist: pd, hp: -1, kind: 'entrance', x: al.position.x, y: al.position.y };
+          bestScreenDist = sd;
+        }
+      }
+    }
+
+    if (best) {
+      showMapTooltip(best, e.clientX - rect.left, e.clientY - rect.top);
+    } else {
+      hideMapTooltip();
+    }
   });
 
+  canvas.addEventListener('mouseleave', function() { hideMapTooltip(); });
+
   // Redraw when toggles change
-  var toggleIds = ['map-show-terrain','map-show-rooms','map-show-monsters','map-show-objects','map-show-entrances','map-show-roster','map-show-corpse','map-follow-player'];
+  var toggleIds = ['map-show-terrain','map-show-rooms','map-show-monsters','map-show-objects','map-show-entrances','map-show-roster','map-show-corpse','map-follow-player','map-show-rings','map-show-grid','map-show-trail','map-show-distances'];
   for (var i = 0; i < toggleIds.length; i++) {
     $(toggleIds[i]).addEventListener('change', function() { renderMap(); });
   }
 })();
+
+// ── Map tooltip ──
+function showMapTooltip(entity, cx, cy) {
+  var tip = $('map-tooltip');
+  var html = '<div class="map-tooltip-name">' + esc(entity.name) + '</div>';
+  html += '<div class="map-tooltip-type">' + esc(entity.type) + '</div>';
+  if (entity.dist > 0) {
+    html += '<div class="map-tooltip-dist">' + Math.round(entity.dist) + ' tiles away</div>';
+  }
+  html += '<div style="font-size:.68rem;color:var(--dim)">' + entity.x + ', ' + entity.y + '</div>';
+  if (entity.hp >= 0) {
+    var hc = hpColor(entity.hp);
+    html += '<div class="map-tooltip-sep"></div>';
+    html += '<div class="map-tooltip-hp"><span class="map-tooltip-hp-bar"><span class="map-tooltip-hp-fill" style="width:' + entity.hp + '%;background:' + hc + '"></span></span> ' + entity.hp + '%</div>';
+  }
+  tip.innerHTML = html;
+  // Position tooltip with offset
+  var ox = cx + 14, oy = cy - 10;
+  var wrap = tip.parentElement.getBoundingClientRect();
+  if (ox + 200 > wrap.width) ox = cx - 180;
+  if (oy < 0) oy = cy + 14;
+  tip.style.left = ox + 'px';
+  tip.style.top = oy + 'px';
+  tip.classList.add('visible');
+}
+
+function hideMapTooltip() {
+  $('map-tooltip').classList.remove('visible');
+}
 
 function updateMapData(d) {
   mapState.data = d;
@@ -1286,6 +1868,21 @@ function updateMapData(d) {
     mapState.viewX = playerPos.x;
     mapState.viewY = playerPos.y;
   }
+
+  // Record player trail
+  if (playerPos) {
+    var now = Date.now();
+    var last = playerTrail.length ? playerTrail[playerTrail.length - 1] : null;
+    if (!last || last.x !== playerPos.x || last.y !== playerPos.y) {
+      playerTrail.push({ x: playerPos.x, y: playerPos.y, ts: now });
+      if (playerTrail.length > MAX_TRAIL_LEN) playerTrail.shift();
+    }
+    // Trim old entries
+    while (playerTrail.length > 0 && now - playerTrail[0].ts > TRAIL_MAX_AGE) {
+      playerTrail.shift();
+    }
+  }
+
   renderMap();
 }
 
@@ -1365,6 +1962,74 @@ function renderMap() {
     }
   }
 
+  // ── Layer 2b: Coordinate grid ──
+  if ($('map-show-grid').checked) {
+    var gridStep = 50;
+    if (z > 2) gridStep = 20;
+    else if (z > 1) gridStep = 30;
+    else if (z < 0.5) gridStep = 100;
+    // Compute visible world bounds
+    var worldLeft = mapState.viewX - (W / 2) / es;
+    var worldRight = mapState.viewX + (W / 2) / es;
+    var worldTop = mapState.viewY - (H / 2) / es;
+    var worldBottom = mapState.viewY + (H / 2) / es;
+    var startGX = Math.floor(worldLeft / gridStep) * gridStep;
+    var startGY = Math.floor(worldTop / gridStep) * gridStep;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(88,166,255,0.06)';
+    ctx.lineWidth = dpr * 0.5;
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
+    for (var gx = startGX; gx <= worldRight; gx += gridStep) {
+      var sx = tx(gx);
+      if (sx >= 0 && sx <= W) { ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke(); }
+    }
+    for (var gy = startGY; gy <= worldBottom; gy += gridStep) {
+      var sy = ty(gy);
+      if (sy >= 0 && sy <= H) { ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke(); }
+    }
+    ctx.setLineDash([]);
+    // Grid labels
+    ctx.fillStyle = 'rgba(88,166,255,0.2)';
+    ctx.font = (8 * dpr) + 'px "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (var gx = startGX; gx <= worldRight; gx += gridStep) {
+      var sx = tx(gx);
+      if (sx >= 0 && sx <= W - 30 * dpr) ctx.fillText(gx, sx + 2 * dpr, 2 * dpr);
+    }
+    ctx.textAlign = 'right';
+    for (var gy = startGY; gy <= worldBottom; gy += gridStep) {
+      var sy = ty(gy);
+      if (sy >= 10 * dpr && sy <= H) ctx.fillText(gy, W - 2 * dpr, sy + 2 * dpr);
+    }
+    ctx.restore();
+  }
+
+  // ── Layer 2c: Player trail ──
+  if ($('map-show-trail').checked && playerTrail.length > 1) {
+    var now = Date.now();
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (var i = 1; i < playerTrail.length; i++) {
+      var p0 = playerTrail[i - 1], p1 = playerTrail[i];
+      var age0 = now - p0.ts, age1 = now - p1.ts;
+      var alpha0 = Math.max(0.02, 1 - age0 / TRAIL_MAX_AGE);
+      var alpha1 = Math.max(0.02, 1 - age1 / TRAIL_MAX_AGE);
+      var alpha = (alpha0 + alpha1) / 2;
+      var sx0 = tx(p0.x), sy0 = ty(p0.y);
+      var sx1 = tx(p1.x), sy1 = ty(p1.y);
+      ctx.strokeStyle = 'rgba(63,185,80,' + (alpha * 0.5).toFixed(2) + ')';
+      ctx.lineWidth = Math.max(1, 2 * Math.min(z, 3)) * dpr * alpha;
+      ctx.beginPath();
+      ctx.moveTo(sx0, sy0);
+      ctx.lineTo(sx1, sy1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // ── Layer 3: Objects (shrines, chests, wells, etc.) ──
   if ($('map-show-objects').checked) {
     var zCap = Math.min(z, 4);
@@ -1440,6 +2105,13 @@ function renderMap() {
         ctx.font = 'bold ' + Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(e.name, ex, ey - sz - 5 * dpr);
+        // Distance label
+        if ($('map-show-distances').checked && playerPos) {
+          var eDist = Math.round(tileDist(e.position.x, e.position.y, playerPos.x, playerPos.y));
+          ctx.fillStyle = 'rgba(232,160,255,0.6)';
+          ctx.font = Math.max(7, 8 * zCap) * dpr + 'px "Segoe UI", sans-serif';
+          ctx.fillText(eDist + 't', ex, ey + sz + 10 * dpr);
+        }
         ctx.restore();
       }
     }
@@ -1474,6 +2146,13 @@ function renderMap() {
         ctx.font = 'bold ' + Math.max(9, 9.5 * zCap) * dpr + 'px "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(al.area, ax, ay - sz - 5 * dpr);
+        // Distance label
+        if ($('map-show-distances').checked && playerPos) {
+          var alDist = Math.round(tileDist(al.position.x, al.position.y, playerPos.x, playerPos.y));
+          ctx.fillStyle = 'rgba(255,192,64,0.5)';
+          ctx.font = Math.max(7, 8 * zCap) * dpr + 'px "Segoe UI", sans-serif';
+          ctx.fillText(alDist + 't', ax, ay + sz * 0.6 + 12 * dpr);
+        }
         ctx.restore();
       }
     }
@@ -1683,6 +2362,100 @@ function renderMap() {
     ctx.restore();
   }
 
+  // ── Layer 9: Distance rings around player ──
+  if ($('map-show-rings').checked && playerPos) {
+    var px = tx(playerPos.x), py = ty(playerPos.y);
+    var ringDistances = [10, 20, 40, 80];
+    ctx.save();
+    ctx.setLineDash([3 * dpr, 3 * dpr]);
+    for (var ri = 0; ri < ringDistances.length; ri++) {
+      var rd = ringDistances[ri];
+      var rr = rd * es;
+      if (rr < 8 * dpr || rr > Math.max(W, H) * 2) continue;
+      var alpha = Math.max(0.06, 0.2 - ri * 0.04);
+      ctx.strokeStyle = 'rgba(57,210,192,' + alpha.toFixed(2) + ')';
+      ctx.lineWidth = dpr;
+      ctx.beginPath();
+      ctx.arc(px, py, rr, 0, Math.PI * 2);
+      ctx.stroke();
+      // Ring label
+      ctx.fillStyle = 'rgba(57,210,192,' + (alpha + 0.1).toFixed(2) + ')';
+      ctx.font = (8 * dpr) + 'px "Segoe UI", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rd + 't', px + rr + 3 * dpr, py);
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ── Layer 10: Compass rose (top-right corner) ──
+  (function drawCompass() {
+    var cx = W - 40 * dpr, cy = 40 * dpr;
+    var sz = 18 * dpr;
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    // N arrow
+    ctx.fillStyle = '#f85149';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - sz);
+    ctx.lineTo(cx - 4 * dpr, cy);
+    ctx.lineTo(cx + 4 * dpr, cy);
+    ctx.closePath();
+    ctx.fill();
+    // S arrow
+    ctx.fillStyle = '#484f58';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + sz);
+    ctx.lineTo(cx - 4 * dpr, cy);
+    ctx.lineTo(cx + 4 * dpr, cy);
+    ctx.closePath();
+    ctx.fill();
+    // E/W ticks
+    ctx.strokeStyle = '#484f58';
+    ctx.lineWidth = dpr;
+    ctx.beginPath();
+    ctx.moveTo(cx - sz * 0.6, cy); ctx.lineTo(cx + sz * 0.6, cy);
+    ctx.stroke();
+    // Labels
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#f85149';
+    ctx.font = 'bold ' + (9 * dpr) + 'px "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('N', cx, cy - sz - 2 * dpr);
+    ctx.fillStyle = '#484f58';
+    ctx.textBaseline = 'top';
+    ctx.fillText('S', cx, cy + sz + 2 * dpr);
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right';
+    ctx.fillText('W', cx - sz * 0.6 - 3 * dpr, cy);
+    ctx.textAlign = 'left';
+    ctx.fillText('E', cx + sz * 0.6 + 3 * dpr, cy);
+    ctx.restore();
+  })();
+
+  // ── Update nearest entity info ──
+  if (playerPos) {
+    var nearestName = null, nearestDist = Infinity;
+    // Check entrances
+    for (var i = 0; i < entrances.length; i++) {
+      var ne = entrances[i];
+      var nd = tileDist(ne.position.x, ne.position.y, playerPos.x, playerPos.y);
+      if (nd < nearestDist) { nearestDist = nd; nearestName = ne.name; }
+    }
+    for (var i = 0; i < adjLevels.length; i++) {
+      var nal = adjLevels[i];
+      var nd = tileDist(nal.position.x, nal.position.y, playerPos.x, playerPos.y);
+      if (nd < nearestDist) { nearestDist = nd; nearestName = nal.area; }
+    }
+    if (nearestName) {
+      $('map-nearest-info').textContent = nearestName + ' (' + Math.round(nearestDist) + 't)';
+    } else {
+      $('map-nearest-info').textContent = '\u2014';
+    }
+  }
+
   $('map-zoom-level').textContent = z.toFixed(1) + 'x';
 }
 
@@ -1702,6 +2475,19 @@ async function refresh() {
     $('err-banner').style.display = 'none';
     $('dot').className = 'dot ok';
     $('clock').textContent = d.ts;
+
+    // ── Death / Low HP alerts ──
+    if (d.player.dead) {
+      $('death-banner').style.display = 'block';
+      document.body.classList.remove('hp-critical');
+    } else {
+      $('death-banner').style.display = 'none';
+      if (d.player.hp < 25 && d.game.inGame) {
+        document.body.classList.add('hp-critical');
+      } else {
+        document.body.classList.remove('hp-critical');
+      }
+    }
 
     // ── Overview ──
     $('p-name').textContent = d.player.name || '\u2014';
@@ -1742,6 +2528,9 @@ async function refresh() {
     $('gold-stash').textContent = fmtNum(d.gold.stash);
     $('gold-total').textContent = fmtNum(d.gold.total);
     $('gold-max').textContent = fmtNum(d.gold.max);
+    var goldPct = d.gold.max > 0 ? Math.min(100, (d.gold.total / d.gold.max) * 100) : 0;
+    $('gold-bar').style.width = goldPct.toFixed(1) + '%';
+    $('gold-bar-label').textContent = goldPct.toFixed(1) + '% of max';
     renderItems(d.items || []);
 
     // ── Technical ──
@@ -1766,7 +2555,7 @@ async function refresh() {
 }
 
 refresh();
-setInterval(refresh, 1000);
+refreshTimer = setInterval(refresh, refreshInterval);
 </script>
 </body>
 </html>
