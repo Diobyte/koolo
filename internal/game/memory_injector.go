@@ -99,7 +99,14 @@ func (i *MemoryInjector) Load() error {
 
 func (i *MemoryInjector) Unload() error {
 	if err := i.RestoreMemory(); err != nil {
-		i.logger.Error(fmt.Sprintf("error restoring memory: %v", err))
+		// 0xC000010A = STATUS_PROCESS_IS_TERMINATING: the target process
+		// is already exiting, so failing to restore bytes is expected and
+		// harmless — downgrade to WARN to avoid alarming users.
+		if strings.Contains(err.Error(), "0xC000010A") {
+			i.logger.Warn(fmt.Sprintf("could not restore memory (process already terminating): %v", err))
+		} else {
+			i.logger.Error(fmt.Sprintf("error restoring memory: %v", err))
+		}
 	}
 
 	return windows.CloseHandle(i.handle)

@@ -94,8 +94,9 @@ func (s *baseSupervisor) Stop() {
 }
 
 func (s *baseSupervisor) KillClient() error {
+	pid := s.bot.ctx.GameReader.Process.GetPID()
 
-	process, err := os.FindProcess(int(s.bot.ctx.GameReader.Process.GetPID()))
+	process, err := os.FindProcess(int(pid))
 	if err != nil {
 		s.bot.ctx.Logger.Info("Failed to find process", slog.String("configuration", s.name))
 		return err
@@ -105,7 +106,38 @@ func (s *baseSupervisor) KillClient() error {
 		s.bot.ctx.Logger.Info("Failed to kill process", slog.String("configuration", s.name))
 		return err
 	}
+
+	// Wait for the process to fully exit so that Steam (or the OS) deregisters
+	// it before we attempt a relaunch. Without this, Steam may reject the next
+	// launch with "Game already running".
+	s.waitForProcessExit(pid, 10*time.Second)
+
 	return nil
+}
+
+// waitForProcessExit waits until the given PID fully exits or the timeout
+// elapses. This is important for Steam, which won't allow a relaunch until
+// it detects the old process is gone.
+func (s *baseSupervisor) waitForProcessExit(pid uint32, timeout time.Duration) {
+	proc, err := os.FindProcess(int(pid))
+	if err != nil {
+		return // process already gone
+	}
+
+	done := make(chan struct{}, 1)
+	go func() {
+		proc.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Process exited cleanly.
+	case <-time.After(timeout):
+		s.bot.ctx.Logger.Warn("Timed out waiting for D2R process to exit",
+			slog.Uint64("pid", uint64(pid)),
+			slog.String("configuration", s.name))
+	}
 }
 
 func (s *baseSupervisor) ensureProcessIsRunningAndPrepare() error {
