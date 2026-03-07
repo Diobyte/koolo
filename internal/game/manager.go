@@ -458,22 +458,21 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		maxGPURetries = 5
 	)
 
-	// Parse extra CLI arguments so we can inject -mod if needed.
+	// Parse extra CLI arguments provided by the user.
 	extraArgs := strings.Fields(arguments)
 
-	// Handle custom settings / mod setup (same as the Battle.net path).
+	// Handle custom settings / mod setup.
+	// Unlike the Battle.net path we do NOT inject -mod into the Steam URI because
+	// Steam always shows a confirmation popup for custom arguments passed via
+	// steam://run/. Instead we only install the mod files and copy Settings.json;
+	// the user must add "-mod <modname>" to Steam's own launch options once.
 	if useCustomSettings {
 		modName := config.DefaultModName
-		found := false
 		for i, arg := range extraArgs {
 			if arg == "-mod" && i+1 < len(extraArgs) {
 				modName = extraArgs[i+1]
-				found = true
 				break
 			}
-		}
-		if !found {
-			extraArgs = append(extraArgs, "-mod", modName)
 		}
 		if modName == config.DefaultModName {
 			if err := config.InstallMod(); err != nil {
@@ -483,6 +482,7 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		if err := config.ReplaceGameSettings(modName); err != nil {
 			return 0, 0, err
 		}
+		slog.Info("Custom game settings enabled for Steam: make sure '-mod " + modName + "' is set in Steam's launch options for D2R (Right-click D2R → Properties → General → Launch Options)")
 	}
 
 	for attempt := 0; attempt < maxGPURetries; attempt++ {
