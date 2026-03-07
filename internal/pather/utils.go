@@ -222,7 +222,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 			if pf.cfg.PacketCasting.UseForSkillSelection && pf.packetSender != nil {
 				if pf.data.PlayerUnit.RightSkill != skill.Teleport {
 					if err := pf.packetSender.SelectRightSkill(skill.Teleport); err == nil {
-						utils.Sleep(50)
+						utils.Sleep(30)
 					}
 				}
 			}
@@ -239,7 +239,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 	} else {
 		pf.hid.MovePointer(x, y)
 		pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)
-		utils.Sleep(50)
+		utils.Sleep(30)
 	}
 }
 

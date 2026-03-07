@@ -24,7 +24,7 @@ func SelectRightSkill(skillID skill.ID) error {
 			// Try HID fallback only if keybinding exists
 			return selectSkillViaHIDIfAvailable(skillID)
 		}
-		utils.Sleep(50)
+		utils.Sleep(30)
 		return nil
 	}
 
@@ -48,7 +48,7 @@ func SelectLeftSkill(skillID skill.ID) error {
 			// Try HID fallback only if keybinding exists
 			return selectSkillViaHIDIfAvailable(skillID)
 		}
-		utils.Sleep(50)
+		utils.Sleep(30)
 		return nil
 	}
 

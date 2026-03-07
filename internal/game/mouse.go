@@ -18,8 +18,6 @@ const (
 type MouseButton uint
 type ModifierKey byte
 
-const pointerReleaseDelay = 150 * time.Millisecond
-
 // MovePointer moves the mouse to the requested position, x and y should be the final position based on
 // pixels shown in the screen. Top-left corner is 0,0
 func (hid *HID) MovePointer(x, y int) {
@@ -34,8 +32,13 @@ func (hid *HID) MovePointer(x, y int) {
 	win.PostMessage(hid.gr.HWND, win.WM_MOUSEMOVE, 0, lParam)
 }
 
-// Click just does a single mouse click at current pointer position
+// Click does a single mouse click with a small random jitter (±2px)
+// to break pixel-perfect repetition heuristics.
 func (hid *HID) Click(btn MouseButton, x, y int) {
+	// Apply ±2px jitter to the click coordinates
+	x += rand.Intn(5) - 2
+	y += rand.Intn(5) - 2
+
 	hid.MovePointer(x, y)
 	x = hid.gr.WindowLeftX + x
 	y = hid.gr.WindowTopY + y
@@ -49,7 +52,7 @@ func (hid *HID) Click(btn MouseButton, x, y int) {
 	}
 
 	win.SendMessage(hid.gr.HWND, buttonDown, 1, lParam)
-	sleepTime := rand.Intn(keyPressMaxTime-keyPressMinTime) + keyPressMinTime
+	sleepTime := biasedLowRand(keyPressMinTime, keyPressMaxTime)
 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 	win.SendMessage(hid.gr.HWND, buttonUp, 1, lParam)
 }

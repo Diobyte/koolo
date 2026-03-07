@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	keyPressMinTime = 40 // ms
-	keyPressMaxTime = 90 // ms
+	keyPressMinTime = 30 // ms
+	keyPressMaxTime = 65 // ms
 )
 
 // PressKey receives an ASCII code and sends a key press event to the game window
 func (hid *HID) PressKey(key byte) {
 	win.PostMessage(hid.gr.HWND, win.WM_KEYDOWN, uintptr(key), hid.calculatelParam(key, true))
-	sleepTime := rand.Intn(keyPressMaxTime-keyPressMinTime) + keyPressMinTime
+	sleepTime := biasedLowRand(keyPressMinTime, keyPressMaxTime)
 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 	win.PostMessage(hid.gr.HWND, win.WM_KEYUP, uintptr(key), hid.calculatelParam(key, false))
 }
@@ -27,7 +27,8 @@ func (hid *HID) PressKey(key byte) {
 func (hid *HID) KeySequence(keysToPress ...byte) {
 	for _, key := range keysToPress {
 		hid.PressKey(key)
-		time.Sleep(200 * time.Millisecond)
+		gap := rand.Intn(51) + 80 // 80–130ms random gap
+		time.Sleep(time.Duration(gap) * time.Millisecond)
 	}
 }
 
@@ -113,6 +114,18 @@ var specialChars = map[string]byte{
 	"rwin":      win.VK_RWIN,
 	"end":       win.VK_END,
 	"-":         win.VK_OEM_MINUS,
+}
+
+// biasedLowRand returns a random int in [lo, hi) biased toward the low end.
+// It uses the minimum of two uniform samples to skew the distribution.
+func biasedLowRand(lo, hi int) int {
+	span := hi - lo
+	a := rand.Intn(span)
+	b := rand.Intn(span)
+	if a < b {
+		return lo + a
+	}
+	return lo + b
 }
 
 func (hid *HID) calculatelParam(keyCode byte, down bool) uintptr {
