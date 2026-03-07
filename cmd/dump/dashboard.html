@@ -28,7 +28,8 @@ body{
 h1{font-size:1.4rem;color:var(--heading);display:flex;align-items:center;gap:.5rem}
 .status{display:flex;align-items:center;gap:.5rem;color:var(--dim);font-size:.85rem}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
-.dot.ok{background:var(--green)}
+.dot.ok{background:var(--green);animation:dotPulse 2s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 0 0 rgba(63,185,80,.4)}50%{box-shadow:0 0 0 4px rgba(63,185,80,0)}}
 
 /* ── Tabs ── */
 .tab-bar{
@@ -42,14 +43,16 @@ h1{font-size:1.4rem;color:var(--heading);display:flex;align-items:center;gap:.5r
   transition:color .2s, border-color .2s;white-space:nowrap;
   font-family:inherit;
 }
-.tab-btn:hover{color:var(--text)}
+.tab-btn:hover{color:var(--text);background:rgba(88,166,255,.06);border-radius:6px 6px 0 0}
 .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
 .tab-panel{display:none}
-.tab-panel.active{display:block}
+.tab-panel.active{display:block;animation:tabFade .15s ease}
+@keyframes tabFade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── Cards ── */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:rgba(88,166,255,.15);box-shadow:0 2px 12px rgba(0,0,0,.15)}
 .card.full{grid-column:1/-1}
 .card-head{
   padding:.6rem 1rem;font-weight:600;font-size:.9rem;color:var(--heading);
@@ -64,16 +67,18 @@ h1{font-size:1.4rem;color:var(--heading);display:flex;align-items:center;gap:.5r
 .p-stats b{color:var(--heading)}
 .bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.8rem}
 .bar-label{width:24px;text-align:right;font-weight:600}
-.bar-track{flex:1;height:14px;background:#21262d;border-radius:3px;overflow:hidden}
+.bar-track{flex:1;height:14px;background:#21262d;border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
 .bar-fill{height:100%;border-radius:3px;transition:width .4s ease,background .4s}
 .bar-val{width:36px;text-align:right;font-size:.8rem}
-.hp-fill{background:var(--green)}
-.mp-fill{background:var(--blue)}
+.hp-fill{background:linear-gradient(90deg,#2ea043,#3fb950)}
+.hp-fill.warn{background:linear-gradient(90deg,#b87c12,#d29922)}
+.hp-fill.crit{background:linear-gradient(90deg,#da3633,#f85149)}
+.mp-fill{background:linear-gradient(90deg,#1f6feb,#58a6ff)}
 
 /* ── Game ── */
 .g-row{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem;margin-bottom:.3rem}
 .g-row b{color:var(--heading)}
-.flag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75rem;font-weight:600}
+.flag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75rem;font-weight:600;transition:all .15s}
 .flag.on{background:rgba(63,185,80,.15);color:var(--green)}
 .flag.off{background:rgba(139,148,158,.1);color:var(--dim)}
 
@@ -105,18 +110,20 @@ tr:hover td{background:rgba(88,166,255,.04)}
 .q-normal,.q-low{color:var(--dim)}
 .sel-yes{color:var(--green)}
 .sel-no{color:var(--dim)}
-.mini-bar{display:inline-block;width:60px;height:8px;background:#21262d;border-radius:2px;overflow:hidden;vertical-align:middle}
+.mini-bar{display:inline-block;width:72px;height:10px;background:#21262d;border-radius:3px;overflow:hidden;vertical-align:middle;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
 .mini-fill{height:100%;border-radius:2px}
 
 /* ── Menus ── */
 .menu-grid{display:flex;gap:.5rem;flex-wrap:wrap}
-.menu-badge{padding:4px 12px;border-radius:4px;font-size:.8rem;font-weight:600}
+.menu-badge{padding:4px 12px;border-radius:4px;font-size:.8rem;font-weight:600;transition:transform .1s}
+.menu-badge:hover{transform:translateY(-1px)}
 .menu-badge.on{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
 .menu-badge.off{background:rgba(139,148,158,.08);color:var(--dim);border:1px solid var(--border)}
 
 /* ── Technical: stat-grid ── */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem}
-.stat-item{display:flex;justify-content:space-between;padding:4px 8px;background:#21262d;border-radius:4px;font-size:.8rem}
+.stat-item{display:flex;justify-content:space-between;padding:4px 8px;background:#21262d;border-radius:4px;font-size:.8rem;transition:background .15s}
+.stat-item:hover{background:rgba(88,166,255,.06)}
 .stat-label{color:var(--dim)}
 .stat-val{color:var(--heading);font-weight:600;font-variant-numeric:tabular-nums}
 .stat-val.fire{color:#f85149}
@@ -139,8 +146,10 @@ tr:hover td{background:rgba(88,166,255,.04)}
 .skill-tag.r{background:rgba(210,153,34,.15);color:var(--yellow)}
 
 /* ── State badges ── */
-.state-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.78rem;font-weight:600;margin:2px;background:rgba(57,210,192,.12);color:var(--cyan);border:1px solid rgba(57,210,192,.25)}
+.state-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.78rem;font-weight:600;margin:2px;background:rgba(57,210,192,.12);color:var(--cyan);border:1px solid rgba(57,210,192,.25);transition:transform .1s,box-shadow .2s}
+.state-badge:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(57,210,192,.15)}
 .state-badge.debuff{background:rgba(248,81,73,.12);color:var(--red);border-color:rgba(248,81,73,.25)}
+.state-badge.debuff:hover{box-shadow:0 2px 8px rgba(248,81,73,.15)}
 
 /* ── Room minimap ── */
 .minimap-container{position:relative;background:#080c12;border-radius:8px;overflow:hidden;min-height:200px;box-shadow:inset 0 0 20px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(48,54,61,.5)}
@@ -149,7 +158,8 @@ tr:hover td{background:rgba(88,166,255,.04)}
 /* ── Map tab ── */
 .map-wrap{display:flex;flex-direction:column;gap:.5rem}
 .map-toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;padding:.4rem .5rem;background:rgba(22,27,34,.8);border-radius:6px;border:1px solid var(--border)}
-.map-toggle{display:flex;align-items:center;gap:.25rem;font-size:.75rem;color:var(--dim);cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;transition:all .15s}
+.map-toggle{display:flex;align-items:center;gap:.25rem;font-size:.75rem;color:var(--dim);cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;transition:all .15s;border:1px solid transparent}
+.map-toggle:has(input:checked){color:var(--text);background:rgba(88,166,255,.08);border-color:rgba(88,166,255,.15)}
 .map-toggle input{accent-color:var(--blue);cursor:pointer;width:13px;height:13px}
 .map-toggle:hover{color:var(--text);background:rgba(88,166,255,.06)}
 .map-btn{padding:4px 12px;font-size:.73rem;font-weight:600;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-family:inherit;transition:all .15s}
@@ -167,15 +177,38 @@ tr:hover td{background:rgba(88,166,255,.04)}
 .map-footer b{color:var(--heading);font-variant-numeric:tabular-nums}
 
 /* ── Misc ── */
-.empty{color:var(--dim);font-size:.85rem;padding:.5rem 0}
+.empty{color:var(--dim);font-size:.85rem;padding:1.5rem .5rem;text-align:center;opacity:.7}
 #err-banner{display:none;background:rgba(248,81,73,.15);border:1px solid var(--red);color:var(--red);padding:.5rem 1rem;border-radius:6px;margin-bottom:.75rem;font-size:.85rem}
 .gold-display{font-size:.85rem;display:flex;gap:1.5rem;flex-wrap:wrap}
-.gold-display b{color:var(--yellow)}
+.gold-display b{color:var(--yellow);font-variant-numeric:tabular-nums}
 .hover-info{font-size:.85rem}
 .hover-info b{color:var(--heading)}
 .weapon-slot{font-size:.85rem}
 .weapon-slot b{color:var(--heading)}
 .addr-mono{font-family:'Cascadia Code','Fira Code',monospace;font-size:.78rem;color:var(--cyan)}
+
+/* ── Responsive ── */
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+@media(max-width:600px){body{padding:.5rem}.header{flex-direction:column;align-items:flex-start;gap:.5rem}h1{font-size:1.2rem}.tab-btn{padding:.45rem .8rem;font-size:.8rem}}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#484f58}
+
+/* ── Focus ── */
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+.tab-btn:focus-visible{outline-offset:-2px}
+
+/* ── Table stripes ── */
+tr:nth-child(even) td{background:rgba(22,27,34,.4)}
+
+/* ── Card head subtle bg ── */
+.card-head{background:rgba(22,27,34,.4)}
+
+/* ── Toolbar separator ── */
+.map-toolbar-sep{width:1px;height:16px;background:var(--border);margin:0 .15rem;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -188,19 +221,19 @@ tr:hover td{background:rgba(88,166,255,.04)}
   </div>
 </div>
 
-<div id="err-banner"></div>
+<div id="err-banner">&#9888; <span id="err-text"></span></div>
 
 <!-- ── Tab Bar ── -->
-<div class="tab-bar" id="tab-bar">
-  <button class="tab-btn active" data-tab="overview">&#127968; Overview</button>
-  <button class="tab-btn" data-tab="combat">&#9876; Combat</button>
-  <button class="tab-btn" data-tab="inventory">&#127890; Inventory</button>
-  <button class="tab-btn" data-tab="map">&#128506; Map</button>
-  <button class="tab-btn" data-tab="technical">&#128736; Technical</button>
+<div class="tab-bar" id="tab-bar" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview">&#127968; Overview</button>
+  <button class="tab-btn" data-tab="combat" role="tab" aria-selected="false" aria-controls="tab-combat" tabindex="-1">&#9876; Combat</button>
+  <button class="tab-btn" data-tab="inventory" role="tab" aria-selected="false" aria-controls="tab-inventory" tabindex="-1">&#127890; Inventory</button>
+  <button class="tab-btn" data-tab="map" role="tab" aria-selected="false" aria-controls="tab-map" tabindex="-1">&#128506; Map</button>
+  <button class="tab-btn" data-tab="technical" role="tab" aria-selected="false" aria-controls="tab-technical" tabindex="-1">&#128736; Technical</button>
 </div>
 
 <!-- ════════════════════ OVERVIEW TAB ════════════════════ -->
-<div class="tab-panel active" id="tab-overview">
+<div class="tab-panel active" id="tab-overview" role="tabpanel">
   <div class="grid">
     <!-- Player -->
     <div class="card">
@@ -267,7 +300,7 @@ tr:hover td{background:rgba(88,166,255,.04)}
 </div>
 
 <!-- ════════════════════ COMBAT TAB ════════════════════ -->
-<div class="tab-panel" id="tab-combat">
+<div class="tab-panel" id="tab-combat" role="tabpanel">
   <div class="grid">
     <!-- Active States/Buffs -->
     <div class="card full">
@@ -304,7 +337,7 @@ tr:hover td{background:rgba(88,166,255,.04)}
 </div>
 
 <!-- ════════════════════ INVENTORY TAB ════════════════════ -->
-<div class="tab-panel" id="tab-inventory">
+<div class="tab-panel" id="tab-inventory" role="tabpanel">
   <div class="grid">
     <!-- Gold -->
     <div class="card full">
@@ -330,7 +363,7 @@ tr:hover td{background:rgba(88,166,255,.04)}
 </div>
 
 <!-- ════════════════════ MAP TAB ════════════════════ -->
-<div class="tab-panel" id="tab-map">
+<div class="tab-panel" id="tab-map" role="tabpanel">
   <div class="card full">
     <div class="card-head">&#128506; Area Map <span class="badge" id="map-area-name"></span> <span class="badge" id="map-room-count">0</span></div>
     <div class="card-body" style="padding:.5rem">
@@ -343,7 +376,9 @@ tr:hover td{background:rgba(88,166,255,.04)}
           <label class="map-toggle"><input type="checkbox" id="map-show-entrances" checked> Exits</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-roster" checked> Party</label>
           <label class="map-toggle"><input type="checkbox" id="map-show-corpse" checked> Corpse</label>
+          <span class="map-toolbar-sep"></span>
           <label class="map-toggle"><input type="checkbox" id="map-follow-player" checked> Follow</label>
+          <span class="map-toolbar-sep"></span>
           <button class="map-btn" id="map-reset-btn">Reset</button>
         </div>
         <div class="map-canvas-wrap">
@@ -377,7 +412,7 @@ tr:hover td{background:rgba(88,166,255,.04)}
 </div>
 
 <!-- ════════════════════ TECHNICAL TAB ════════════════════ -->
-<div class="tab-panel" id="tab-technical">
+<div class="tab-panel" id="tab-technical" role="tabpanel">
   <div class="grid">
     <!-- Attributes -->
     <div class="card">
@@ -485,15 +520,30 @@ const $ = id => document.getElementById(id);
 // ── Tab switching ──
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); b.tabIndex = -1; });
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+    btn.tabIndex = 0;
     $('tab-' + btn.dataset.tab).classList.add('active');
     // Resize map canvas when its tab becomes visible
     if (btn.dataset.tab === 'map') {
       setTimeout(function() { if (typeof resizeMapCanvas === 'function') resizeMapCanvas(); }, 20);
     }
   });
+});
+
+// ── Keyboard navigation for tabs ──
+$('tab-bar').addEventListener('keydown', function(e) {
+  var tabs = Array.from(this.querySelectorAll('.tab-btn'));
+  var idx = tabs.indexOf(document.activeElement);
+  if (idx < 0) return;
+  var next = -1;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'Home') next = 0;
+  else if (e.key === 'End') next = tabs.length - 1;
+  if (next >= 0) { e.preventDefault(); tabs[next].focus(); tabs[next].click(); }
 });
 
 // ── Helpers ──
@@ -1644,7 +1694,7 @@ async function refresh() {
 
     if (!d.ok) {
       $('err-banner').style.display = 'block';
-      $('err-banner').textContent = d.error || 'unknown error';
+      $('err-text').textContent = d.error || 'unknown error';
       $('dot').className = 'dot';
       return;
     }
@@ -1663,7 +1713,7 @@ async function refresh() {
     var hp = d.player.hp;
     var mp = d.player.mp;
     $('hp-bar').style.width = hp + '%';
-    $('hp-bar').style.background = hpColor(hp);
+    $('hp-bar').className = 'bar-fill hp-fill' + (hp < 25 ? ' crit' : hp < 50 ? ' warn' : '');
     $('hp-val').textContent = hp + '%';
     $('mp-bar').style.width = mp + '%';
     $('mp-val').textContent = mp + '%';
@@ -1711,7 +1761,7 @@ async function refresh() {
   } catch (e) {
     $('dot').className = 'dot';
     $('err-banner').style.display = 'block';
-    $('err-banner').textContent = 'connection lost: ' + e.message;
+    $('err-text').textContent = 'connection lost: ' + e.message;
   }
 }
 
