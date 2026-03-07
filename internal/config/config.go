@@ -637,13 +637,15 @@ func Load() error {
 	}
 	defer r.Close()
 
+	// Pre-initialise with defaults that differ from Go zero values.
+	Koolo = &KooloCfg{}
+	Koolo.SigmaDrift.Enabled = true
+
 	d := yaml.NewDecoder(r)
-	if err = d.Decode(&Koolo); err != nil {
+	if err = d.Decode(Koolo); err != nil {
 		return fmt.Errorf("error reading config %s: %w", kooloPath, err)
 	}
-	if Koolo != nil {
-		sanitizeDiscordConfig(Koolo)
-	}
+	sanitizeDiscordConfig(Koolo)
 
 	configDir := getAbsPath("config")
 	entries, err := os.ReadDir(configDir)
