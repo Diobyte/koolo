@@ -22,12 +22,18 @@ const (
 	maxPortalSyncAttempts  = 15
 )
 
+// isSpecialPortal returns true for portal objects that are not recognized by
+// IsPortal() or IsRedPortal() but still require portal-style interaction.
+func isSpecialPortal(name object.Name) bool {
+	return name == object.DurielsLairPortal || name == object.BaalsPortal
+}
+
 // InteractObject routes to packet or mouse implementation based on config
 func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 	ctx := context.Get()
 
-	// For portals (blue/red), check if packet mode is enabled
-	if (obj.IsPortal() || obj.IsRedPortal()) && ctx.CharacterCfg.PacketCasting.UseForTpInteraction {
+	// For portals (blue/red/special), check if packet mode is enabled
+	if (obj.IsPortal() || obj.IsRedPortal() || isSpecialPortal(obj.Name)) && ctx.CharacterCfg.PacketCasting.UseForTpInteraction {
 		return InteractObjectPacket(obj, isCompletedFn)
 	}
 
@@ -68,6 +74,9 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 			expectedArea = area.NihlathaksTemple
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary:
 			expectedArea = area.CanyonOfTheMagi
+		}
+	} else if isSpecialPortal(obj.Name) {
+		switch {
 		case obj.Name == object.BaalsPortal && ctx.Data.PlayerUnit.Area == area.ThroneOfDestruction:
 			expectedArea = area.TheWorldstoneChamber
 		case obj.Name == object.DurielsLairPortal && (ctx.Data.PlayerUnit.Area >= area.TalRashasTomb1 && ctx.Data.PlayerUnit.Area <= area.TalRashasTomb7):
@@ -128,7 +137,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 		lastRun = time.Now()
 
 		// Check portal states
-		if o.IsPortal() || o.IsRedPortal() {
+		if o.IsPortal() || o.IsRedPortal() || isSpecialPortal(o.Name) {
 			// If portal is still being created, wait with escalating delay
 			if o.Mode == mode.ObjectModeOperating {
 				// Use retry escalation for portal opening waits

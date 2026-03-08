@@ -221,10 +221,23 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 			if doorFound, doorObj := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, currentDest); doorFound {
 				doorToOpen := *doorObj
 
-				// Walk toward the door first if it's too far to interact with.
+				// Walk toward the door using direct screen clicks if it's
+				// too far to interact (>15 tiles, the interact threshold).
+				// We avoid recursive MoveTo here because the pathfinder
+				// would detect the same door blocking the path and loop.
 				doorDist := ctx.PathFinder.DistanceFromMe(doorToOpen.Position)
-				if doorDist > 10 {
-					_ = MoveTo(doorToOpen.Position, WithDistanceToFinish(7))
+				for doorDist > 12 {
+					dX, dY := ui.GameCoordsToScreenCords(doorToOpen.Position.X, doorToOpen.Position.Y)
+					ctx.HID.MovePointer(dX, dY)
+					ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.ForceMove)
+					utils.Sleep(300)
+					ctx.RefreshGameData()
+					newDist := ctx.PathFinder.DistanceFromMe(doorToOpen.Position)
+					if newDist >= doorDist {
+						// Not making progress, break out and try to interact anyway
+						break
+					}
+					doorDist = newDist
 				}
 
 				interactErr := error(nil)

@@ -50,6 +50,9 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 			expectedArea = area.NihlathaksTemple
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary:
 			expectedArea = area.CanyonOfTheMagi
+		}
+	} else if isSpecialPortal(obj.Name) {
+		switch {
 		case obj.Name == object.BaalsPortal && ctx.Data.PlayerUnit.Area == area.ThroneOfDestruction:
 			expectedArea = area.TheWorldstoneChamber
 		case obj.Name == object.DurielsLairPortal && (ctx.Data.PlayerUnit.Area >= area.TalRashasTomb1 && ctx.Data.PlayerUnit.Area <= area.TalRashasTomb7):
@@ -109,7 +112,7 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 		lastRun = time.Now()
 
 		// Check portal states
-		if o.IsPortal() || o.IsRedPortal() {
+		if o.IsPortal() || o.IsRedPortal() || isSpecialPortal(o.Name) {
 			// If portal is still being created, wait
 			if o.Mode == mode.ObjectModeOperating {
 				utils.Sleep(100)

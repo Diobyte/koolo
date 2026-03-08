@@ -96,6 +96,15 @@ func (s *baseSupervisor) Stop() {
 func (s *baseSupervisor) KillClient() error {
 	pid := s.bot.ctx.GameReader.Process.GetPID()
 
+	// If the process is already dead there is nothing to kill. This happens
+	// when D2R crashes on its own before the bot tries to clean up.
+	if !game.IsProcessAlive(pid) {
+		s.bot.ctx.Logger.Debug("D2R process already terminated, skipping kill",
+			slog.Uint64("pid", uint64(pid)),
+			slog.String("configuration", s.name))
+		return nil
+	}
+
 	process, err := os.FindProcess(int(pid))
 	if err != nil {
 		s.bot.ctx.Logger.Info("Failed to find process", slog.String("configuration", s.name))
@@ -103,6 +112,14 @@ func (s *baseSupervisor) KillClient() error {
 	}
 	err = process.Kill()
 	if err != nil {
+		// Double-check: if the process died between the alive check and Kill(),
+		// treat it the same as a successful kill.
+		if !game.IsProcessAlive(pid) {
+			s.bot.ctx.Logger.Debug("D2R process exited before Kill() completed",
+				slog.Uint64("pid", uint64(pid)),
+				slog.String("configuration", s.name))
+			return nil
+		}
 		s.bot.ctx.Logger.Info("Failed to kill process", slog.String("configuration", s.name))
 		return err
 	}

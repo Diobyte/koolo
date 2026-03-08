@@ -1,6 +1,7 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -511,7 +512,7 @@ func (a Leveling) prepareStaff() error {
 
 			bank, found := a.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				a.ctx.Logger.Info("bank object not found")
+				return errors.New("bank object not found, cannot open stash for horadric staff")
 			}
 
 			err := action.InteractObject(bank, func() bool {

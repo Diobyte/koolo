@@ -562,6 +562,15 @@ func (s *SinglePlayerSupervisor) Start() error {
 			s.bot.ctx.Logger.Info(fmt.Sprintf("Waiting %v for game client to close completely...", exitWait))
 			utils.Sleep(int(exitWait / time.Millisecond))
 
+			// If D2R died during the wait, skip the InGame polling loop
+			// entirely — the crash detector will handle the restart.
+			errPid := s.bot.ctx.GameReader.Process.GetPID()
+			if !game.IsProcessAlive(errPid) {
+				s.bot.ctx.Logger.Warn("D2R process died during error-recovery wait, letting crash detector handle restart",
+					slog.Uint64("pid", uint64(errPid)))
+				return ErrUnrecoverableClientState
+			}
+
 			timeout := time.After(15 * time.Second)
 			for s.bot.ctx.Manager.InGame() {
 				select {
@@ -628,6 +637,18 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 		s.bot.ctx.Logger.Info(fmt.Sprintf("Game finished successfully. Waiting %v for client to close.", successWait))
 		utils.Sleep(int(successWait / time.Millisecond))
+
+		// Verify D2R is still running before looping back. If the process
+		// died during ExitGame or the post-game wait (e.g. Steam crash,
+		// D2R bug), bail out immediately so the crash detector can
+		// relaunch instead of spinning in menu-flow for minutes.
+		pid := s.bot.ctx.GameReader.Process.GetPID()
+		if !game.IsProcessAlive(pid) {
+			s.bot.ctx.Logger.Warn("D2R process died after successful game exit, letting crash detector handle restart",
+				slog.Uint64("pid", uint64(pid)))
+			return ErrUnrecoverableClientState
+		}
+
 		s.bot.ctx.GameReader.ClearMapData() // Free map data memory while not in game
 		s.bot.ctx.Data.Areas = nil          // Clear context's map reference to allow GC
 		s.bot.ctx.Data.AreaData = game.AreaData{}

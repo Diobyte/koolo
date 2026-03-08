@@ -403,9 +403,9 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 			utils.Sleep(5000)
 		}
 
-		gameTitle := windowname.RandomGameTitle()
-		winproc.SetWindowText.Call(uintptr(hwnd), uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(gameTitle))))
-
+		// The old hwnd belongs to the crashed D2R process and is invalid;
+		// the new window title will be set by buildSupervisor when it
+		// launches the replacement game instance.
 		err := mng.Start(supervisorName, false, false)
 		if err != nil {
 			mng.logger.Error("Failed to restart supervisor", slog.String("supervisor", supervisorName), slog.String("Error: ", err.Error()))

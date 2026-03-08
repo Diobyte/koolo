@@ -449,6 +449,23 @@ func getD2RPIDs() (map[uint32]struct{}, error) {
 	return pids, nil
 }
 
+// IsProcessAlive checks whether the given PID is still running.
+// It opens the process with limited rights and inspects the exit code.
+// Returns false if the process has exited or cannot be opened.
+func IsProcessAlive(pid uint32) bool {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return false
+	}
+	defer windows.CloseHandle(h)
+
+	var exitCode uint32
+	if err := windows.GetExitCodeProcess(h, &exitCode); err != nil {
+		return false
+	}
+	return exitCode == 259 // STILL_ACTIVE
+}
+
 // WaitForPIDExit polls until the given PID no longer appears in the system
 // process table, or until the timeout elapses. Returns true if the process
 // exited, false on timeout. This is more reliable than os.Process.Wait for
