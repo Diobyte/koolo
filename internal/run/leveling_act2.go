@@ -397,10 +397,14 @@ func (a Leveling) findStaff() error {
 		return err
 	}
 
+	chestLogged := false
 	err = action.MoveTo(func() (data.Position, bool) {
 		chest, found := a.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)
 		if found {
-			a.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
+			if !chestLogged {
+				a.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
+				chestLogged = true
+			}
 			return chest.Position, true
 		}
 		return data.Position{}, false

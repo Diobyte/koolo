@@ -552,8 +552,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 				return ErrUnrecoverableClientState
 			}
 
-			s.bot.ctx.Logger.Info("Waiting 5 seconds for game client to close completely...")
-			utils.Sleep(int(5 * time.Second / time.Millisecond))
+			exitWait := 5 * time.Second
+			if strings.EqualFold(s.bot.ctx.CharacterCfg.AuthMethod, "Steam") {
+				exitWait = 8 * time.Second
+			}
+			s.bot.ctx.Logger.Info(fmt.Sprintf("Waiting %v for game client to close completely...", exitWait))
+			utils.Sleep(int(exitWait / time.Millisecond))
 
 			timeout := time.After(15 * time.Second)
 			for s.bot.ctx.Manager.InGame() {
@@ -615,8 +619,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 			event.Send(event.GameFinished(event.WithScreenshot(s.name, errMsg, s.bot.ctx.GameReader.Screenshot()), event.FinishedError))
 			return errors.New(errMsg)
 		}
-		s.bot.ctx.Logger.Info("Game finished successfully. Waiting 3 seconds for client to close.")
-		utils.Sleep(int(3 * time.Second / time.Millisecond))
+		successWait := 3 * time.Second
+		if strings.EqualFold(s.bot.ctx.CharacterCfg.AuthMethod, "Steam") {
+			successWait = 6 * time.Second
+		}
+		s.bot.ctx.Logger.Info(fmt.Sprintf("Game finished successfully. Waiting %v for client to close.", successWait))
+		utils.Sleep(int(successWait / time.Millisecond))
 		s.bot.ctx.GameReader.ClearMapData() // Free map data memory while not in game
 		s.bot.ctx.Data.Areas = nil          // Clear context's map reference to allow GC
 		s.bot.ctx.Data.AreaData = game.AreaData{}

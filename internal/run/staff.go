@@ -72,10 +72,14 @@ func (s Staff) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	chestLogged := false
 	err = action.MoveTo(func() (data.Position, bool) {
 		chest, found := s.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)
 		if found {
-			s.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
+			if !chestLogged {
+				s.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
+				chestLogged = true
+			}
 			return chest.Position, true
 		}
 		return data.Position{}, false

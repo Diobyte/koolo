@@ -23,6 +23,7 @@ func DiscoverWaypoint() error {
 
 			ctx.Logger.Info("Waypoint discovered", slog.String("area", ctx.Data.PlayerUnit.Area.Area().Name))
 			step.CloseAllMenus()
+			return nil
 		}
 	}
 

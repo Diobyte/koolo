@@ -451,13 +451,16 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 		}
 	}
 
-	// Remove blacklisted items from the list, we don't want to pick them up
+	// Remove blacklisted and already-picked-up items from the list
 	filteredItems := make([]data.Item, 0, len(itemsToPickup))
 	for _, itm := range itemsToPickup {
-		isBlacklisted := IsBlacklisted(itm)
-		if !isBlacklisted {
-			filteredItems = append(filteredItems, itm)
+		if IsBlacklisted(itm) {
+			continue
 		}
+		if _, alreadyPickedUp := ctx.CurrentGame.PickedUpItems[int(itm.UnitID)]; alreadyPickedUp {
+			continue
+		}
+		filteredItems = append(filteredItems, itm)
 	}
 
 	return filteredItems
