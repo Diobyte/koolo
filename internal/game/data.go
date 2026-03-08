@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
+	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
@@ -140,6 +141,22 @@ func (d Data) PlayerCastDuration() time.Duration {
 	secs = math.Max(0.30, secs)
 
 	return time.Duration(secs*1000) * time.Millisecond
+}
+
+// IsPlayerDead provides a reliable death check that avoids false positives from
+// transient memory read failures. It requires the player mode to be Dead and the
+// Life stat to have been successfully read as zero (or negative). If the Life stat
+// is missing entirely (memory glitch), it is NOT treated as death.
+func (d Data) IsPlayerDead() bool {
+	if d.PlayerUnit.Mode != mode.Dead {
+		return false
+	}
+	life, found := d.PlayerUnit.FindStat(stat.Life, 0)
+	if !found {
+		// Life stat not readable — do not assume death.
+		return false
+	}
+	return life.Value <= 0
 }
 
 func (d Data) MonsterFilterAnyReachable() data.MonsterFilter {

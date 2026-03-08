@@ -50,7 +50,7 @@ func (hm *Manager) HandleHealthAndMana() error {
 		return nil
 	}
 
-	if hm.data.PlayerUnit.IsDead() {
+	if hm.data.IsPlayerDead() {
 		return ErrDied
 	}
 

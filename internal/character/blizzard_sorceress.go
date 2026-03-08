@@ -79,10 +79,10 @@ func (s BlizzardSorceress) KillMonsterSequence(
 	for {
 		context.Get().PauseIfNotPriority()
 
-		if s.Context.Data.PlayerUnit.IsDead() {
+		if s.Data.IsPlayerDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
-			return health.ErrDied // Or return an error that indicates death if desired by higher-level logic
+			return health.ErrDied
 		}
 
 		// First check if we need to reposition due to nearby monsters

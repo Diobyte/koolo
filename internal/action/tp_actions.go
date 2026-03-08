@@ -25,7 +25,7 @@ func checkPlayerDeathForTP(ctx *context.Status) error {
 		return nil
 	}
 
-	if ctx.Data.PlayerUnit.IsDead() {
+	if ctx.Data.IsPlayerDead() {
 		return health.ErrDied
 	}
 	// Player chicken check

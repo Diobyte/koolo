@@ -75,7 +75,7 @@ func (s WarlockLeveling) KillMonsterSequence(
 	for {
 		context.Get().PauseIfNotPriority()
 
-		if s.Context.Data.PlayerUnit.IsDead() {
+		if s.Data.IsPlayerDead() {
 			return nil
 		}
 
@@ -341,7 +341,7 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 			return fmt.Errorf("%v timeout", bossNPC)
 		}
 
-		if s.Context.Data.PlayerUnit.IsDead() {
+		if s.Data.IsPlayerDead() {
 			s.Logger.Info("Player detected as dead, stopping boss kill sequence.")
 			return nil
 		}

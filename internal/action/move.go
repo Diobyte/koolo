@@ -79,7 +79,7 @@ func checkPlayerDeath(ctx *context.Status) error {
 		return nil
 	}
 
-	if ctx.Data.PlayerUnit.IsDead() {
+	if ctx.Data.IsPlayerDead() {
 		return health.ErrDied
 	}
 	return nil
@@ -731,7 +731,7 @@ func findClosestShrine(maxScanDistance float64) *data.Object {
 	ctx := context.Get()
 
 	// Check if the bot is dead or chickened before proceeding.
-	if ctx.Data.PlayerUnit.IsDead() || ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
+	if ctx.Data.IsPlayerDead() || ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
 		ctx.Logger.Debug("Bot is dead or chickened, skipping shrine search.")
 		return nil
 	}

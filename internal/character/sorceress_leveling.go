@@ -204,7 +204,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		completedAttackLoops++
 		//s.Logger.Info("Completed Attack Loops", slog.Int("completedAttackLoops", completedAttackLoops))
 
-		if s.Context.Data.PlayerUnit.IsDead() {
+		if s.Data.IsPlayerDead() {
 			s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 			return nil
 		}
@@ -301,7 +301,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			if needsRepos && time.Since(lastReposition) > time.Second*1 {
 				lastReposition = time.Now()
 
-				if s.Context.Data.PlayerUnit.IsDead() {
+				if s.Data.IsPlayerDead() {
 					s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 					return nil
 				}
@@ -325,7 +325,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					//s.Logger.Info(fmt.Sprintf("Teleporting to safe position: %v", safePos))
 					if s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
 						if _, ok := s.Data.KeyBindings.KeyBindingForSkill(skill.Teleport); ok && !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-							if s.Context.Data.PlayerUnit.IsDead() {
+							if s.Data.IsPlayerDead() {
 								//s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 								return nil
 							}
@@ -493,7 +493,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		}
 
 		if s.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 {
-			if s.Context.Data.PlayerUnit.IsDead() {
+			if s.Data.IsPlayerDead() {
 				s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 				return nil
 			}
@@ -508,7 +508,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 					if s.Data.PlayerUnit.Skills[skill.GlacialSpike].Level > 0 {
 
-						if s.Context.Data.PlayerUnit.IsDead() {
+						if s.Data.IsPlayerDead() {
 							return nil
 						}
 						if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -521,7 +521,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 
 					}
 				} else {
-					if s.Context.Data.PlayerUnit.IsDead() {
+					if s.Data.IsPlayerDead() {
 						return nil
 					}
 					if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -550,7 +550,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			}
 
 			if currentAttackSkillUsed != skill.AttackSkill {
-				if s.Context.Data.PlayerUnit.IsDead() {
+				if s.Data.IsPlayerDead() {
 					return nil
 				}
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -561,7 +561,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					time.Sleep(time.Millisecond * 50)
 				}
 			} else {
-				if s.Context.Data.PlayerUnit.IsDead() {
+				if s.Data.IsPlayerDead() {
 					return nil
 				}
 				//s.Logger.Debug("No secondary skills available, using primary attack (fallback)")
