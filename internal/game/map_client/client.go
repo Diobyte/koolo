@@ -2,6 +2,7 @@ package map_client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -20,7 +21,13 @@ func GetMapData(seed string, difficulty difficulty.Difficulty) (MapData, error) 
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	stdout, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("error fetching Map data from Diablo II: LoD 1.13c game: %w", err)
+		errMsg := fmt.Sprintf("error fetching Map data from Diablo II: LoD 1.13c game (D2LoDPath=%q, seed=%s, difficulty=%s)",
+			config.Koolo.D2LoDPath, seed, getDifficultyAsNum(difficulty))
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+			errMsg += fmt.Sprintf(", stderr: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		}
+		return nil, fmt.Errorf("%s: %w", errMsg, err)
 	}
 
 	stdoutLines := strings.Split(string(stdout), "\r\n")

@@ -36,6 +36,7 @@ var (
 		data.Barbarian:   {"phlm"},
 		data.Druid:       {"pelt"},
 		data.Assassin:    {"h2h"},
+		data.Warlock:     {},
 	}
 
 	// shieldTypes defines items that should be equipped in right arm (technically they can be left or right arm but we don't want to try and equip two shields)

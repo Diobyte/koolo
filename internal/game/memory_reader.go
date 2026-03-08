@@ -70,7 +70,11 @@ func (gd *MemoryReader) FetchMapData() error {
 	gd.mapDataMu.Unlock()
 
 	d := gd.GameReader.GetData()
-	gd.mapSeed, _ = gd.getMapSeed(d.PlayerUnit.Address)
+	var seedErr error
+	gd.mapSeed, seedErr = gd.getMapSeed(d.PlayerUnit.Address)
+	if seedErr != nil {
+		gd.logger.Warn("Failed to read map seed from memory, using seed 0", slog.Any("error", seedErr))
+	}
 	t := time.Now()
 	cfg, _ := config.GetCharacter(gd.supervisorName)
 	gd.logger.Debug("Fetching map data...", slog.Uint64("seed", uint64(gd.mapSeed)), slog.String("difficulty", string(cfg.Game.Difficulty)))

@@ -37,9 +37,21 @@ func (s WarlockLeveling) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s WarlockLeveling) CheckKeyBindings() []skill.ID {
-	requireKeybindings := []skill.ID{}
-	missingKeybindings := []skill.ID{}
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
+	requireKeybindings := []skill.ID{}
+	if lvl.Value >= 49 {
+		// Post-respec: Miasma/Abyss build
+		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.MiasmaChains, skill.Abyss)
+	} else if lvl.Value >= 18 {
+		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.FlameWave)
+	} else if lvl.Value >= 6 {
+		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.RingOfFire)
+	} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 {
+		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt)
+	}
+
+	missingKeybindings := []skill.ID{}
 	for _, cskill := range requireKeybindings {
 		if _, found := s.Data.KeyBindings.KeyBindingForSkill(cskill); !found {
 			missingKeybindings = append(missingKeybindings, cskill)
@@ -166,8 +178,17 @@ func (s WarlockLeveling) BuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
-	// TODO: Summons temporarily disabled
-	return nil
+	var skills []skill.ID
+	if s.Data.PlayerUnit.Skills[skill.SummonGoatman].Level > 0 {
+		skills = append(skills, skill.SummonGoatman)
+	}
+	if s.Data.PlayerUnit.Skills[skill.SummonTainted].Level > 0 {
+		skills = append(skills, skill.SummonTainted)
+	}
+	if s.Data.PlayerUnit.Skills[skill.SummonDefiler].Level > 0 {
+		skills = append(skills, skill.SummonDefiler)
+	}
+	return skills
 }
 
 func (s WarlockLeveling) ShouldResetSkills() bool {
@@ -202,13 +223,15 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	}
 
 	if lvl.Value >= 49 {
-		// Post-respec: Magic build with summons
-		// TODO: Summon skills temporarily removed from bindings
+		// Post-respec: Magic build with demon summoning
 		mainSkill = skill.AttackSkill
 		skillBindings = []skill.ID{
 			skill.Abyss,
 			skill.MiasmaChains,
 			skill.MiasmaBolt,
+			skill.SummonGoatman,
+			skill.SummonTainted,
+			skill.SummonDefiler,
 		}
 	}
 

@@ -917,6 +917,14 @@
                         </label>
                     </fieldset>
                 </div>
+                <div class="warlock_leveling-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.WarlockLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
             </div>
             </article>
             <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">

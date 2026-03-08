@@ -30,8 +30,9 @@ const menuActionTimeout = 30 * time.Second
 
 // Define constants for the in-game activity monitor
 const (
-	activityCheckInterval = 15 * time.Second
-	maxStuckDuration      = 3 * time.Minute
+	activityCheckInterval     = 15 * time.Second
+	maxStuckDuration          = 3 * time.Minute
+	maxConsecutiveMapFailures = 3
 )
 
 type SinglePlayerSupervisor struct {
@@ -200,6 +201,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 	firstRun := true
 	var timeSpentNotInGameStart = time.Now()
 	const maxTimeNotInGame = 3 * time.Minute
+	consecutiveMapFailures := 0
 
 	for {
 		// Check if the main context has been cancelled
@@ -518,6 +520,20 @@ func (s *SinglePlayerSupervisor) Start() error {
 		firstRun = false
 
 		if err != nil {
+			// Track consecutive map data failures to avoid infinite create-leave loops
+			if strings.Contains(err.Error(), "error fetching map data") {
+				consecutiveMapFailures++
+				if consecutiveMapFailures >= maxConsecutiveMapFailures {
+					s.bot.ctx.Logger.Error(fmt.Sprintf(
+						"Map data fetch failed %d consecutive times. Stopping bot. Please verify D2LoDPath configuration and that koolo-map.exe exists in the tools directory.",
+						consecutiveMapFailures))
+					s.Stop()
+					return fmt.Errorf("map data fetch failed %d consecutive times: %w", consecutiveMapFailures, err)
+				}
+			} else {
+				consecutiveMapFailures = 0
+			}
+
 			if errors.Is(err, drop.ErrInterrupt) {
 				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
 				s.bot.ctx.Manager.ExitGame()
@@ -583,6 +599,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			continue
 		}
 
+		consecutiveMapFailures = 0
 		gameFinishReason := event.FinishedOK
 		event.Send(event.GameFinished(event.Text(s.name, "Game finished successfully"), gameFinishReason))
 		s.bot.ctx.Logger.Info(

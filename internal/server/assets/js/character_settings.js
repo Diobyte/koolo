@@ -431,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
         necromancer: { strength: 15, dexterity: 25, energy: 25, vitality: 15 },
         paladin: { strength: 25, dexterity: 20, energy: 15, vitality: 25 },
         sorceress: { strength: 10, dexterity: 25, energy: 35, vitality: 10 },
+        warlock: { strength: 15, dexterity: 20, energy: 30, vitality: 15 },
     };
 
     function findMainClassForBuild(buildValue) {
@@ -621,6 +622,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const druidLevelingOptions = document.querySelector('.druid_leveling-options');
         const necromancerLevelingOptions = document.querySelector('.necromancer-options');
         const paladinLevelingOptions = document.querySelector('.paladin-options');
+        const warlockLevelingOptions = document.querySelector('.warlock_leveling-options');
         const smiterOptions = document.querySelector('.smiter-options');
         const javazonOptions = document.querySelector('.javazon-options');
 
@@ -645,6 +647,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (druidLevelingOptions) druidLevelingOptions.style.display = 'none';
         if (necromancerLevelingOptions) necromancerLevelingOptions.style.display = 'none';
         if (paladinLevelingOptions) paladinLevelingOptions.style.display = 'none';
+        if (warlockLevelingOptions) warlockLevelingOptions.style.display = 'none';
         if (smiterOptions) smiterOptions.style.display = 'none';
         if (javazonOptions) javazonOptions.style.display = 'none';
         if (noSettingsMessage) noSettingsMessage.style.display = 'none';
@@ -686,6 +689,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (necromancerLevelingOptions) necromancerLevelingOptions.style.display = 'block';
         } else if (selectedClass === 'paladin') {
             if (paladinLevelingOptions) paladinLevelingOptions.style.display = 'block';
+        } else if (selectedClass === 'warlock_leveling') {
+            if (warlockLevelingOptions) warlockLevelingOptions.style.display = 'block';
         } else if (selectedClass === 'smiter') {
             if (smiterOptions) smiterOptions.style.display = 'block';
         } else if (selectedClass === 'javazon') {
