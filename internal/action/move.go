@@ -138,7 +138,10 @@ func MoveToArea(dst area.ID) error {
 	// Arcane Sanctuary
 	if dst == area.ArcaneSanctuary && ctx.Data.PlayerUnit.Area == area.PalaceCellarLevel3 {
 		ctx.Logger.Debug("Arcane Sanctuary detected, finding the Portal")
-		portal, _ := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		portal, found := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		if !found {
+			return errors.New("arcane sanctuary portal not found")
+		}
 		MoveToCoords(portal.Position)
 
 		return step.InteractObject(portal, func() bool {
@@ -148,7 +151,10 @@ func MoveToArea(dst area.ID) error {
 	// Canyon of the Magi
 	if dst == area.CanyonOfTheMagi && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
 		ctx.Logger.Debug("Canyon of the Magi detected, finding the Portal")
-		tome, _ := ctx.Data.Objects.FindOne(object.YetAnotherTome)
+		tome, found := ctx.Data.Objects.FindOne(object.YetAnotherTome)
+		if !found {
+			return errors.New("YetAnotherTome object not found in Arcane Sanctuary")
+		}
 		MoveToCoords(tome.Position)
 		InteractObject(tome, func() bool {
 			if _, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
@@ -158,7 +164,10 @@ func MoveToArea(dst area.ID) error {
 			return false
 		})
 		ctx.Logger.Debug("Using Canyon of the Magi Portal")
-		portal, _ := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			return errors.New("permanent town portal not found after opening tome")
+		}
 		MoveToCoords(portal.Position)
 		return step.InteractObject(portal, func() bool {
 			return ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi

@@ -632,7 +632,10 @@ func (s SorceressLeveling) PreCTABuffSkills() []skill.ID {
 }
 
 func (s SorceressLeveling) ShouldResetSkills() bool {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	lvl, found := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	if !found {
+		return false
+	}
 	if lvl.Value == 24 && s.Data.PlayerUnit.Skills[skill.FireBall].Level > 7 && s.Data.PlayerUnit.Skills[skill.FireBolt].Level > 7 {
 		s.Logger.Info("Respecing to Blizzard: Level 32+ and FireBall level > 9")
 		return true
@@ -642,6 +645,10 @@ func (s SorceressLeveling) ShouldResetSkills() bool {
 
 func (s SorceressLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	level, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	// FindStat may fail on initial load; clamp to 1 so we don't regress to level-0 bindings
+	if level.Value == 0 {
+		level.Value = 1
+	}
 
 	skillBindings := []skill.ID{}
 

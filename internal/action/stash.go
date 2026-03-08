@@ -71,7 +71,10 @@ func Stash(forceStash bool) error {
 		MoveToCoords(data.Position{X: 5130, Y: 5086})
 	}
 
-	bank, _ := ctx.Data.Objects.FindOne(object.Bank)
+	bank, found := ctx.Data.Objects.FindOne(object.Bank)
+	if !found {
+		return errors.New("stash not found")
+	}
 	InteractObject(bank,
 		func() bool {
 			return ctx.Data.OpenMenus.Stash

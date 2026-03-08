@@ -192,7 +192,10 @@ func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) ShouldResetSkills() bool {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	lvl, found := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	if !found {
+		return false
+	}
 	if lvl.Value >= 49 && s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 10 {
 		s.Logger.Info("Resetting skills: Level 49+ and Ring of Fire level > 10")
 		return true
@@ -202,6 +205,10 @@ func (s WarlockLeveling) ShouldResetSkills() bool {
 
 func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	// FindStat may fail on initial load; clamp to 1 so we don't regress to level-0 bindings
+	if lvl.Value == 0 {
+		lvl.Value = 1
+	}
 
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
