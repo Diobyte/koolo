@@ -449,6 +449,23 @@ func getD2RPIDs() (map[uint32]struct{}, error) {
 	return pids, nil
 }
 
+// WaitForPIDExit polls until the given PID no longer appears in the system
+// process table, or until the timeout elapses. Returns true if the process
+// exited, false on timeout. This is more reliable than os.Process.Wait for
+// non-child processes on Windows.
+func WaitForPIDExit(pid uint32, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+		if err != nil {
+			return true // process no longer exists
+		}
+		windows.CloseHandle(handle)
+		time.Sleep(250 * time.Millisecond)
+	}
+	return false
+}
+
 // startGameSteam launches D2R through Steam and discovers the new process.
 func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND, error) {
 	const (
