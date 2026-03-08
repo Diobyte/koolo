@@ -174,8 +174,19 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		// If area changed during movement, the destination is no longer valid
 		// This happens during portal interactions - area transition means objective achieved
 		if ctx.Data.PlayerUnit.Area != startArea {
+			// A zero/None area ID is a transient memory read glitch (common on
+			// Steam). Re-read once to confirm before acting on the change.
+			if ctx.Data.PlayerUnit.Area == 0 {
+				utils.Sleep(200)
+				ctx.RefreshGameData()
+				if ctx.Data.PlayerUnit.Area == 0 || ctx.Data.PlayerUnit.Area == startArea {
+					// Transient glitch or reverted — continue movement.
+					continue
+				}
+			}
+
 			// Wait for collision data to be loaded for the new area before returning
-			deadline := time.Now().Add(2 * time.Second)
+			deadline := time.Now().Add(5 * time.Second)
 			for time.Now().Before(deadline) {
 				if ctx.Data.AreaData.Grid != nil &&
 					ctx.Data.AreaData.Grid.CollisionGrid != nil &&
