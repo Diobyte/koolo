@@ -547,6 +547,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 				s.bot.ctx.Logger.Info(fmt.Sprintf("Bot run finished with error: %s. Initiating game exit and cooldown.", err.Error()))
 			}
 
+			// Capture screenshot while the game window is still alive, before ExitGame tears it down.
+			errorScreenshot := s.bot.ctx.GameReader.Screenshot()
+
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
 				s.bot.ctx.Logger.Error(fmt.Sprintf("Error trying to exit game: %s", exitErr.Error()))
 				return ErrUnrecoverableClientState
@@ -593,7 +596,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			default:
 				gameFinishReason = event.FinishedError
 			}
-			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
+			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), errorScreenshot), gameFinishReason))
 
 			s.bot.ctx.Logger.Warn(
 				fmt.Sprintf("Game finished with errors, reason: %s. Game total time: %0.2fs", err.Error(), time.Since(gameStart).Seconds()),

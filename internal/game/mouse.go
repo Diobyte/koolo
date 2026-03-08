@@ -30,8 +30,8 @@ func (hid *HID) MovePointer(x, y int) {
 
 	hid.gi.CursorPos(x, y)
 	lParam := calculateLparam(x, y)
-	win.SendMessage(hid.gr.HWND, win.WM_NCHITTEST, 0, lParam)
-	win.SendMessage(hid.gr.HWND, win.WM_SETCURSOR, 0x000105A8, 0x2010001)
+	win.PostMessage(hid.gr.HWND, win.WM_NCHITTEST, 0, lParam)
+	win.PostMessage(hid.gr.HWND, win.WM_SETCURSOR, 0x000105A8, 0x2010001)
 	win.PostMessage(hid.gr.HWND, win.WM_MOUSEMOVE, 0, lParam)
 }
 
@@ -57,10 +57,16 @@ func (hid *HID) Click(btn MouseButton, x, y int) {
 		buttonUp = win.WM_RBUTTONUP
 	}
 
-	win.SendMessage(hid.gr.HWND, buttonDown, 1, lParam)
+	if !hid.gr.IsWindowValid() {
+		return
+	}
+	win.PostMessage(hid.gr.HWND, buttonDown, 1, lParam)
 	sleepTime := biasedLowRand(keyPressMinTime, keyPressMaxTime)
 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-	win.SendMessage(hid.gr.HWND, buttonUp, 1, lParam)
+	if !hid.gr.IsWindowValid() {
+		return
+	}
+	win.PostMessage(hid.gr.HWND, buttonUp, 1, lParam)
 }
 
 func (hid *HID) ClickWithModifier(btn MouseButton, x, y int, modifier ModifierKey) {
