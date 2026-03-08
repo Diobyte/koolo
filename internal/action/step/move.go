@@ -220,6 +220,13 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		if !ctx.Data.CanTeleport() {
 			if doorFound, doorObj := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, currentDest); doorFound {
 				doorToOpen := *doorObj
+
+				// Walk toward the door first if it's too far to interact with.
+				doorDist := ctx.PathFinder.DistanceFromMe(doorToOpen.Position)
+				if doorDist > 10 {
+					_ = MoveTo(doorToOpen.Position, WithDistanceToFinish(7))
+				}
+
 				interactErr := error(nil)
 				//Retry a few times (maggot lair slime door fix)
 				for range 5 {
