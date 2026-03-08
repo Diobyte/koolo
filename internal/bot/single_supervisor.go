@@ -209,8 +209,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 		default:
 		}
 
-		// Check for pending Drop via Drop manager
-		if s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() != nil {
+		// Check for pending Drop via Drop manager.
+		// On firstRun the client has not yet passed character selection, so we
+		// must not launch game logic here — defer until the client is ready.
+		if !firstRun && s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() != nil {
 			// Skip if Drop is already in progress
 			if s.bot.ctx.Drop.Active() != nil {
 				s.bot.ctx.Logger.Debug("Drop already in progress, skipping check")
@@ -220,7 +222,6 @@ func (s *SinglePlayerSupervisor) Start() error {
 			// Immediately run the pending Drop before entering the normal menu flow
 			s.bot.ctx.Logger.Info("Pending Drop detected, launching Drop before menu flow")
 			s.bot.ctx.SwitchPriority(ct.PriorityNormal)
-			action.SwitchToLegacyMode()
 			action.SwitchToLegacyMode()
 			DropRun := run.NewDrop()
 			if err := DropRun.Run(nil); err != nil {
@@ -306,6 +307,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 		s.bot.ctx.LastBuffAt = time.Time{}
 		s.logGameStart(runs)
 		s.bot.ctx.RefreshGameData()
+
+		// Wait for the loading screen to clear before sending any key presses,
+		// otherwise the game client ignores input during loading.
+		s.bot.ctx.WaitForGameToLoad()
 
 		// Dump armory data on game start
 		if err := s.dumpArmory(); err != nil {

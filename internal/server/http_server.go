@@ -2815,6 +2815,12 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = r.Form.Has("interactWithChests")
 		cfg.Game.InteractWithSuperChests = r.Form.Has("interactWithSuperChests")
+
+		// Ensure the two chest options are mutually exclusive.
+		if cfg.Game.InteractWithChests {
+			cfg.Game.InteractWithSuperChests = false
+		}
+
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))
 		if r.Form.Has("gameVersion") {
 			cfg.Game.GameVersion = config.NormalizeGameVersion(r.Form.Get("gameVersion"))
@@ -2907,7 +2913,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Diablo.KillDiablo = r.Form.Has("gameDiabloKillDiablo")
 		cfg.Game.Diablo.FocusOnElitePacks = r.Form.Has("gameDiabloFocusOnElitePacks")
 		cfg.Game.Diablo.DisableItemPickupDuringBosses = r.Form.Has("gameDiabloDisableItemPickupDuringBosses")
-		cfg.Game.Diablo.AttackFromDistance = s.getIntFromForm(r, "gameLevelingHellRequiredFireRes", 0, 25, 0)
+		cfg.Game.Diablo.AttackFromDistance = s.getIntFromForm(r, "gameDiabloAttackFromDistance", 0, 25, 0)
 		cfg.Game.Leveling.EnsurePointsAllocation = r.Form.Has("gameLevelingEnsurePointsAllocation")
 		cfg.Game.Leveling.EnsureKeyBinding = r.Form.Has("gameLevelingEnsureKeyBinding")
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")

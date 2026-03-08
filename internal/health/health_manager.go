@@ -158,6 +158,9 @@ func (hm *Manager) IsLowStamina() bool {
 	if !hm.data.PlayerUnit.States.HasState(state.ShrineStamina) && !hm.data.PlayerUnit.States.HasState(state.Staminapot) {
 		stamina, _ := hm.data.PlayerUnit.FindStat(stat.Stamina, 0)
 		maxStamina, _ := hm.data.PlayerUnit.FindStat(stat.MaxStamina, 0)
+		if maxStamina.Value == 0 {
+			return false
+		}
 		staminaRatio := float32(stamina.Value) / float32(maxStamina.Value)
 		if staminaRatio < 0.25 {
 			return true

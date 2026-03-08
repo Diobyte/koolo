@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -36,6 +37,21 @@ const (
 	StashTabMaterials = 101
 	StashTabRunes     = 102
 )
+
+// weaponTypedQuestItems are quest items whose d2go item type is a weapon/armor
+// type (staf, mace, hamm, knif, amul) instead of "ques".  IsFromQuest() returns
+// false for these, so they need an explicit name match to prevent stashing during
+// leveling.  This list mirrors the autoequip questItems slice.
+var weaponTypedQuestItems = []item.Name{
+	"StaffOfKings",
+	"HoradricStaff",
+	"AmuletOfTheViper",
+	"KhalimsFlail",
+	"KhalimsWill",
+	"HellforgeHammer",
+	"TheGidbinn",
+	"HoradricMalus",
+}
 
 func Stash(forceStash bool) error {
 	ctx := context.Get()
@@ -186,7 +202,9 @@ func stashInventory(firstRun bool) {
 			ctx.Logger.Info(fmt.Sprintf("Dropping item %s [%s] due to MaxQuantity rule.", i.Desc().Name, i.Quality.ToString()))
 			blacklistItem(i)
 			utils.PingSleep(utils.Medium, 500) // Medium operation: Prepare for item drop
-			DropItem(i)
+			if err := DropItem(i); err != nil {
+				ctx.Logger.Warn("DropItem failed for MaxQuantity drop", slog.String("item", string(i.Name)), slog.String("error", err.Error()))
+			}
 			utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for drop to complete
 			step.CloseAllMenus()
 			continue
@@ -274,40 +292,47 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	ctx := context.Get()
 	ctx.SetLastStep("shouldStashIt")
 
+	// Bounds check: if the item position is outside the InventoryLock grid, skip it.
+	if len(ctx.CharacterCfg.Inventory.InventoryLock) == 0 ||
+		i.Position.Y >= len(ctx.CharacterCfg.Inventory.InventoryLock) ||
+		i.Position.X >= len(ctx.CharacterCfg.Inventory.InventoryLock[0]) {
+		return false, false, "", ""
+	}
+
 	// Don't stash items in protected slots (highest priority exclusion)
 	if ctx.CharacterCfg.Inventory.InventoryLock[i.Position.Y][i.Position.X] == 0 {
 		return false, false, "", ""
 	}
 
 	// These items should NEVER be stashed, regardless of quest status, pickit rules, or first run.
-	fmt.Printf("DEBUG: Evaluating item '%s' for *absolute* exclusion from stash.\n", i.Name)
-	if i.Name == "horadricstaff" { // This is the simplest way given your logs
-		fmt.Printf("DEBUG: ABSOLUTELY PREVENTING stash for '%s' (Horadric Staff exclusion).\n", i.Name)
+	if i.Name == "HoradricStaff" {
 		return false, false, "", "" // Explicitly do NOT stash the Horadric Staff
 	}
 
 	if i.Name == "TomeOfTownPortal" || i.Name == "TomeOfIdentify" || i.Name == "Key" || i.Name == "WirtsLeg" {
-		fmt.Printf("DEBUG: ABSOLUTELY PREVENTING stash for '%s' (Quest/Special item exclusion).\n", i.Name)
 		return false, false, "", ""
 	}
 
-	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && i.IsFromQuest() && i.Name != "HoradricCube" || i.Name == "HoradricStaff" {
-		return false, false, "", ""
+	// During leveling, keep all quest items in the inventory so quest sequences
+	// are not broken.  IsFromQuest() only covers items with the "ques" item type;
+	// weapon-typed quest items (staves, flails, hammers, etc.) need an explicit
+	// name check because they use weapon types like "staf", "mace", "hamm".
+	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar {
+		if i.IsFromQuest() && i.Name != "HoradricCube" {
+			return false, false, "", ""
+		}
+		if slices.Contains(weaponTypedQuestItems, i.Name) {
+			return false, false, "", ""
+		}
 	}
 
 	if firstRun {
-		fmt.Printf("DEBUG: Allowing stash for '%s' (first run).\n", i.Name)
 		return true, false, "FirstRun", ""
 	}
 
 	// Stash items that are part of a recipe which are not covered by the NIP rules
 	if shouldKeepRecipeItem(i) {
 		return true, false, "Item is part of a enabled recipe", ""
-	}
-
-	// Location/position checks
-	if i.Position.Y >= len(ctx.CharacterCfg.Inventory.InventoryLock) || i.Position.X >= len(ctx.CharacterCfg.Inventory.InventoryLock[0]) {
-		return false, false, "", ""
 	}
 
 	if i.Location.LocationType == item.LocationInventory && ctx.CharacterCfg.Inventory.InventoryLock[i.Position.Y][i.Position.X] == 0 || i.IsPotion() {
@@ -330,11 +355,9 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	if res == nip.RuleResultFullMatch {
 		if doesExceedQuantity(rule) {
 			// If it matches a rule but exceeds quantity, we want to drop it, not stash.
-			fmt.Printf("DEBUG: Dropping '%s' because MaxQuantity is exceeded.\n", i.Name)
 			return false, true, rule.RawLine, rule.Filename + ":" + strconv.Itoa(rule.LineNumber)
 		} else {
 			// If it matches a rule and quantity is fine, stash it.
-			fmt.Printf("DEBUG: Allowing stash for '%s' (pickit rule match: %s).\n", i.Name, rule.RawLine)
 			return true, false, rule.RawLine, rule.Filename + ":" + strconv.Itoa(rule.LineNumber)
 		}
 	}
@@ -343,16 +366,12 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return true, false, "Runeword", ""
 	}
 
-	fmt.Printf("DEBUG: Disallowing stash for '%s' (no rule match and not explicitly kept, and not exceeding quantity).\n", i.Name)
 	return false, false, "", "" // Default if no other rule matches
 }
 
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels for crafting via maxJewelsKept.
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels for crafting via JewelsToKeep.
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels (of any quality) for crafting via JewelsToKeep.
+// shouldKeepRecipeItem decides whether the bot should stash a low-quality item
+// that is part of an enabled cube recipe.  It supports keeping multiple jewels
+// (of any quality) for crafting via JewelsToKeep.
 func shouldKeepRecipeItem(i data.Item) bool {
 	ctx := context.Get()
 	ctx.SetLastStep("shouldKeepRecipeItem")
@@ -515,7 +534,9 @@ func dropExcessItems() {
 		step.CloseAllMenus()
 
 		for _, i := range itemsToDrop {
-			DropItem(i)
+			if err := DropItem(i); err != nil {
+				ctx.Logger.Warn("DropItem failed during excess drop", slog.String("item", string(i.Name)), slog.String("error", err.Error()))
+			}
 		}
 	}
 }
@@ -523,35 +544,54 @@ func dropExcessItems() {
 func blacklistItem(i data.Item) {
 	ctx := context.Get()
 	ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, i)
+	if ctx.CurrentGame.BlacklistTimestamps == nil {
+		ctx.CurrentGame.BlacklistTimestamps = make(map[data.UnitID]time.Time)
+	}
+	ctx.CurrentGame.BlacklistTimestamps[i.UnitID] = time.Now()
 	ctx.Logger.Info(fmt.Sprintf("Blacklisted item %s (UnitID: %d) to prevent immediate re-pickup.", i.Name, i.UnitID))
 }
 
-// DropItem handles moving an item from inventory to the ground
-func DropItem(i data.Item) {
+// DropItem handles moving an item from inventory to the ground.
+// D2R mechanic: Ctrl+Click with only the inventory open does NOT drop items.
+// Instead we: (1) open inventory, (2) left-click item to pick it up to cursor,
+// (3) close inventory, (4) left-click on the ground to drop it.
+// Returns an error if the item could not be dropped.
+func DropItem(i data.Item) error {
 	ctx := context.Get()
 	ctx.SetLastAction("DropItem")
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Prepare for drop
+
+	utils.PingSleep(utils.Medium, utils.RandRng(120, 250))
 	step.CloseAllMenus()
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Wait for menus to close
+	utils.PingSleep(utils.Medium, utils.RandRng(120, 250))
+
+	// Step 1: Open inventory
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Wait for inventory to open
+	utils.PingSleep(utils.Medium, 300)
+
+	// Step 2: Left-click the item to pick it up to cursor
 	screenPos := ui.GetScreenCoordsForItem(i)
-	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Position pointer on item
-	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for item to drop
+	ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
+	utils.PingSleep(utils.Medium, 300)
+
+	// Step 3: Close inventory so cursor item can be dropped on ground
 	step.CloseAllMenus()
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Clean up UI
+	utils.PingSleep(utils.Medium, 300)
+
+	// Step 4: Left-click on the game area to drop the cursor item on the ground
+	ctx.HID.Click(game.LeftButton, 500, 500)
+	utils.PingSleep(utils.Medium, utils.RandRng(400, 650))
+
+	// Verify the item is no longer in inventory
 	ctx.RefreshGameData()
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if it.UnitID == i.UnitID {
-			ctx.Logger.Warn(fmt.Sprintf("Failed to drop item %s (UnitID: %d), still in inventory. Inventory might be full or area restricted.", i.Name, i.UnitID))
-			return
+			ctx.Logger.Warn(fmt.Sprintf("Failed to drop item %s (UnitID: %d), still in inventory.", i.Name, i.UnitID))
+			return fmt.Errorf("failed to drop item %s (UnitID: %d)", i.Name, i.UnitID)
 		}
 	}
-	ctx.Logger.Debug(fmt.Sprintf("Successfully dropped item %s (UnitID: %d).", i.Name, i.UnitID))
 
-	step.CloseAllMenus()
+	ctx.Logger.Debug(fmt.Sprintf("Successfully dropped item %s (UnitID: %d).", i.Name, i.UnitID))
+	return nil
 }
 
 func shouldNotifyAboutStashing(i data.Item) bool {
@@ -619,12 +659,35 @@ func SwitchStashTab(tab int) {
 
 	ctx.SetLastStep("switchTab")
 
-	if ctx.GameReader.LegacyGraphics() {
-		switchStashTabLegacy(ctx, tab)
-	} else {
-		switchStashTabHD(ctx, tab)
+	const maxSwitchAttempts = 2
+	for attempt := 1; attempt <= maxSwitchAttempts; attempt++ {
+		if ctx.GameReader.LegacyGraphics() {
+			switchStashTabLegacy(ctx, tab)
+		} else {
+			switchStashTabHD(ctx, tab)
+		}
+
+		// Verify the stash menu is still open. If a message overlay or lag caused
+		// the click to miss, the stash may have closed; in that case do not update
+		// CurrentStashTab so subsequent operations re-navigate from a known state.
+		ctx.RefreshGameData()
+		if ctx.Data.OpenMenus.Stash {
+			ctx.CurrentGame.CurrentStashTab = tab
+			return
+		}
+
+		ctx.Logger.Warn("SwitchStashTab: stash closed after tab switch attempt, retrying",
+			slog.Int("tab", tab),
+			slog.Int("attempt", attempt),
+		)
+		utils.Sleep(300)
+		ClearMessages()
 	}
-	ctx.CurrentGame.CurrentStashTab = tab
+
+	ctx.Logger.Warn("SwitchStashTab: stash remained closed after all attempts; CurrentStashTab not updated",
+		slog.Int("tab", tab),
+		slog.Int("prevTab", ctx.CurrentGame.CurrentStashTab),
+	)
 }
 
 func switchStashTabHD(ctx *context.Status, tab int) {
