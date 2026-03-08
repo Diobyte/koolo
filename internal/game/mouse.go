@@ -21,6 +21,9 @@ type ModifierKey byte
 // MovePointer moves the mouse to the requested position, x and y should be the final position based on
 // pixels shown in the screen. Top-left corner is 0,0
 func (hid *HID) MovePointer(x, y int) {
+	if !hid.gr.IsWindowValid() {
+		return
+	}
 	hid.gr.updateWindowPositionData()
 	x = hid.gr.WindowLeftX + x
 	y = hid.gr.WindowTopY + y
@@ -35,6 +38,9 @@ func (hid *HID) MovePointer(x, y int) {
 // Click does a single mouse click with a small random jitter (±2px)
 // to break pixel-perfect repetition heuristics.
 func (hid *HID) Click(btn MouseButton, x, y int) {
+	if !hid.gr.IsWindowValid() {
+		return
+	}
 	// Apply ±2px jitter to the click coordinates
 	x += rand.Intn(5) - 2
 	y += rand.Intn(5) - 2

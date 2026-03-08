@@ -318,6 +318,9 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 }
 
 func (s *baseSupervisor) SetWindowPosition(x, y int) {
+	if !s.bot.ctx.GameReader.IsWindowValid() {
+		return
+	}
 	uFlags := win.SWP_NOZORDER | win.SWP_NOSIZE | win.SWP_NOACTIVATE
 	win.SetWindowPos(s.bot.ctx.GameReader.HWND, 0, int32(x), int32(y), 0, 0, uint32(uFlags))
 }

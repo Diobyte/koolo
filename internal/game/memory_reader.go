@@ -14,6 +14,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/utils"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/game/map_client"
+	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
 	"golang.org/x/sync/errgroup"
 )
@@ -70,14 +71,23 @@ func (gd *MemoryReader) FetchMapData() error {
 	gd.mapDataMu.Unlock()
 
 	d := gd.GameReader.GetData()
+	if d.PlayerUnit.Address == 0 {
+		return fmt.Errorf("error fetching map data: player unit address is 0 (game data not yet loaded)")
+	}
 	var seedErr error
 	gd.mapSeed, seedErr = gd.getMapSeed(d.PlayerUnit.Address)
 	if seedErr != nil {
-		gd.logger.Warn("Failed to read map seed from memory, using seed 0", slog.Any("error", seedErr))
+		gd.logger.Warn("Failed to read map seed from memory, using seed 0",
+			slog.Any("error", seedErr),
+			slog.String("playerUnitAddr", fmt.Sprintf("0x%x", d.PlayerUnit.Address)))
 	}
 	t := time.Now()
 	cfg, _ := config.GetCharacter(gd.supervisorName)
-	gd.logger.Debug("Fetching map data...", slog.Uint64("seed", uint64(gd.mapSeed)), slog.String("difficulty", string(cfg.Game.Difficulty)))
+	gd.logger.Debug("Fetching map data...",
+		slog.Uint64("seed", uint64(gd.mapSeed)),
+		slog.String("difficulty", string(cfg.Game.Difficulty)),
+		slog.String("D2LoDPath", config.Koolo.D2LoDPath),
+		slog.String("playerUnitAddr", fmt.Sprintf("0x%x", d.PlayerUnit.Address)))
 
 	mapData, err := map_client.GetMapData(strconv.Itoa(int(gd.mapSeed)), cfg.Game.Difficulty)
 	if err != nil {
@@ -237,7 +247,21 @@ func (gd *MemoryReader) SetTeleportableDiagonal(grid *[][]CollisionType, xStart 
 	}
 }
 
+// IsWindowValid checks whether the stored HWND still refers to a live window.
+// This must be called before any Win32 API call that targets the game window
+// to avoid access violations in USER32.dll from stale handles.
+func (gd *MemoryReader) IsWindowValid() bool {
+	if gd.HWND == 0 {
+		return false
+	}
+	ret, _, _ := winproc.IsWindow.Call(uintptr(gd.HWND))
+	return ret != 0
+}
+
 func (gd *MemoryReader) updateWindowPositionData() {
+	if !gd.IsWindowValid() {
+		return
+	}
 	pos := win.WINDOWPLACEMENT{}
 	point := win.POINT{}
 	win.ClientToScreen(gd.HWND, &point)
