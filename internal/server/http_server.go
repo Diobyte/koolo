@@ -1182,10 +1182,9 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	s.initialData(w, r)
 }
 
-// canStartSupervisor enforces TokenAuth/Steam concurrency rules before starting a supervisor.
+// canStartSupervisor enforces TokenAuth concurrency rules before starting a supervisor.
 func (s *HttpServer) canStartSupervisor(target string, supervisorList []string, targetCfg *config.CharacterCfg) error {
-	// Prevent launching of other clients while there's a client with TokenAuth or Steam still starting
-	needsSerial := targetCfg.AuthMethod == "TokenAuth" || targetCfg.AuthMethod == "Steam"
+	// Prevent launching of other clients while there's a client with TokenAuth still starting
 	for _, sup := range supervisorList {
 		// Skip the target itself
 		if sup == target {
@@ -1193,15 +1192,15 @@ func (s *HttpServer) canStartSupervisor(target string, supervisorList []string, 
 		}
 
 		if s.manager.GetSupervisorStats(sup).SupervisorStatus == bot.Starting {
-			// Prevent launching if we need serial start & another client is starting (no matter what auth method)
-			if needsSerial {
+			// Prevent launching if we're using token auth & another client is starting (no matter what auth method)
+			if targetCfg.AuthMethod == "TokenAuth" {
 				return fmt.Errorf("waiting to start %s: another client (%s) is still starting", target, sup)
 			}
 
-			// Prevent launching if another client that needs serial start is starting
+			// Prevent launching if another client that is using token auth is starting
 			sCfg, found := config.GetCharacter(sup)
-			if found && (sCfg.AuthMethod == "TokenAuth" || sCfg.AuthMethod == "Steam") {
-				return fmt.Errorf("waiting to start %s: %s-auth client %s is still starting", target, sCfg.AuthMethod, sup)
+			if found && sCfg.AuthMethod == "TokenAuth" {
+				return fmt.Errorf("waiting to start %s: token-auth client %s is still starting", target, sup)
 			}
 		}
 	}

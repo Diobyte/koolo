@@ -1083,12 +1083,8 @@
                     <select name="authmethod">
                         <option value="TokenAuth" {{ if eq .Config.AuthMethod "TokenAuth" }}selected{{ end }}>Auth Token</option>
                         <option value="UsernamePassword" {{ if eq .Config.AuthMethod "UsernamePassword" }}selected{{ end }}>Username & Password</option>
-                        <option value="Steam" {{ if eq .Config.AuthMethod "Steam" }}selected{{ end }}>Steam</option>
                         <option value="None" {{ if eq .Config.AuthMethod "None" }}selected{{ end }}>None</option>
                     </select>
-                    <small id="steamWarning" style="color: #e6a817; display: none; margin-top: 4px;">
-                        ⚠ Steam only supports one character per supervisor. Make sure Steam is running and logged in before starting.
-                    </small>
                 </label>
             </fieldset>
             <fieldset class="grid">
@@ -1131,24 +1127,16 @@
             const tokenVisibilityBtn = document.getElementById('toggleTokenVisibility');
             const tokenVisibilityIcon = tokenVisibilityBtn ? tokenVisibilityBtn.querySelector('i') : null;
             const clearCredentialsOption = document.getElementById('clearCredentialsOption');
-            const steamWarning = document.getElementById('steamWarning');
 
             function updateTokenButtonState() {
                 if (!authMethodSelect || !tokenButton) {
                     return;
                 }
 
-                const isSteam = authMethodSelect.value === 'Steam';
                 const isTokenAuth = authMethodSelect.value === 'TokenAuth';
                 tokenButton.disabled = !isTokenAuth;
-                if (tokenField) {
-                    tokenField.closest('fieldset').style.display = isSteam ? 'none' : '';
-                }
                 if (clearCredentialsOption) {
                     clearCredentialsOption.style.display = isTokenAuth ? 'flex' : 'none';
-                }
-                if (steamWarning) {
-                    steamWarning.style.display = isSteam ? 'block' : 'none';
                 }
             }
 

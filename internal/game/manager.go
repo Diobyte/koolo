@@ -276,11 +276,6 @@ func StartGame(username string, password string, authmethod string, authToken st
 		return 0, 0, err
 	}
 
-	// Steam launch uses a completely different path — hand off to the dedicated helper.
-	if authmethod == "Steam" {
-		return startGameSteam(arguments, useCustomSettings)
-	}
-
 	// Depending on the authentication method set base arguments
 	var baseArgs []string
 
