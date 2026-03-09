@@ -174,19 +174,8 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		// If area changed during movement, the destination is no longer valid
 		// This happens during portal interactions - area transition means objective achieved
 		if ctx.Data.PlayerUnit.Area != startArea {
-			// A zero/None area ID is a transient memory read glitch (common on
-			// Steam). Re-read once to confirm before acting on the change.
-			if ctx.Data.PlayerUnit.Area == 0 {
-				utils.Sleep(200)
-				ctx.RefreshGameData()
-				if ctx.Data.PlayerUnit.Area == 0 || ctx.Data.PlayerUnit.Area == startArea {
-					// Transient glitch or reverted — continue movement.
-					continue
-				}
-			}
-
 			// Wait for collision data to be loaded for the new area before returning
-			deadline := time.Now().Add(5 * time.Second)
+			deadline := time.Now().Add(2 * time.Second)
 			for time.Now().Before(deadline) {
 				if ctx.Data.AreaData.Grid != nil &&
 					ctx.Data.AreaData.Grid.CollisionGrid != nil &&
@@ -220,26 +209,6 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		if !ctx.Data.CanTeleport() {
 			if doorFound, doorObj := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, currentDest); doorFound {
 				doorToOpen := *doorObj
-
-				// Walk toward the door using direct screen clicks if it's
-				// too far to interact (>15 tiles, the interact threshold).
-				// We avoid recursive MoveTo here because the pathfinder
-				// would detect the same door blocking the path and loop.
-				doorDist := ctx.PathFinder.DistanceFromMe(doorToOpen.Position)
-				for doorDist > 12 {
-					dX, dY := ui.GameCoordsToScreenCords(doorToOpen.Position.X, doorToOpen.Position.Y)
-					ctx.HID.MovePointer(dX, dY)
-					ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.ForceMove)
-					utils.Sleep(300)
-					ctx.RefreshGameData()
-					newDist := ctx.PathFinder.DistanceFromMe(doorToOpen.Position)
-					if newDist >= doorDist {
-						// Not making progress, break out and try to interact anyway
-						break
-					}
-					doorDist = newDist
-				}
-
 				interactErr := error(nil)
 				//Retry a few times (maggot lair slime door fix)
 				for range 5 {

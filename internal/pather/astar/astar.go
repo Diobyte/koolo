@@ -9,14 +9,14 @@ import (
 )
 
 var directions = []data.Position{
-	{X: 0, Y: 1},   // Down
-	{X: 1, Y: 0},   // Right
-	{X: 0, Y: -1},  // Up
-	{X: -1, Y: 0},  // Left
-	{X: 1, Y: 1},   // Down-Right (Southeast)
-	{X: -1, Y: 1},  // Down-Left (Southwest)
-	{X: 1, Y: -1},  // Up-Right (Northeast)
-	{X: -1, Y: -1}, // Up-Left (Northwest)
+	{0, 1},   // Down
+	{1, 0},   // Right
+	{0, -1},  // Up
+	{-1, 0},  // Left
+	{1, 1},   // Down-Right (Southeast)
+	{-1, 1},  // Down-Left (Southwest)
+	{1, -1},  // Up-Right (Northeast)
+	{-1, -1}, // Up-Left (Northwest)
 }
 
 type Node struct {

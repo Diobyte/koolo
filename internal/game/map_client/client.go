@@ -1,13 +1,9 @@
 package map_client
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -20,39 +16,11 @@ import (
 )
 
 func GetMapData(seed string, difficulty difficulty.Difficulty) (MapData, error) {
-	mapExe := "./tools/koolo-map.exe"
-	d2path := config.Koolo.D2LoDPath
-	diffNum := getDifficultyAsNum(difficulty)
-
-	// Pre-flight: verify koolo-map.exe exists
-	if _, err := os.Stat(mapExe); err != nil {
-		return nil, fmt.Errorf("koolo-map.exe not found at %q: %w", mapExe, err)
-	}
-
-	// Pre-flight: verify D2LoDPath contains expected files
-	if d2path == "" {
-		return nil, fmt.Errorf("D2LoDPath is empty, please configure it in koolo.yaml")
-	}
-	if _, err := os.Stat(filepath.Join(d2path, "d2data.mpq")); err != nil {
-		return nil, fmt.Errorf("D2LoDPath %q does not contain d2data.mpq (required D2 LoD 1.13c file): %w", d2path, err)
-	}
-
-	cmd := exec.Command(mapExe, d2path, "-s", seed, "-d", diffNum)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	cmd := exec.Command("./tools/koolo-map.exe", config.Koolo.D2LoDPath, "-s", seed, "-d", getDifficultyAsNum(difficulty))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	stdout, err := cmd.Output()
 	if err != nil {
-		errMsg := fmt.Sprintf("koolo-map.exe failed (D2LoDPath=%q, seed=%s, difficulty=%s)",
-			d2path, seed, diffNum)
-		if stderr.Len() > 0 {
-			errMsg += fmt.Sprintf(", stderr: %s", strings.TrimSpace(stderr.String()))
-		}
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			errMsg += fmt.Sprintf(", exit code: %d", exitErr.ExitCode())
-		}
-		return nil, fmt.Errorf("%s: %w", errMsg, err)
+		return nil, fmt.Errorf("error fetching Map data from Diablo II: LoD 1.13c game: %w", err)
 	}
 
 	stdoutLines := strings.Split(string(stdout), "\r\n")

@@ -300,15 +300,11 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	}
 
 	duriellair, found := d.ctx.Data.Objects.FindOne(object.DurielsLairPortal)
-	if !found {
-		return errors.New("Duriel's lair portal not found after staff insertion")
-	}
-
-	// Now enter Duriel's lair with thawing potions active
-	if err := action.InteractObject(duriellair, func() bool {
-		return d.ctx.Data.PlayerUnit.Area == area.DurielsLair && d.ctx.Data.AreaData.IsInside(d.ctx.Data.PlayerUnit.Position)
-	}); err != nil {
-		return fmt.Errorf("failed to enter Duriel's lair: %w", err)
+	if found {
+		// Now enter Duriel's lair with thawing potions active
+		action.InteractObject(duriellair, func() bool {
+			return d.ctx.Data.PlayerUnit.Area == area.DurielsLair && d.ctx.Data.AreaData.IsInside(d.ctx.Data.PlayerUnit.Position)
+		})
 	}
 	d.ctx.Logger.Debug(fmt.Sprintf("Quest Status %v", d.ctx.Data.Quests[quest.Act2TheSevenTombs]))
 
@@ -570,7 +566,7 @@ func (d Duriel) prepareStaff() error {
 
 			bank, found := d.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				return errors.New("bank object not found, cannot open stash for horadric staff")
+				d.ctx.Logger.Info("bank object not found")
 			}
 
 			err := action.InteractObject(bank, func() bool {

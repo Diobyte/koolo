@@ -80,11 +80,11 @@ func (s Summoner) runTerrorZone() error {
 
 	// Clear all 4 lanes
 	for lane := 0; lane < 4; lane++ {
-		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ", "lane", lane+1)
+		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ - Lane %d/4", lane+1)
 
 		// Clear this lane properly (handles Summoner only if encountered at lane end)
 		if err := lanes.ClearLane(s.clearMonsterFilter, summonerNPC, summonerFound); err != nil {
-			s.ctx.Logger.Warn("Lane clearing issue", "lane", lane+1, "error", err)
+			s.ctx.Logger.Warn("Lane %d clearing issue: %v", lane+1, err)
 		}
 
 		// Open chests at end of lane
@@ -212,7 +212,7 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			al.clearRange,
 			filter,
 		); err != nil {
-			al.ctx.Logger.Debug("ClearThroughPath error", "checkpoint", idx, "error", err)
+			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint %d: %v", idx, err)
 			// Continue even on error
 		}
 
@@ -224,9 +224,9 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			)
 
 			if summonerDistance < 20 {
-				al.ctx.Logger.Info("Summoner detected on this lane, killing", "distance", summonerDistance)
+				al.ctx.Logger.Info("Summoner detected on this lane (distance: %d) - killing...", summonerDistance)
 				if err := al.ctx.Char.KillSummoner(); err != nil {
-					al.ctx.Logger.Warn("Failed to kill Summoner", "error", err)
+					al.ctx.Logger.Warn("Failed to kill Summoner: %v", err)
 				} else {
 					al.ctx.Logger.Info("Summoner killed successfully")
 					action.ItemPickup(30)
@@ -272,7 +272,7 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 		}
 
 		if err := action.MoveToCoords(obj.Position); err != nil {
-			al.ctx.Logger.Debug("Failed to move to chest", "error", err)
+			al.ctx.Logger.Debug("Failed to move to chest: %v", err)
 			continue
 		}
 
@@ -280,14 +280,14 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 			chest, found := al.ctx.Data.Objects.FindByID(obj.ID)
 			return found && !chest.Selectable
 		}); err != nil {
-			al.ctx.Logger.Debug("Failed to open chest", "error", err)
+			al.ctx.Logger.Debug("Failed to open chest: %v", err)
 		} else {
 			chestsOpened++
 		}
 	}
 
 	if chestsOpened > 0 {
-		al.ctx.Logger.Debug("Opened chests at lane end", "count", chestsOpened)
+		al.ctx.Logger.Debug("Opened %d chests at lane end", chestsOpened)
 	}
 }
 

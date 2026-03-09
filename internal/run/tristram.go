@@ -123,7 +123,7 @@ func (t Tristram) Run(parameters *RunParameters) error {
 
 	t.ctx.CharacterCfg.Character.ClearPathDist = 25
 	if err := config.SaveSupervisorConfig(t.ctx.CharacterCfg.ConfigFolderName, t.ctx.CharacterCfg); err != nil {
-		t.ctx.Logger.Error("Failed to save character configuration", "error", err.Error())
+		t.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 	}
 
 	t.ctx.Logger.Info("Clearing Tristram")

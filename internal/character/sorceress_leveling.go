@@ -204,7 +204,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		completedAttackLoops++
 		//s.Logger.Info("Completed Attack Loops", slog.Int("completedAttackLoops", completedAttackLoops))
 
-		if s.Data.IsPlayerDead() {
+		if s.Context.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 			return nil
 		}
@@ -301,7 +301,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			if needsRepos && time.Since(lastReposition) > time.Second*1 {
 				lastReposition = time.Now()
 
-				if s.Data.IsPlayerDead() {
+				if s.Context.Data.PlayerUnit.IsDead() {
 					s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 					return nil
 				}
@@ -325,7 +325,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					//s.Logger.Info(fmt.Sprintf("Teleporting to safe position: %v", safePos))
 					if s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
 						if _, ok := s.Data.KeyBindings.KeyBindingForSkill(skill.Teleport); ok && !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-							if s.Data.IsPlayerDead() {
+							if s.Context.Data.PlayerUnit.IsDead() {
 								//s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 								return nil
 							}
@@ -493,7 +493,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		}
 
 		if s.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 {
-			if s.Data.IsPlayerDead() {
+			if s.Context.Data.PlayerUnit.IsDead() {
 				s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 				return nil
 			}
@@ -508,7 +508,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 					if s.Data.PlayerUnit.Skills[skill.GlacialSpike].Level > 0 {
 
-						if s.Data.IsPlayerDead() {
+						if s.Context.Data.PlayerUnit.IsDead() {
 							return nil
 						}
 						if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -521,7 +521,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 
 					}
 				} else {
-					if s.Data.IsPlayerDead() {
+					if s.Context.Data.PlayerUnit.IsDead() {
 						return nil
 					}
 					if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -550,7 +550,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			}
 
 			if currentAttackSkillUsed != skill.AttackSkill {
-				if s.Data.IsPlayerDead() {
+				if s.Context.Data.PlayerUnit.IsDead() {
 					return nil
 				}
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
@@ -561,7 +561,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					time.Sleep(time.Millisecond * 50)
 				}
 			} else {
-				if s.Data.IsPlayerDead() {
+				if s.Context.Data.PlayerUnit.IsDead() {
 					return nil
 				}
 				//s.Logger.Debug("No secondary skills available, using primary attack (fallback)")
@@ -581,7 +581,7 @@ func (s *SorceressLeveling) killMonsterByName(id npc.ID, monsterType data.Monste
 		if m, found := s.Data.Monsters.FindOne(id, monsterType); found {
 			// If the monster's life is 0 or less, it's dead, so break the loop
 			if m.Stats[stat.Life] <= 0 {
-				fmt.Printf("Monster %d (ID: %d) is dead. Breaking attack loop.\n", m.Name, m.UnitID)
+				fmt.Printf("Monster %s (ID: %d) is dead. Breaking attack loop.\n", m.Name, m.UnitID)
 				break
 			}
 
@@ -632,10 +632,7 @@ func (s SorceressLeveling) PreCTABuffSkills() []skill.ID {
 }
 
 func (s SorceressLeveling) ShouldResetSkills() bool {
-	lvl, found := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	if !found {
-		return false
-	}
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if lvl.Value == 24 && s.Data.PlayerUnit.Skills[skill.FireBall].Level > 7 && s.Data.PlayerUnit.Skills[skill.FireBolt].Level > 7 {
 		s.Logger.Info("Respecing to Blizzard: Level 32+ and FireBall level > 9")
 		return true
@@ -645,10 +642,6 @@ func (s SorceressLeveling) ShouldResetSkills() bool {
 
 func (s SorceressLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	level, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	// FindStat may fail on initial load; clamp to 1 so we don't regress to level-0 bindings
-	if level.Value == 0 {
-		level.Value = 1
-	}
 
 	skillBindings := []skill.ID{}
 

@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/hectorgimenez/koolo/internal/bot"
@@ -14,34 +13,28 @@ func (s *HttpServer) armoryPage(w http.ResponseWriter, r *http.Request) {
 	characterName := r.URL.Query().Get("character")
 	if characterName == "" {
 		// Show armory selection page
-		if err := s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
+		s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
 			"Characters": s.manager.AvailableSupervisors(),
-		}); err != nil {
-			slog.Error("Failed to render armory template", "error", err)
-		}
+		})
 		return
 	}
 
 	// Load armory data for specific character
 	armory, err := bot.LoadArmoryData(characterName)
 	if err != nil {
-		if err := s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
+		s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
 			"Characters": s.manager.AvailableSupervisors(),
 			"Error":      fmt.Sprintf("No armory data found for %s. Start the character in a game first.", characterName),
 			"Character":  characterName,
-		}); err != nil {
-			slog.Error("Failed to render armory template", "error", err)
-		}
+		})
 		return
 	}
 
-	if err := s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
+	s.templates.ExecuteTemplate(w, "armory.gohtml", map[string]interface{}{
 		"Characters": s.manager.AvailableSupervisors(),
 		"Armory":     armory,
 		"Character":  characterName,
-	}); err != nil {
-		slog.Error("Failed to render armory template", "error", err)
-	}
+	})
 }
 
 // armoryAPI returns armory data as JSON

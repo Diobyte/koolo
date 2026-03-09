@@ -154,18 +154,6 @@ var (
 			stat.FasterCastRate:       -4.5,
 			stat.ManaRecovery:         -1.5,
 		},
-		data.Warlock: {
-			stat.FasterCastRate:    5.0,
-			stat.Defense:           0.1,
-			stat.FireResist:        1.0,
-			stat.ColdResist:        1.0,
-			stat.LightningResist:   1.0,
-			stat.PoisonResist:      0.5,
-			stat.MaxLife:           1.0,
-			stat.MaxMana:           1.5,
-			stat.FasterHitRecovery: 2.0,
-			stat.Energy:            1.5,
-		},
 	}
 
 	mercWeights = map[stat.ID]float64{

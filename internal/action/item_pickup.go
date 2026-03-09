@@ -64,7 +64,7 @@ func HasTPsAvailable() bool {
 	// Check for Tome of Town Portal
 	portalTome, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
 	if !found {
-		_, foundScroll := ctx.Data.Inventory.Find(item.ScrollOfTownPortal, item.LocationInventory)
+		_, foundScroll := ctx.Data.Inventory.Find(item.ScrollOfTownPortal)
 		if foundScroll {
 			return true
 		}
@@ -451,16 +451,13 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 		}
 	}
 
-	// Remove blacklisted and already-picked-up items from the list
+	// Remove blacklisted items from the list, we don't want to pick them up
 	filteredItems := make([]data.Item, 0, len(itemsToPickup))
 	for _, itm := range itemsToPickup {
-		if IsBlacklisted(itm) {
-			continue
+		isBlacklisted := IsBlacklisted(itm)
+		if !isBlacklisted {
+			filteredItems = append(filteredItems, itm)
 		}
-		if _, alreadyPickedUp := ctx.CurrentGame.PickedUpItems[int(itm.UnitID)]; alreadyPickedUp {
-			continue
-		}
-		filteredItems = append(filteredItems, itm)
 	}
 
 	return filteredItems
@@ -518,7 +515,7 @@ func shouldBePickedUp(i data.Item) bool {
 		questItem := false
 		switch i.Name {
 		case "Scroll of Inifuss", "ScrollOfInifuss", "LamEsensTome", "HoradricCube", "HoradricMalus",
-			"AmuletOfTheViper", "StaffOfKings", "HoradricStaff",
+			"AmuletoftheViper", "StaffofKings", "HoradricStaff",
 			"AJadeFigurine", "KhalimsEye", "KhalimsBrain", "KhalimsHeart", "KhalimsFlail", "HellforgeHammer", "TheGidbinn":
 			questItem = true
 		}
@@ -542,7 +539,7 @@ func shouldBePickedUp(i data.Item) bool {
 				if ctx.Data.Quests[quest.Act1ToolsOfTheTrade].Completed() {
 					return false
 				}
-			case "StaffOfKings", "AmuletOfTheViper", "HoradricStaff":
+			case "StaffofKings", "AmuletoftheViper", "HoradricStaff":
 				if ctx.Data.Quests[quest.Act2TheHoradricStaff].Completed() {
 					return false
 				}
@@ -578,7 +575,7 @@ func shouldBePickedUp(i data.Item) bool {
 				); found {
 					return false
 				}
-			case "StaffOfKings", "AmuletOfTheViper":
+			case "StaffofKings", "AmuletoftheViper":
 				if _, found := ctx.Data.Inventory.Find("HoradricStaff",
 					item.LocationInventory,
 					item.LocationStash,
@@ -640,19 +637,9 @@ func shouldBePickedUp(i data.Item) bool {
 }
 
 func IsBlacklisted(itm data.Item) bool {
-	ctx := context.Get()
-	// Blacklist entries expire after 2 minutes to handle UnitID recycling.
-	// Ground items despawn after ~10 minutes, so 2 minutes is conservative.
-	const blacklistExpiry = 2 * time.Minute
-
-	for _, blacklisted := range ctx.CurrentGame.BlacklistedItems {
+	for _, blacklisted := range context.Get().CurrentGame.BlacklistedItems {
 		// Blacklist is per-game. UnitID is the safest key: it targets only the problematic ground instance.
 		if itm.UnitID == blacklisted.UnitID {
-			if ts, ok := ctx.CurrentGame.BlacklistTimestamps[blacklisted.UnitID]; ok {
-				if time.Since(ts) > blacklistExpiry {
-					return false
-				}
-			}
 			return true
 		}
 	}

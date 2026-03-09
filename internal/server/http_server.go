@@ -157,18 +157,25 @@ func (s *WebSocketServer) writePump(client *Client) {
 		client.conn.Close()
 	}()
 
-	for message := range client.send {
-		w, err := client.conn.NextWriter(websocket.TextMessage)
-		if err != nil {
-			return
-		}
-		w.Write(message)
+	for {
+		select {
+		case message, ok := <-client.send:
+			if !ok {
+				client.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 
-		if err := w.Close(); err != nil {
-			return
+			w, err := client.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
+
+			if err := w.Close(); err != nil {
+				return
+			}
 		}
 	}
-	client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 }
 
 func (s *WebSocketServer) readPump(client *Client) {
@@ -2308,11 +2315,6 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 		cfg.Character.PaladinLeveling.UsePacketLearning = values.Has("usePacketLearning")
 	}
 
-	// Warlock Leveling specific options
-	if cfg.Character.Class == "warlock_leveling" {
-		cfg.Character.WarlockLeveling.UsePacketLearning = values.Has("usePacketLearning")
-	}
-
 	// Nova Sorceress specific options (Extra)
 	if cfg.Character.Class == "nova" {
 		cfg.Character.NovaSorceress.AggressiveNovaPositioning = values.Has("aggressiveNovaPositioning")
@@ -2754,11 +2756,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.PaladinLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
 		}
 
-		// Warlock Leveling specific options
-		if cfg.Character.Class == "warlock_leveling" {
-			cfg.Character.WarlockLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
-		}
-
 		// Nova Sorceress specific options
 		if cfg.Character.Class == "nova" {
 			cfg.Character.NovaSorceress.AggressiveNovaPositioning = r.Form.Has("aggressiveNovaPositioning")
@@ -2818,12 +2815,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = r.Form.Has("interactWithChests")
 		cfg.Game.InteractWithSuperChests = r.Form.Has("interactWithSuperChests")
-
-		// Ensure the two chest options are mutually exclusive.
-		if cfg.Game.InteractWithChests {
-			cfg.Game.InteractWithSuperChests = false
-		}
-
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))
 		if r.Form.Has("gameVersion") {
 			cfg.Game.GameVersion = config.NormalizeGameVersion(r.Form.Get("gameVersion"))
@@ -2916,7 +2907,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Diablo.KillDiablo = r.Form.Has("gameDiabloKillDiablo")
 		cfg.Game.Diablo.FocusOnElitePacks = r.Form.Has("gameDiabloFocusOnElitePacks")
 		cfg.Game.Diablo.DisableItemPickupDuringBosses = r.Form.Has("gameDiabloDisableItemPickupDuringBosses")
-		cfg.Game.Diablo.AttackFromDistance = s.getIntFromForm(r, "gameDiabloAttackFromDistance", 0, 25, 0)
+		cfg.Game.Diablo.AttackFromDistance = s.getIntFromForm(r, "gameLevelingHellRequiredFireRes", 0, 25, 0)
 		cfg.Game.Leveling.EnsurePointsAllocation = r.Form.Has("gameLevelingEnsurePointsAllocation")
 		cfg.Game.Leveling.EnsureKeyBinding = r.Form.Has("gameLevelingEnsureKeyBinding")
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")

@@ -357,15 +357,15 @@ func (s *HttpServer) runewordSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
 			s.templates.ExecuteTemplate(w, "runewords.gohtml", CharacterSettings{
-				Version:                 config.Version,
-				Supervisor:              characterName,
-				Config:                  cfg,
-				Saved:                   false,
-				ErrorMessage:            err.Error(),
-				RunewordRecipeList:      availableRunewordRecipesForCharacter(cfg),
+				Version:            config.Version,
+				Supervisor:         characterName,
+				Config:             cfg,
+				Saved:              false,
+				ErrorMessage:       err.Error(),
+				RunewordRecipeList: availableRunewordRecipesForCharacter(cfg),
 				RunewordFavoriteRecipes: config.Koolo.RunewordFavoriteRecipes,
-				RunewordRuneNames:       buildRunewordRuneNames(),
-				RunewordRerollable:      buildRunewordRerollable(),
+				RunewordRuneNames:  buildRunewordRuneNames(),
+				RunewordRerollable: buildRunewordRerollable(),
 			})
 			return
 		}
@@ -453,17 +453,17 @@ func (s *HttpServer) runewordSettings(w http.ResponseWriter, r *http.Request) {
 
 				var rules []config.RunewordRerollRule
 				if err := json.Unmarshal([]byte(rawRules), &rules); err != nil {
-					s.templates.ExecuteTemplate(w, "runewords.gohtml", CharacterSettings{
-						Version:                 config.Version,
-						Supervisor:              characterName,
-						Config:                  cfg,
-						Saved:                   false,
-						ErrorMessage:            fmt.Sprintf("failed to parse reroll rules: %v", err),
-						RunewordRecipeList:      availableRunewordRecipesForCharacter(cfg),
-						RunewordFavoriteRecipes: config.Koolo.RunewordFavoriteRecipes,
-						RunewordRuneNames:       buildRunewordRuneNames(),
-						RunewordRerollable:      buildRunewordRerollable(),
-					})
+				s.templates.ExecuteTemplate(w, "runewords.gohtml", CharacterSettings{
+					Version:                 config.Version,
+					Supervisor:              characterName,
+					Config:                  cfg,
+					Saved:                   false,
+					ErrorMessage:            fmt.Sprintf("failed to parse reroll rules: %v", err),
+					RunewordRecipeList:      availableRunewordRecipesForCharacter(cfg),
+					RunewordFavoriteRecipes: config.Koolo.RunewordFavoriteRecipes,
+					RunewordRuneNames:       buildRunewordRuneNames(),
+					RunewordRerollable:      buildRunewordRerollable(),
+				})
 					return
 				}
 
@@ -555,7 +555,9 @@ func buildRunewordRuneNames() map[string]string {
 		labels := make([]string, 0, len(rw.Runes))
 		for _, r := range rw.Runes {
 			name := r
-			name = strings.TrimSuffix(name, "Rune")
+			if strings.HasSuffix(name, "Rune") {
+				name = name[:len(name)-len("Rune")]
+			}
 			labels = append(labels, name)
 		}
 

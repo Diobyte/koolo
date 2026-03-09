@@ -79,7 +79,7 @@ func checkPlayerDeath(ctx *context.Status) error {
 		return nil
 	}
 
-	if ctx.Data.IsPlayerDead() {
+	if ctx.Data.PlayerUnit.IsDead() {
 		return health.ErrDied
 	}
 	return nil
@@ -138,10 +138,7 @@ func MoveToArea(dst area.ID) error {
 	// Arcane Sanctuary
 	if dst == area.ArcaneSanctuary && ctx.Data.PlayerUnit.Area == area.PalaceCellarLevel3 {
 		ctx.Logger.Debug("Arcane Sanctuary detected, finding the Portal")
-		portal, found := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
-		if !found {
-			return errors.New("arcane sanctuary portal not found")
-		}
+		portal, _ := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
 		MoveToCoords(portal.Position)
 
 		return step.InteractObject(portal, func() bool {
@@ -151,10 +148,7 @@ func MoveToArea(dst area.ID) error {
 	// Canyon of the Magi
 	if dst == area.CanyonOfTheMagi && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
 		ctx.Logger.Debug("Canyon of the Magi detected, finding the Portal")
-		tome, found := ctx.Data.Objects.FindOne(object.YetAnotherTome)
-		if !found {
-			return errors.New("YetAnotherTome object not found in Arcane Sanctuary")
-		}
+		tome, _ := ctx.Data.Objects.FindOne(object.YetAnotherTome)
 		MoveToCoords(tome.Position)
 		InteractObject(tome, func() bool {
 			if _, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
@@ -164,10 +158,7 @@ func MoveToArea(dst area.ID) error {
 			return false
 		})
 		ctx.Logger.Debug("Using Canyon of the Magi Portal")
-		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
-		if !found {
-			return errors.New("permanent town portal not found after opening tome")
-		}
+		portal, _ := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 		MoveToCoords(portal.Position)
 		return step.InteractObject(portal, func() bool {
 			return ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi
@@ -740,7 +731,7 @@ func findClosestShrine(maxScanDistance float64) *data.Object {
 	ctx := context.Get()
 
 	// Check if the bot is dead or chickened before proceeding.
-	if ctx.Data.IsPlayerDead() || ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
+	if ctx.Data.PlayerUnit.IsDead() || ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
 		ctx.Logger.Debug("Bot is dead or chickened, skipping shrine search.")
 		return nil
 	}

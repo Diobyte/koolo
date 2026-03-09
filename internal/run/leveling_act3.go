@@ -46,7 +46,7 @@ func (a Leveling) act3() error {
 
 		a.ctx.Logger.Info("Low on gold. Initiating Lower Kurast Chests gold farm.")
 		if err := NewLowerKurastChest().Run(nil); err != nil {
-			a.ctx.Logger.Error("Error during Lower Kurast Chests gold farm", "error", err)
+			a.ctx.Logger.Error("Error during Lower Kurast Chests gold farm: %v", err)
 			return err
 		}
 		a.ctx.Logger.Info("Lower Kurast Chests gold farming completed. Quitting current run to re-evaluate in next game.")
@@ -114,7 +114,7 @@ func (a Leveling) act3() error {
 		a.ctx.CharacterCfg.Game.Mephisto.ExitToA4 = true
 		err := NewMephisto(nil).Run(nil)
 		if err != nil {
-			a.ctx.Logger.Error("Mephisto run failed, ending Act 3 script", "error", err)
+			a.ctx.Logger.Error("Mephisto run failed, ending Act 3 script.", err)
 			return err
 		}
 		// If Mephisto run completes (successfully or not, but without an explicit error from NewMephisto),
@@ -130,7 +130,7 @@ func (a Leveling) act3() error {
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-				a.ctx.Logger.Error("Failed to interact with Hell Gate, ending Act 3 script", "error", err)
+				a.ctx.Logger.Error("Failed to interact with Hell Gate, ending Act 3 script.", err)
 				return err //
 			}
 			a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")

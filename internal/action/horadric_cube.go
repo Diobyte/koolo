@@ -22,10 +22,7 @@ func CubeAddItems(items ...data.Item) error {
 
 	// Ensure stash is open
 	if !ctx.Data.OpenMenus.Stash {
-		bank, found := ctx.Data.Objects.FindOne(object.Bank)
-		if !found {
-			return errors.New("bank object not found, cannot open stash")
-		}
+		bank, _ := ctx.Data.Objects.FindOne(object.Bank)
 		err := InteractObject(bank, func() bool {
 			return ctx.Data.OpenMenus.Stash
 		})
@@ -263,10 +260,7 @@ func ensureCubeIsOpen() error {
 
 		// Ensure stash is open
 		if !ctx.Data.OpenMenus.Stash {
-			bank, bankFound := ctx.Data.Objects.FindOne(object.Bank)
-			if !bankFound {
-				return errors.New("bank object not found, cannot open stash for cube")
-			}
+			bank, _ := ctx.Data.Objects.FindOne(object.Bank)
 			err := InteractObject(bank, func() bool {
 				return ctx.Data.OpenMenus.Stash
 			})

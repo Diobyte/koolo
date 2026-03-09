@@ -19,8 +19,6 @@ import (
 
 const attackCycleDuration = 120 * time.Millisecond
 const repositionCooldown = 2 * time.Second // Constant for repositioning cooldown
-const maxRepositionAttempts = 3            // Max reposition attempts before giving up on a monster
-const baseRepositionDistance = 4           // Base distance (units) to move away; scales with attempt number
 
 var (
 	statesMutex           sync.RWMutex
@@ -438,13 +436,13 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 
 	// Handle repositioning if needed (due to no damage, or no LoS for burst attacks)
 	if needsRepositioning {
-		// If we've exhausted all reposition attempts for this "stuck" phase
-		if state.repositionAttempts >= maxRepositionAttempts {
+		// If we've already tried repositioning once for this "stuck" phase
+		if state.repositionAttempts >= 1 { // This is the problematic part. User wants to allow 1 attempt.
 			ctx.Logger.Info(fmt.Sprintf(
-				"Exhausted %d reposition attempts for monster [%d] in area [%s]. Considering monster unkillable.",
-				maxRepositionAttempts, monster.Name, ctx.Data.PlayerUnit.Area.Area().Name,
+				"Already attempted repositioning for monster [%d] in area [%s]. Skipping further attempts and considering monster unkillable.", // Updated log message
+				monster.Name, ctx.Data.PlayerUnit.Area.Area().Name,
 			))
-			return ErrMonsterUnreachable
+			return ErrMonsterUnreachable // <-- CHANGE: Return specific error
 		}
 
 		// Check if enough time has passed since the last reposition attempt (cooldown)
@@ -453,20 +451,20 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 		}
 
 		ctx.Logger.Info(fmt.Sprintf(
-			"No damage taken by target monster [%d] in area [%s] for more than 3 seconds. Trying to re-position (attempt %d/%d)",
-			monster.Name, ctx.Data.PlayerUnit.Area.Area().Name, state.repositionAttempts+1, maxRepositionAttempts,
+			"No damage taken by target monster [%d] in area [%s] for more than 3 seconds. Trying to re-position (attempt %d/1)",
+			monster.Name, ctx.Data.PlayerUnit.Area.Area().Name, state.repositionAttempts+1,
 		))
 
-		// Scale distance with attempt number to try meaningfully different positions
-		repositDist := baseRepositionDistance + state.repositionAttempts*2
-		dest := ctx.PathFinder.BeyondPosition(currentPos, monster.Position, repositDist)
+		dest := ctx.PathFinder.BeyondPosition(currentPos, monster.Position, 4)
 		err := MoveTo(dest, WithIgnoreMonsters())
 		state.repositionAttempts++ // Increment attempt count after trying to move
 		if err != nil {
 			ctx.Logger.Error(fmt.Sprintf("MoveTo failed during reposition attempt for monster [%d]: %v", monster.Name, err))
-			return nil // Continue attacking; next loop may try another reposition or exhaust attempts
+			// Do NOT update lastRepositionTime here if MoveTo completely failed, so it can try again sooner if the path clears.
+			// However, since we're only allowing ONE attempt, the increment of repositionAttempts handles the "give up" logic.
+			return nil // Continue attacking, but the next loop iteration will hit repositionAttempts >= 1 and return ErrMonsterUnreachable
 		}
-		state.lastRepositionTime = time.Now() // Update the last reposition time only if MoveTo succeeded
+		state.lastRepositionTime = time.Now() // Update the last reposition time only if MoveTo was initiated without error
 		return nil                            // Successfully initiated the move, continue attacking next loop iteration
 	}
 

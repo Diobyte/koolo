@@ -34,8 +34,6 @@
         body.theme-colorful .panel-header { background: linear-gradient(180deg, rgba(40, 40, 60, 0.9) 0%, rgba(30, 30, 50, 0.9) 100%); }
         body.theme-colorful .inventory-slot { background: rgba(20, 20, 40, 0.8); border-color: #333; }
         body.theme-colorful .inventory-grid { background: rgba(0,0,0,0.5); border-color: #4a4a4a; }
-        body.theme-colorful .dlc-stack-grid { background: rgba(0,0,0,0.5); border-color: #4a4a4a; }
-        body.theme-colorful .dlc-stack-item { background: rgba(20, 20, 40, 0.8); border-color: #333; }
         body.theme-colorful .equip-slot { background: rgba(20, 20, 40, 0.8); border-color: #444; }
         body.theme-colorful .section-title { color: #bfa969; border-color: #4a4a4a; }
         body.theme-colorful .selector { background: rgba(30, 30, 50, 0.9); border-color: #4a4a4a; color: #fff; }
@@ -56,8 +54,6 @@
         body.theme-dark .panel-header { background: #1f1f1f; }
         body.theme-dark .inventory-slot { background: #141414; border-color: #2a2a2a; }
         body.theme-dark .inventory-grid { background: #0a0a0a; border-color: #333; }
-        body.theme-dark .dlc-stack-grid { background: #0a0a0a; border-color: #333; }
-        body.theme-dark .dlc-stack-item { background: #141414; border-color: #2a2a2a; }
         body.theme-dark .equip-slot { background: #141414; border-color: #333; }
         body.theme-dark .section-title { color: #bfa969; border-color: #333; }
         body.theme-dark .selector { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
@@ -78,8 +74,6 @@
         body.theme-light .panel-header { background: #fafafa; }
         body.theme-light .inventory-slot { background: #f0f0f0; border-color: #ccc; }
         body.theme-light .inventory-grid { background: #e8e8e8; border-color: #ccc; }
-        body.theme-light .dlc-stack-grid { background: #e8e8e8; border-color: #ccc; }
-        body.theme-light .dlc-stack-item { background: #f0f0f0; border-color: #ccc; }
         body.theme-light .equip-slot { background: #f0f0f0; border-color: #ccc; }
         body.theme-light .section-title { color: #8B7500; border-color: #ddd; }
         body.theme-light .selector { background: #fff; border-color: #ccc; color: #333; }
@@ -1182,54 +1176,6 @@
             background: rgba(60, 60, 80, 0.9);
             border-color: #666;
         }
-
-        /* DLC Stack Tab Layout */
-        .dlc-stack-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            padding: 8px;
-            border: 1px solid;
-            border-radius: 8px;
-            min-height: 100px;
-            max-height: 320px;
-            overflow-y: auto;
-        }
-
-        .dlc-stack-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 8px;
-            border: 1px solid;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: default;
-            transition: background 0.15s;
-            position: relative;
-        }
-
-        .dlc-stack-item:hover {
-            filter: brightness(1.2);
-        }
-
-        .dlc-stack-qty {
-            font-weight: bold;
-            font-size: 11px;
-            min-width: 20px;
-            text-align: center;
-            padding: 1px 4px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.1);
-        }
-
-        .dlc-stack-empty {
-            color: #666;
-            font-style: italic;
-            padding: 20px;
-            text-align: center;
-            width: 100%;
-        }
     </style>
     <script>
         // Apply theme immediately to prevent flash of unstyled content
@@ -1543,10 +1489,9 @@
                 
                 <div class="stash-tabs">
                     <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
-                    <button class="stash-tab" onclick="showStashTab('shared')">Shared</button>
-                    <button class="stash-tab" onclick="showStashTab('gems')"><i class="bi bi-gem"></i> Gems</button>
-                    <button class="stash-tab" onclick="showStashTab('runes')"><i class="bi bi-diamond"></i> Runes</button>
-                    <button class="stash-tab" onclick="showStashTab('materials')"><i class="bi bi-boxes"></i> Materials</button>
+                    <button class="stash-tab" onclick="showStashTab('shared1')">Shared 1</button>
+                    <button class="stash-tab" onclick="showStashTab('shared2')">Shared 2</button>
+                    <button class="stash-tab" onclick="showStashTab('shared3')">Shared 3</button>
                 </div>
                 
                 <!-- Personal Stash -->
@@ -1574,8 +1519,8 @@
                     </div>
                 </div>
 
-                <!-- Shared Stash -->
-                <div id="stash-shared" class="stash-content">
+                <!-- Shared Stash 1 -->
+                <div id="stash-shared1" class="stash-content">
                     <div class="inventory-container">
                         <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
                             {{ range $row := iterate 10 }}
@@ -1599,60 +1544,53 @@
                     </div>
                 </div>
 
-                <!-- Gems Tab -->
-                <div id="stash-gems" class="stash-content">
-                    <div class="dlc-stack-grid">
-                        {{ range .Armory.GemsTab }}
-                        <div class="dlc-stack-item"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)">
-                            <img src="/items/{{ .ImageName }}" alt="{{ .Name }}" style="width: 28px; height: 28px; object-fit: contain;">
-                            <span>{{ .Name }}</span>
-                            <span class="dlc-stack-qty">x{{ .StackedQuantity }}</span>
+                <!-- Shared Stash 2 -->
+                <div id="stash-shared2" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
                         </div>
-                        {{ else }}
-                        <div class="dlc-stack-empty">No gems stored</div>
-                        {{ end }}
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash2 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
                     </div>
                 </div>
 
-                <!-- Materials Tab -->
-                <div id="stash-materials" class="stash-content">
-                    <div class="dlc-stack-grid">
-                        {{ range .Armory.MaterialsTab }}
-                        <div class="dlc-stack-item"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)">
-                            <img src="/items/{{ .ImageName }}" alt="{{ .Name }}" style="width: 28px; height: 28px; object-fit: contain;">
-                            <span>{{ .Name }}</span>
-                            <span class="dlc-stack-qty">x{{ .StackedQuantity }}</span>
+                <!-- Shared Stash 3 -->
+                <div id="stash-shared3" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
                         </div>
-                        {{ else }}
-                        <div class="dlc-stack-empty">No materials stored</div>
-                        {{ end }}
-                    </div>
-                </div>
-
-                <!-- Runes Tab -->
-                <div id="stash-runes" class="stash-content">
-                    <div class="dlc-stack-grid">
-                        {{ range .Armory.RunesTab }}
-                        <div class="dlc-stack-item"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)">
-                            <img src="/items/{{ .ImageName }}" alt="{{ .Name }}" style="width: 28px; height: 28px; object-fit: contain;">
-                            <span>{{ .Name }}</span>
-                            <span class="dlc-stack-qty">x{{ .StackedQuantity }}</span>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash3 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
                         </div>
-                        {{ else }}
-                        <div class="dlc-stack-empty">No runes stored</div>
-                        {{ end }}
                     </div>
                 </div>
             </div>
@@ -1818,7 +1756,7 @@
 
     <!-- Keyboard Shortcuts Help -->
     <div class="shortcuts-help" id="shortcutsHelp">
-        <kbd>/</kbd> Search &nbsp; <kbd>S</kbd> Selection &nbsp; <kbd>1-5</kbd> Stash Tabs &nbsp; <kbd>Esc</kbd> Close
+        <kbd>/</kbd> Search &nbsp; <kbd>S</kbd> Selection &nbsp; <kbd>1-4</kbd> Stash Tabs &nbsp; <kbd>Esc</kbd> Close
     </div>
 
     <!-- Drop Selected Items FAB -->
@@ -1885,9 +1823,7 @@
             
             // Show selected tab
             document.getElementById('stash-' + tab).classList.add('active');
-            // Activate the clicked button (use closest to handle clicks on child icons)
-            const clickedBtn = event.target.closest('.stash-tab');
-            if (clickedBtn) clickedBtn.classList.add('active');
+            event.target.classList.add('active');
         }
 
         // ============ SELECTION MODE ============
@@ -1895,7 +1831,7 @@
         function toggleSelectionMode() {
             selectionMode = !selectionMode;
             const btn = document.getElementById('selectionModeBtn');
-            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared .inventory-item');
+            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared1 .inventory-item, #stash-shared2 .inventory-item, #stash-shared3 .inventory-item');
             
             if (selectionMode) {
                 btn.classList.add('active');
@@ -1939,10 +1875,9 @@
 
         function getItemStashTab(element) {
             if (element.closest('#stash-personal')) return 'personal';
-            if (element.closest('#stash-shared')) return 'shared';
-            if (element.closest('#stash-gems')) return 'gems';
-            if (element.closest('#stash-materials')) return 'materials';
-            if (element.closest('#stash-runes')) return 'runes';
+            if (element.closest('#stash-shared1')) return 'shared1';
+            if (element.closest('#stash-shared2')) return 'shared2';
+            if (element.closest('#stash-shared3')) return 'shared3';
             return 'unknown';
         }
 
@@ -2320,9 +2255,9 @@
                     event.preventDefault();
                     toggleSelectionMode();
                 }
-                // 1-5 for stash tabs
-                if (event.key >= '1' && event.key <= '5') {
-                    const tabs = ['personal', 'shared', 'gems', 'runes', 'materials'];
+                // 1-4 for stash tabs
+                if (event.key >= '1' && event.key <= '4') {
+                    const tabs = ['personal', 'shared1', 'shared2', 'shared3'];
                     const tabIndex = parseInt(event.key) - 1;
                     const tabBtn = document.querySelector(`.stash-tab[onclick*="${tabs[tabIndex]}"]`);
                     if (tabBtn) tabBtn.click();
@@ -2405,10 +2340,9 @@
                     { items: armory.equipped || [], location: 'Equipped' },
                     { items: armory.inventory || [], location: 'Inventory' },
                     { items: armory.stash || [], location: 'Personal Stash' },
-                    { items: armory.sharedStash1 || [], location: 'Shared Stash' },
-                    { items: armory.gemsTab || [], location: 'Gems Tab' },
-                    { items: armory.materialsTab || [], location: 'Materials Tab' },
-                    { items: armory.runesTab || [], location: 'Runes Tab' },
+                    { items: armory.sharedStash1 || [], location: 'Shared Stash 1' },
+                    { items: armory.sharedStash2 || [], location: 'Shared Stash 2' },
+                    { items: armory.sharedStash3 || [], location: 'Shared Stash 3' },
                     { items: armory.cube || [], location: 'Cube' },
                     { items: armory.belt || [], location: 'Belt' },
                 ];
@@ -2518,9 +2452,8 @@
                 const allItems = [
                     ...(armory.stash || []),
                     ...(armory.sharedStash1 || []),
-                    ...(armory.gemsTab || []),
-                    ...(armory.materialsTab || []),
-                    ...(armory.runesTab || [])
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || [])
                 ];
                 
                 const notableItems = allItems.filter(i => 
@@ -2642,20 +2575,22 @@
 
         async function loadRunewordPlanner() {
             const data = await fetchAllArmoryData();
+            console.log('Runeword Planner - Fetched data:', data);
             runeInventory = {};
 
             // Count all runes across all characters
             for (const [charName, armory] of Object.entries(data)) {
+                console.log('Processing character:', charName, armory);
                 // Note: API returns lowercase property names (stash, sharedStash1, etc.)
                 const allItems = [
                     ...(armory.stash || []),
                     ...(armory.sharedStash1 || []),
-                    ...(armory.gemsTab || []),
-                    ...(armory.materialsTab || []),
-                    ...(armory.runesTab || []),
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
+                console.log('All items count:', allItems.length);
 
                 for (const item of allItems) {
                     // Check by itemType first (most reliable), then fall back to name pattern
@@ -2664,12 +2599,14 @@
                     if (isRune && item.name) {
                         // Handle both "RalRune" and "Ral Rune" formats
                         const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
-                        // Use stackedQuantity for DLC tab stacked runes, default to 1 for individual items
-                        runeInventory[runeName] = (runeInventory[runeName] || 0) + (item.stackedQuantity || 1);
+                        console.log('Found rune:', item.name, '->', runeName);
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
                     }
                 }
             }
 
+            console.log('Final rune inventory:', runeInventory);
+            
             // Scan for available bases (socketed items)
             scanForBases(data);
             
@@ -2746,9 +2683,8 @@
                 const allItems = [
                     ...(armory.stash || []),
                     ...(armory.sharedStash1 || []),
-                    ...(armory.gemsTab || []),
-                    ...(armory.materialsTab || []),
-                    ...(armory.runesTab || []),
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
@@ -2780,6 +2716,8 @@
                     }
                 }
             }
+            
+            console.log('Available bases found:', availableBases);
         }
 
         function getMatchingBases(runewordBases, socketCount) {

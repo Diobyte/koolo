@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -16,35 +15,34 @@ import (
 
 // ArmoryItem represents an item with all its properties for display
 type ArmoryItem struct {
-	ID              int              `json:"id"`
-	Name            string           `json:"name"`
-	IdentifiedName  string           `json:"identifiedName"`
-	Quality         string           `json:"quality"`
-	QualityInt      int              `json:"qualityInt"`
-	Ethereal        bool             `json:"ethereal"`
-	Identified      bool             `json:"identified"`
-	IsRuneword      bool             `json:"isRuneword"`
-	RunewordName    string           `json:"runewordName"`
-	LevelReq        int              `json:"levelReq"`
-	Position        data.Position    `json:"position"`
-	Width           int              `json:"width"`
-	Height          int              `json:"height"`
-	Location        string           `json:"location"`
-	BodyLocation    string           `json:"bodyLocation"`
-	StashPage       int              `json:"stashPage"`
-	Stats           []ArmoryItemStat `json:"stats"`
-	BaseStats       []ArmoryItemStat `json:"baseStats"`
-	Sockets         []ArmoryItem     `json:"sockets"`
-	HasSockets      bool             `json:"hasSockets"`
-	SocketCount     int              `json:"socketCount"`
-	ImageName       string           `json:"imageName"`
-	ItemType        string           `json:"itemType"`
-	Defense         int              `json:"defense"`
-	MinDamage       int              `json:"minDamage"`
-	MaxDamage       int              `json:"maxDamage"`
-	Durability      int              `json:"durability"`
-	MaxDurability   int              `json:"maxDurability"`
-	StackedQuantity int              `json:"stackedQuantity"`
+	ID             int              `json:"id"`
+	Name           string           `json:"name"`
+	IdentifiedName string           `json:"identifiedName"`
+	Quality        string           `json:"quality"`
+	QualityInt     int              `json:"qualityInt"`
+	Ethereal       bool             `json:"ethereal"`
+	Identified     bool             `json:"identified"`
+	IsRuneword     bool             `json:"isRuneword"`
+	RunewordName   string           `json:"runewordName"`
+	LevelReq       int              `json:"levelReq"`
+	Position       data.Position    `json:"position"`
+	Width          int              `json:"width"`
+	Height         int              `json:"height"`
+	Location       string           `json:"location"`
+	BodyLocation   string           `json:"bodyLocation"`
+	StashPage      int              `json:"stashPage"`
+	Stats          []ArmoryItemStat `json:"stats"`
+	BaseStats      []ArmoryItemStat `json:"baseStats"`
+	Sockets        []ArmoryItem     `json:"sockets"`
+	HasSockets     bool             `json:"hasSockets"`
+	SocketCount    int              `json:"socketCount"`
+	ImageName      string           `json:"imageName"`
+	ItemType       string           `json:"itemType"`
+	Defense        int              `json:"defense"`
+	MinDamage      int              `json:"minDamage"`
+	MaxDamage      int              `json:"maxDamage"`
+	Durability     int              `json:"durability"`
+	MaxDurability  int              `json:"maxDurability"`
 }
 
 // ArmoryItemStat represents a single stat on an item
@@ -61,7 +59,7 @@ type ArmoryCharacter struct {
 	CharacterName string       `json:"characterName"`
 	Level         int          `json:"level"`
 	Class         string       `json:"class"`
-	Experience    uint64       `json:"experience"`
+	Experience    int          `json:"experience"`
 	Gold          int          `json:"gold"`
 	StashedGold   [6]int       `json:"stashedGold"`
 	DumpTime      time.Time    `json:"dumpTime"`
@@ -100,8 +98,6 @@ func classToString(c data.Class) string {
 		return "Druid"
 	case data.Assassin:
 		return "Assassin"
-	case data.Warlock:
-		return "Warlock"
 	default:
 		return "Unknown"
 	}
@@ -112,29 +108,28 @@ func convertArmoryItem(itm data.Item, assetsPath string) ArmoryItem {
 	desc := itm.Desc()
 
 	armoryItem := ArmoryItem{
-		ID:              itm.ID,
-		Name:            string(itm.Name),
-		IdentifiedName:  itm.IdentifiedName,
-		Quality:         itm.Quality.ToString(),
-		QualityInt:      int(itm.Quality),
-		Ethereal:        itm.Ethereal,
-		Identified:      itm.Identified,
-		IsRuneword:      itm.IsRuneword,
-		RunewordName:    string(itm.RunewordName),
-		LevelReq:        itm.LevelReq,
-		Position:        itm.Position,
-		Width:           desc.InventoryWidth,
-		Height:          desc.InventoryHeight,
-		Location:        string(itm.Location.LocationType),
-		BodyLocation:    string(itm.Location.BodyLocation),
-		StashPage:       itm.Location.Page,
-		HasSockets:      itm.HasSockets,
-		SocketCount:     len(itm.Sockets),
-		ImageName:       getArmoryItemImageName(itm, assetsPath),
-		ItemType:        desc.Type,
-		MinDamage:       desc.MinDamage,
-		MaxDamage:       desc.MaxDamage,
-		StackedQuantity: itm.StackedQuantity,
+		ID:             itm.ID,
+		Name:           string(itm.Name),
+		IdentifiedName: itm.IdentifiedName,
+		Quality:        itm.Quality.ToString(),
+		QualityInt:     int(itm.Quality),
+		Ethereal:       itm.Ethereal,
+		Identified:     itm.Identified,
+		IsRuneword:     itm.IsRuneword,
+		RunewordName:   string(itm.RunewordName),
+		LevelReq:       itm.LevelReq,
+		Position:       itm.Position,
+		Width:          desc.InventoryWidth,
+		Height:         desc.InventoryHeight,
+		Location:       string(itm.Location.LocationType),
+		BodyLocation:   string(itm.Location.BodyLocation),
+		StashPage:      itm.Location.Page,
+		HasSockets:     itm.HasSockets,
+		SocketCount:    len(itm.Sockets),
+		ImageName:      getArmoryItemImageName(itm, assetsPath),
+		ItemType:       desc.Type,
+		MinDamage:      desc.MinDamage,
+		MaxDamage:      desc.MaxDamage,
 	}
 
 	// Convert stats
@@ -229,26 +224,15 @@ func getArmoryStatName(id stat.ID) string {
 // supportedImageExtensions lists image formats in order of preference
 var supportedImageExtensions = []string{".webp", ".png", ".jpg", ".jpeg", ".gif"}
 
-// armoryImageCache caches the result of findArmoryImageFile to avoid
-// hundreds of repeated os.Stat syscalls per inventory dump.
-// Key: baseName, Value: filename with extension (or empty string for miss).
-var armoryImageCache sync.Map
-
 // findArmoryImageFile checks for an image file with supported extensions
 // Returns the filename with extension if found, empty string otherwise
 func findArmoryImageFile(baseName, assetsPath string) string {
-	if cached, ok := armoryImageCache.Load(baseName); ok {
-		return cached.(string)
-	}
-
 	for _, ext := range supportedImageExtensions {
 		filename := baseName + ext
 		if _, err := os.Stat(filepath.Join(assetsPath, filename)); err == nil {
-			armoryImageCache.Store(baseName, filename)
 			return filename
 		}
 	}
-	armoryImageCache.Store(baseName, "")
 	return ""
 }
 
@@ -314,7 +298,7 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 		CharacterName: characterName,
 		Level:         levelStat.Value,
 		Class:         classToString(gameData.PlayerUnit.Class),
-		Experience:    uint64(uint32(expStat.Value)),
+		Experience:    expStat.Value,
 		Gold:          gameData.Inventory.Gold,
 		StashedGold:   gameData.Inventory.StashedGold,
 		DumpTime:      time.Now(),
@@ -350,17 +334,11 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 				armory.SharedStash1 = append(armory.SharedStash1, armoryItem)
 			}
 		case item.LocationGemsTab:
-			if itm.StackedQuantity > 0 {
-				armory.GemsTab = append(armory.GemsTab, armoryItem)
-			}
+			armory.GemsTab = append(armory.GemsTab, armoryItem)
 		case item.LocationMaterialsTab:
-			if itm.StackedQuantity > 0 {
-				armory.MaterialsTab = append(armory.MaterialsTab, armoryItem)
-			}
+			armory.MaterialsTab = append(armory.MaterialsTab, armoryItem)
 		case item.LocationRunesTab:
-			if itm.StackedQuantity > 0 {
-				armory.RunesTab = append(armory.RunesTab, armoryItem)
-			}
+			armory.RunesTab = append(armory.RunesTab, armoryItem)
 		case item.LocationCube:
 			armory.Cube = append(armory.Cube, armoryItem)
 		case item.LocationMercenary:
@@ -397,14 +375,8 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 		return fmt.Errorf("failed to marshal armory data: %w", err)
 	}
 
-	// Write to a temp file first, then rename for atomicity.
-	// This prevents corrupted armory files if the process crashes mid-write.
-	tmpPath := filePath + ".tmp"
-	if err := os.WriteFile(tmpPath, jsonData, 0644); err != nil {
-		return fmt.Errorf("failed to write armory temp file: %w", err)
-	}
-	if err := os.Rename(tmpPath, filePath); err != nil {
-		return fmt.Errorf("failed to rename armory temp file: %w", err)
+	if err := os.WriteFile(filePath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write armory file: %w", err)
 	}
 
 	return nil

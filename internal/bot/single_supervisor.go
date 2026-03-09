@@ -30,9 +30,8 @@ const menuActionTimeout = 30 * time.Second
 
 // Define constants for the in-game activity monitor
 const (
-	activityCheckInterval     = 15 * time.Second
-	maxStuckDuration          = 3 * time.Minute
-	maxConsecutiveMapFailures = 3
+	activityCheckInterval = 15 * time.Second
+	maxStuckDuration      = 3 * time.Minute
 )
 
 type SinglePlayerSupervisor struct {
@@ -201,7 +200,6 @@ func (s *SinglePlayerSupervisor) Start() error {
 	firstRun := true
 	var timeSpentNotInGameStart = time.Now()
 	const maxTimeNotInGame = 3 * time.Minute
-	consecutiveMapFailures := 0
 
 	for {
 		// Check if the main context has been cancelled
@@ -211,10 +209,8 @@ func (s *SinglePlayerSupervisor) Start() error {
 		default:
 		}
 
-		// Check for pending Drop via Drop manager.
-		// On firstRun the client has not yet passed character selection, so we
-		// must not launch game logic here — defer until the client is ready.
-		if !firstRun && s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() != nil {
+		// Check for pending Drop via Drop manager
+		if s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() != nil {
 			// Skip if Drop is already in progress
 			if s.bot.ctx.Drop.Active() != nil {
 				s.bot.ctx.Logger.Debug("Drop already in progress, skipping check")
@@ -224,6 +220,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			// Immediately run the pending Drop before entering the normal menu flow
 			s.bot.ctx.Logger.Info("Pending Drop detected, launching Drop before menu flow")
 			s.bot.ctx.SwitchPriority(ct.PriorityNormal)
+			action.SwitchToLegacyMode()
 			action.SwitchToLegacyMode()
 			DropRun := run.NewDrop()
 			if err := DropRun.Run(nil); err != nil {
@@ -309,10 +306,6 @@ func (s *SinglePlayerSupervisor) Start() error {
 		s.bot.ctx.LastBuffAt = time.Time{}
 		s.logGameStart(runs)
 		s.bot.ctx.RefreshGameData()
-
-		// Wait for the loading screen to clear before sending any key presses,
-		// otherwise the game client ignores input during loading.
-		s.bot.ctx.WaitForGameToLoad()
 
 		// Dump armory data on game start
 		if err := s.dumpArmory(); err != nil {
@@ -520,20 +513,6 @@ func (s *SinglePlayerSupervisor) Start() error {
 		firstRun = false
 
 		if err != nil {
-			// Track consecutive map data failures to avoid infinite create-leave loops
-			if strings.Contains(err.Error(), "error fetching map data") {
-				consecutiveMapFailures++
-				if consecutiveMapFailures >= maxConsecutiveMapFailures {
-					s.bot.ctx.Logger.Error(fmt.Sprintf(
-						"Map data fetch failed %d consecutive times. Stopping bot. Please verify D2LoDPath configuration and that koolo-map.exe exists in the tools directory.",
-						consecutiveMapFailures))
-					s.Stop()
-					return fmt.Errorf("map data fetch failed %d consecutive times: %w", consecutiveMapFailures, err)
-				}
-			} else {
-				consecutiveMapFailures = 0
-			}
-
 			if errors.Is(err, drop.ErrInterrupt) {
 				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
 				s.bot.ctx.Manager.ExitGame()
@@ -547,29 +526,13 @@ func (s *SinglePlayerSupervisor) Start() error {
 				s.bot.ctx.Logger.Info(fmt.Sprintf("Bot run finished with error: %s. Initiating game exit and cooldown.", err.Error()))
 			}
 
-			// Capture screenshot while the game window is still alive, before ExitGame tears it down.
-			errorScreenshot := s.bot.ctx.GameReader.Screenshot()
-
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
 				s.bot.ctx.Logger.Error(fmt.Sprintf("Error trying to exit game: %s", exitErr.Error()))
 				return ErrUnrecoverableClientState
 			}
 
-			exitWait := 5 * time.Second
-			if strings.EqualFold(s.bot.ctx.CharacterCfg.AuthMethod, "Steam") {
-				exitWait = 8 * time.Second
-			}
-			s.bot.ctx.Logger.Info(fmt.Sprintf("Waiting %v for game client to close completely...", exitWait))
-			utils.Sleep(int(exitWait / time.Millisecond))
-
-			// If D2R died during the wait, skip the InGame polling loop
-			// entirely — the crash detector will handle the restart.
-			errPid := s.bot.ctx.GameReader.Process.GetPID()
-			if !game.IsProcessAlive(errPid) {
-				s.bot.ctx.Logger.Warn("D2R process died during error-recovery wait, letting crash detector handle restart",
-					slog.Uint64("pid", uint64(errPid)))
-				return ErrUnrecoverableClientState
-			}
+			s.bot.ctx.Logger.Info("Waiting 5 seconds for game client to close completely...")
+			utils.Sleep(int(5 * time.Second / time.Millisecond))
 
 			timeout := time.After(15 * time.Second)
 			for s.bot.ctx.Manager.InGame() {
@@ -605,7 +568,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			default:
 				gameFinishReason = event.FinishedError
 			}
-			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), errorScreenshot), gameFinishReason))
+			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
 
 			s.bot.ctx.Logger.Warn(
 				fmt.Sprintf("Game finished with errors, reason: %s. Game total time: %0.2fs", err.Error(), time.Since(gameStart).Seconds()),
@@ -615,7 +578,6 @@ func (s *SinglePlayerSupervisor) Start() error {
 			continue
 		}
 
-		consecutiveMapFailures = 0
 		gameFinishReason := event.FinishedOK
 		event.Send(event.GameFinished(event.Text(s.name, "Game finished successfully"), gameFinishReason))
 		s.bot.ctx.Logger.Info(
@@ -631,24 +593,8 @@ func (s *SinglePlayerSupervisor) Start() error {
 			event.Send(event.GameFinished(event.WithScreenshot(s.name, errMsg, s.bot.ctx.GameReader.Screenshot()), event.FinishedError))
 			return errors.New(errMsg)
 		}
-		successWait := 3 * time.Second
-		if strings.EqualFold(s.bot.ctx.CharacterCfg.AuthMethod, "Steam") {
-			successWait = 6 * time.Second
-		}
-		s.bot.ctx.Logger.Info(fmt.Sprintf("Game finished successfully. Waiting %v for client to close.", successWait))
-		utils.Sleep(int(successWait / time.Millisecond))
-
-		// Verify D2R is still running before looping back. If the process
-		// died during ExitGame or the post-game wait (e.g. Steam crash,
-		// D2R bug), bail out immediately so the crash detector can
-		// relaunch instead of spinning in menu-flow for minutes.
-		pid := s.bot.ctx.GameReader.Process.GetPID()
-		if !game.IsProcessAlive(pid) {
-			s.bot.ctx.Logger.Warn("D2R process died after successful game exit, letting crash detector handle restart",
-				slog.Uint64("pid", uint64(pid)))
-			return ErrUnrecoverableClientState
-		}
-
+		s.bot.ctx.Logger.Info("Game finished successfully. Waiting 3 seconds for client to close.")
+		utils.Sleep(int(3 * time.Second / time.Millisecond))
 		s.bot.ctx.GameReader.ClearMapData() // Free map data memory while not in game
 		s.bot.ctx.Data.Areas = nil          // Clear context's map reference to allow GC
 		s.bot.ctx.Data.AreaData = game.AreaData{}

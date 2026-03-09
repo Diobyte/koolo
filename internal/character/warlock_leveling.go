@@ -37,21 +37,9 @@ func (s WarlockLeveling) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s WarlockLeveling) CheckKeyBindings() []skill.ID {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-
 	requireKeybindings := []skill.ID{}
-	if lvl.Value >= 49 {
-		// Post-respec: Miasma/Abyss build
-		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.MiasmaChains, skill.Abyss)
-	} else if lvl.Value >= 18 {
-		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.FlameWave)
-	} else if lvl.Value >= 6 {
-		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt, skill.RingOfFire)
-	} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 {
-		requireKeybindings = append(requireKeybindings, skill.MiasmaBolt)
-	}
-
 	missingKeybindings := []skill.ID{}
+
 	for _, cskill := range requireKeybindings {
 		if _, found := s.Data.KeyBindings.KeyBindingForSkill(cskill); !found {
 			missingKeybindings = append(missingKeybindings, cskill)
@@ -75,7 +63,7 @@ func (s WarlockLeveling) KillMonsterSequence(
 	for {
 		context.Get().PauseIfNotPriority()
 
-		if s.Data.IsPlayerDead() {
+		if s.Context.Data.PlayerUnit.IsDead() {
 			return nil
 		}
 
@@ -178,24 +166,12 @@ func (s WarlockLeveling) BuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
-	var skills []skill.ID
-	if s.Data.PlayerUnit.Skills[skill.SummonGoatman].Level > 0 {
-		skills = append(skills, skill.SummonGoatman)
-	}
-	if s.Data.PlayerUnit.Skills[skill.SummonTainted].Level > 0 {
-		skills = append(skills, skill.SummonTainted)
-	}
-	if s.Data.PlayerUnit.Skills[skill.SummonDefiler].Level > 0 {
-		skills = append(skills, skill.SummonDefiler)
-	}
-	return skills
+	// TODO: Summons temporarily disabled
+	return nil
 }
 
 func (s WarlockLeveling) ShouldResetSkills() bool {
-	lvl, found := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	if !found {
-		return false
-	}
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if lvl.Value >= 49 && s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 10 {
 		s.Logger.Info("Resetting skills: Level 49+ and Ring of Fire level > 10")
 		return true
@@ -205,10 +181,6 @@ func (s WarlockLeveling) ShouldResetSkills() bool {
 
 func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	// FindStat may fail on initial load; clamp to 1 so we don't regress to level-0 bindings
-	if lvl.Value == 0 {
-		lvl.Value = 1
-	}
 
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
@@ -230,15 +202,13 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	}
 
 	if lvl.Value >= 49 {
-		// Post-respec: Magic build with demon summoning
+		// Post-respec: Magic build with summons
+		// TODO: Summon skills temporarily removed from bindings
 		mainSkill = skill.AttackSkill
 		skillBindings = []skill.ID{
 			skill.Abyss,
 			skill.MiasmaChains,
 			skill.MiasmaBolt,
-			skill.SummonGoatman,
-			skill.SummonTainted,
-			skill.SummonDefiler,
 		}
 	}
 
@@ -348,7 +318,7 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 			return fmt.Errorf("%v timeout", bossNPC)
 		}
 
-		if s.Data.IsPlayerDead() {
+		if s.Context.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead, stopping boss kill sequence.")
 			return nil
 		}

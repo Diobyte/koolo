@@ -449,129 +449,31 @@ func getD2RPIDs() (map[uint32]struct{}, error) {
 	return pids, nil
 }
 
-// IsProcessAlive checks whether the given PID is still running.
-// It opens the process with limited rights and inspects the exit code.
-// Returns false if the process has exited or cannot be opened.
-func IsProcessAlive(pid uint32) bool {
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-	if err != nil {
-		return false
-	}
-	defer windows.CloseHandle(h)
-
-	var exitCode uint32
-	if err := windows.GetExitCodeProcess(h, &exitCode); err != nil {
-		return false
-	}
-	return exitCode == 259 // STILL_ACTIVE
-}
-
-// WaitForPIDExit polls until the given PID no longer appears in the system
-// process table, or until the timeout elapses. Returns true if the process
-// exited, false on timeout. This is more reliable than os.Process.Wait for
-// non-child processes on Windows.
-func WaitForPIDExit(pid uint32, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-		if err != nil {
-			return true // process no longer exists
-		}
-		windows.CloseHandle(handle)
-		time.Sleep(250 * time.Millisecond)
-	}
-	return false
-}
-
-// terminateStaleSteamD2R kills every D2R.exe currently running and waits for
-// them to disappear from the process table. This prevents Steam from refusing
-// a relaunch with "Game already running".
-func terminateStaleSteamD2R() {
-	pids, err := getD2RPIDs()
-	if err != nil || len(pids) == 0 {
-		return
-	}
-	slog.Info("Terminating stale D2R processes before Steam launch", slog.Int("count", len(pids)))
-	for pid := range pids {
-		h, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, pid)
-		if err != nil {
-			continue
-		}
-		windows.TerminateProcess(h, 1)
-		windows.CloseHandle(h)
-	}
-	// Wait until every PID is gone.
-	for pid := range pids {
-		WaitForPIDExit(pid, 10*time.Second)
-	}
-	// Extra delay for Steam to internally deregister the game.
-	time.Sleep(3 * time.Second)
-}
-
-// closeSteamErrorDialogs enumerates top-level windows looking for a Steam
-// error dialog whose title contains the D2R game name but does NOT belong to
-// a D2R.exe process (i.e. it belongs to Steam). If found it sends WM_CLOSE
-// to dismiss the dialog. Returns true if at least one dialog was closed.
-func closeSteamErrorDialogs() bool {
-	d2rPIDs, _ := getD2RPIDs()
-	var closed bool
-
-	cb := syscall.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
-		var text [512]uint16
-		winproc.GetWindowText.Call(
-			uintptr(hwnd),
-			uintptr(unsafe.Pointer(&text[0])),
-			uintptr(len(text)),
-		)
-		title := strings.ToLower(syscall.UTF16ToString(text[:]))
-
-		// Steam's "Game already running" dialog uses the game name as its title.
-		if !strings.Contains(title, "diablo") {
-			return 1 // not relevant, continue
-		}
-
-		// Make sure this window does NOT belong to D2R.exe itself.
-		var pid uint32
-		windows.GetWindowThreadProcessId(hwnd, &pid)
-		if _, isD2R := d2rPIDs[pid]; isD2R {
-			return 1 // this is the actual game window, skip
-		}
-
-		slog.Info("Closing Steam error dialog", slog.String("title", title), slog.Uint64("pid", uint64(pid)))
-		const WM_CLOSE = 0x0010
-		win.SendMessage(win.HWND(hwnd), WM_CLOSE, 0, 0)
-		closed = true
-		return 1 // continue to close any additional dialogs
-	})
-
-	windows.EnumWindows(cb, unsafe.Pointer(nil))
-	return closed
-}
-
 // startGameSteam launches D2R through Steam and discovers the new process.
 func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND, error) {
 	const (
 		steamAppID    = "2536520"
 		pollInterval  = 500 * time.Millisecond
 		launchTimeout = 120 * time.Second
-		maxRetries    = 5
+		maxGPURetries = 5
 	)
 
-	// Parse extra CLI arguments provided by the user.
+	// Parse extra CLI arguments so we can inject -mod if needed.
 	extraArgs := strings.Fields(arguments)
 
-	// Handle custom settings / mod setup.
-	// Unlike the Battle.net path we do NOT inject -mod into the Steam URI because
-	// Steam always shows a confirmation popup for custom arguments passed via
-	// steam://run/. Instead we only install the mod files and copy Settings.json;
-	// the user must add "-mod <modname>" to Steam's own launch options once.
+	// Handle custom settings / mod setup (same as the Battle.net path).
 	if useCustomSettings {
 		modName := config.DefaultModName
+		found := false
 		for i, arg := range extraArgs {
 			if arg == "-mod" && i+1 < len(extraArgs) {
 				modName = extraArgs[i+1]
+				found = true
 				break
 			}
+		}
+		if !found {
+			extraArgs = append(extraArgs, "-mod", modName)
 		}
 		if modName == config.DefaultModName {
 			if err := config.InstallMod(); err != nil {
@@ -581,15 +483,9 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		if err := config.ReplaceGameSettings(modName); err != nil {
 			return 0, 0, err
 		}
-		slog.Info("Custom game settings enabled for Steam: make sure '-mod " + modName + "' is set in Steam's launch options for D2R (Right-click D2R → Properties → General → Launch Options)")
 	}
 
-	// Pre-launch: kill any lingering D2R.exe so Steam won't block with
-	// "Game already running". Also dismiss any leftover error dialogs.
-	terminateStaleSteamD2R()
-	closeSteamErrorDialogs()
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt < maxGPURetries; attempt++ {
 		// Snapshot existing D2R PIDs so we can detect the new one.
 		existingPIDs, err := getD2RPIDs()
 		if err != nil {
@@ -611,14 +507,9 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		}
 		// We don't wait on cmd — the "start" command returns immediately.
 
-		// Poll for a new D2R.exe process. If after a grace period no new
-		// process appears, look for (and dismiss) the Steam "Game already
-		// running" error dialog, clean up stale processes, and retry.
-		const staleGrace = 20 * time.Second
+		// Poll for a new D2R.exe process.
 		var newPID uint32
-		launchStart := time.Now()
-		deadline := launchStart.Add(launchTimeout)
-		staleChecked := false
+		deadline := time.Now().Add(launchTimeout)
 		for time.Now().Before(deadline) {
 			time.Sleep(pollInterval)
 			currentPIDs, err := getD2RPIDs()
@@ -634,23 +525,6 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 			if newPID != 0 {
 				break
 			}
-
-			// After the grace period, check whether Steam blocked the launch.
-			if !staleChecked && time.Since(launchStart) > staleGrace {
-				staleChecked = true
-				if closeSteamErrorDialogs() {
-					slog.Warn("Dismissed Steam 'Game already running' dialog, cleaning up and retrying",
-						slog.Int("attempt", attempt+1))
-					terminateStaleSteamD2R()
-					break // break poll loop, retry outer loop
-				}
-			}
-		}
-
-		// If we broke out of the poll loop due to a stale-process retry, go
-		// around the outer loop without checking newPID.
-		if newPID == 0 && staleChecked {
-			continue
 		}
 		if newPID == 0 {
 			return 0, 0, errors.New("timed out waiting for D2R to launch via Steam")
@@ -689,7 +563,7 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		// Check for GPU error (same as the normal path).
 		if isGPUErrorWindow(foundHwnd) {
 			slog.Warn("GPU initialization error detected via Steam",
-				slog.Int("attempt", attempt+1), slog.Int("max", maxRetries))
+				slog.Int("attempt", attempt+1), slog.Int("max", maxGPURetries))
 			closeWindowAndTerminateProcess(foundHwnd, newPID)
 			time.Sleep(2 * time.Second)
 			continue
@@ -703,5 +577,5 @@ func startGameSteam(arguments string, useCustomSettings bool) (uint32, win.HWND,
 		return newPID, win.HWND(foundHwnd), nil
 	}
 
-	return 0, 0, errors.New("failed to launch D2R via Steam after maximum retries")
+	return 0, 0, errors.New("GPU initialization failed after maximum retries (Steam)")
 }

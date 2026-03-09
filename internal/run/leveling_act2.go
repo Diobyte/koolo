@@ -1,7 +1,6 @@
 package run
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -398,14 +397,10 @@ func (a Leveling) findStaff() error {
 		return err
 	}
 
-	chestLogged := false
 	err = action.MoveTo(func() (data.Position, bool) {
 		chest, found := a.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)
 		if found {
-			if !chestLogged {
-				a.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
-				chestLogged = true
-			}
+			a.ctx.Logger.Info("Staff Of Kings chest found, moving to that room")
 			return chest.Position, true
 		}
 		return data.Position{}, false
@@ -512,7 +507,7 @@ func (a Leveling) prepareStaff() error {
 
 			bank, found := a.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				return errors.New("bank object not found, cannot open stash for horadric staff")
+				a.ctx.Logger.Info("bank object not found")
 			}
 
 			err := action.InteractObject(bank, func() bool {
@@ -661,7 +656,7 @@ func (a Leveling) RockyWaste() error {
 	// Use action.MoveToArea to navigate to Rocky Waste, similar to the Izual quest.
 	err := action.MoveToArea(area.RockyWaste)
 	if err != nil {
-		a.ctx.Logger.Error("Failed to move to Rocky Waste area", "error", err)
+		a.ctx.Logger.Error("Failed to move to Rocky Waste area: %v", err)
 		return err // Return the error if navigation fails
 	}
 	a.ctx.Logger.Info("Successfully reached Rocky Waste.")
@@ -669,7 +664,7 @@ func (a Leveling) RockyWaste() error {
 	// Attempt to clear the current level (Rocky Waste).
 	err = action.ClearCurrentLevel(false, data.MonsterAnyFilter())
 	if err != nil {
-		a.ctx.Logger.Error("Failed to clear Rocky Waste area", "error", err)
+		a.ctx.Logger.Error("Failed to clear Rocky Waste area: %v", err)
 		return err // Return the error if clearing fails
 	}
 	a.ctx.Logger.Info("Successfully cleared Rocky Waste area.")
@@ -684,7 +679,7 @@ func (a Leveling) FarOasis() error {
 	// Attempt to clear the current level (Far Oasis).
 	err := action.ClearCurrentLevel(false, data.MonsterEliteFilter())
 	if err != nil {
-		a.ctx.Logger.Error("Failed to clear Far Oasis area", "error", err)
+		a.ctx.Logger.Error("Failed to clear Far Oasis area: %v", err)
 		return err // Return the error if clearing fails
 	}
 

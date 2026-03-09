@@ -37,7 +37,7 @@ func OpenPortal() error {
 	lastRun := time.Time{}
 	for {
 		// IMPORTANT: Check for player death at the beginning of each loop iteration
-		if ctx.Data.IsPlayerDead() && !ctx.Data.PlayerUnit.Area.IsTown() {
+		if ctx.Data.PlayerUnit.IsDead() && !ctx.Data.PlayerUnit.Area.IsTown() {
 			return ErrPlayerDied // Player is dead, stop trying to open portal
 		}
 

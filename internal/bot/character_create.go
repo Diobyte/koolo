@@ -356,10 +356,10 @@ func ensureForegroundWindow(ctx *context.Status) {
 	if ctx == nil || ctx.GameReader == nil {
 		return
 	}
-	if !ctx.GameReader.IsWindowValid() {
+	hwnd := ctx.GameReader.HWND
+	if hwnd == 0 {
 		return
 	}
-	hwnd := ctx.GameReader.HWND
 
 	for i := 0; i < 3; i++ {
 		win.ShowWindow(hwnd, win.SW_RESTORE)
