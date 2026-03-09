@@ -336,7 +336,7 @@ func ensureUpstreamRemote(repoDir string) error {
 
 	if err != nil {
 		// upstream doesn't exist, add it
-		upstreamURL := "https://github.com/kwader2k/koolo.git"
+		upstreamURL := "https://github.com/Diobyte/koolo.git"
 		addCmd := gitCmd(repoDir, "remote", "add", "upstream", upstreamURL)
 		if output, err := addCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to add upstream remote: %w\nOutput: %s", err, string(output))
@@ -346,9 +346,9 @@ func ensureUpstreamRemote(repoDir string) error {
 
 	// Verify it's pointing to the correct URL
 	currentURL := strings.TrimSpace(string(output))
-	expectedURL := "https://github.com/kwader2k/koolo.git"
+	expectedURL := "https://github.com/Diobyte/koolo.git"
 
-	if !strings.Contains(currentURL, "kwader2k/koolo") {
+	if !strings.Contains(currentURL, "Diobyte/koolo") {
 		// Update to correct URL
 		setCmd := gitCmd(repoDir, "remote", "set-url", "upstream", expectedURL)
 		if output, err := setCmd.CombinedOutput(); err != nil {

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	upstreamOwner = "kwader2k"
+	upstreamOwner = "Diobyte"
 	upstreamRepo  = "koolo"
 )
 

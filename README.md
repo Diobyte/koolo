@@ -99,7 +99,7 @@ not aware of any ban for using it. I'm not responsible for any ban or any other 
 
 ### Running the tool
 - If you haven't done yet, install **Diablo II: LOD 1.13c** (required)
-- [Download](https://github.com/hectorgimenez/koolo/releases) the latest Koolo release (recommended for most users), or alternatively you can [build it from source](#development-environment)
+- [Download](https://github.com/Diobyte/koolo/releases) the latest Koolo release (recommended for most users), or alternatively you can [build it from source](#development-environment)
 - Extract the zip file in a directory of your choice.
 - Run `koolo.exe`.
 - Follow the setup wizard, it will guide you through the process of setting up the bot, you will need to setup some directories and character configuration.
@@ -117,7 +117,7 @@ There are some considerations to take into account:
 - Pickit rules can not be changed in runtime (yet), you will need to restart Koolo to apply changes.
 
 ## Development environment
-**Note:** This is only required if you want to build the project from source. If you want to run the bot, you can just download the [latest release](https://github.com/hectorgimenez/koolo/releases).
+**Note:** This is only required if you want to build the project from source. If you want to run the bot, you can just download the [latest release](https://github.com/Diobyte/koolo/releases).
 
 Setting the development environment is pretty straightforward, but the following dependencies are **required** to build the project.
 
@@ -134,7 +134,7 @@ go install mvdan.cc/garble@v0.14.2
 
 Next, run the following commands in project root directory:
 ```shell
-git clone https://github.com/kwader2k/koolo.git
+git clone https://github.com/Diobyte/koolo.git
 cd koolo
 better_build.bat
 ```
