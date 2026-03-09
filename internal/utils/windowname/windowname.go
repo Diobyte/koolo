@@ -45,7 +45,6 @@ var gameWindowTitles = []string{
 	"Mozilla Firefox",
 	"Windows Explorer",
 	"Adobe Reader",
-	"Steam Client",
 	"Epic Games Launcher",
 	"Spotify",
 	"Visual Studio 2022",
