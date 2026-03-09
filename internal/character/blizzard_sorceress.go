@@ -25,6 +25,7 @@ import (
 
 const (
 	sorceressMaxAttacksLoop         = 40
+	coldImmuneMaxAttacks            = 12 // Reduced budget for cold immunes — let merc handle
 	minBlizzSorceressAttackDistance = 8
 	maxBlizzSorceressAttackDistance = 16
 	dangerDistance                  = 8  // Monsters closer than this are considered dangerous
@@ -72,37 +73,16 @@ func (s BlizzardSorceress) KillMonsterSequence(
 ) error {
 	completedAttackLoops := 0
 	previousUnitID := 0
-	lastReposition := time.Now()
-
-	attackOpts := step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance)
+	lastReposition := time.Time{}
+	ctx := context.Get()
 
 	for {
-		context.Get().PauseIfNotPriority()
+		ctx.PauseIfNotPriority()
 
-		if s.Context.Data.PlayerUnit.IsDead() {
+		if s.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
 			return health.ErrDied
-		}
-
-		needsRepos, _ := s.needsRepositioning()
-		if needsRepos && time.Since(lastReposition) > time.Second*1 {
-			lastReposition = time.Now()
-
-			targetID, found := monsterSelector(*s.Data)
-			if !found {
-				return nil
-			}
-
-			targetMonster, found := s.Data.Monsters.FindByID(targetID)
-			if !found {
-				return nil
-			}
-
-			safePos, found := s.findSafePosition(targetMonster)
-			if found {
-				step.MoveTo(safePos, step.WithIgnoreMonsters())
-			}
 		}
 
 		id, found := monsterSelector(*s.Data)
@@ -128,11 +108,43 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-			step.PrimaryAttack(id, 2, true, attackOpts)
+		isColdImmune := monster.IsImmune(stat.ColdImmune)
+		maxLoops := sorceressMaxAttacksLoop
+		if isColdImmune {
+			maxLoops = coldImmuneMaxAttacks
+		}
+		if completedAttackLoops >= maxLoops {
+			return nil
 		}
 
-		step.SecondaryAttack(skill.Blizzard, id, 1, attackOpts)
+		// Evaluate current positioning relative to target and nearby threats
+		distToTarget := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
+		hasLoS := ctx.PathFinder.LineOfSight(s.Data.PlayerUnit.Position, monster.Position)
+		tooClose, _ := s.needsRepositioning()
+		outOfRange := distToTarget > maxBlizzSorceressAttackDistance || distToTarget < minBlizzSorceressAttackDistance
+
+		// Reposition if: enemies too close, out of attack range, or no line of sight
+		if (tooClose || outOfRange || !hasLoS) && time.Since(lastReposition) > 500*time.Millisecond {
+			safePos, posFound := s.findSafePosition(monster)
+			if posFound {
+				lastReposition = time.Now()
+				step.MoveTo(safePos, step.WithIgnoreMonsters())
+				continue // Re-evaluate after moving
+			}
+			// No safe position found but out of range — fall through to attack step
+			// which will use its built-in ensureEnemyIsInRange as a last resort
+		}
+
+		// Attack from current position
+		if isColdImmune {
+			// Primary only on cold immunes — save mana, let merc deal damage
+			step.PrimaryAttack(id, 1, true, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+		} else {
+			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+				step.PrimaryAttack(id, 1, true, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+			}
+			step.SecondaryAttack(skill.Blizzard, id, 1, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+		}
 
 		completedAttackLoops++
 		previousUnitID = int(id)
@@ -499,138 +511,120 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 	ctx := context.Get()
 	playerPos := s.Data.PlayerUnit.Position
 
-	// Define a stricter minimum safe distance from monsters
-	const minSafeMonsterDistance = 2
-
-	// Generate candidate positions in a circle around the player
-	candidatePositions := []data.Position{}
-
-	// First try positions in the opposite direction from the dangerous monster
-	vectorX := playerPos.X - targetMonster.Position.X
-	vectorY := playerPos.Y - targetMonster.Position.Y
-
-	// Normalize the vector
-	length := math.Sqrt(float64(vectorX*vectorX + vectorY*vectorY))
-	if length > 0 {
-		normalizedX := int(float64(vectorX) / length * float64(safeDistance))
-		normalizedY := int(float64(vectorY) / length * float64(safeDistance))
-
-		// Add positions in the opposite direction with some variation
-		for offsetX := -3; offsetX <= 3; offsetX++ {
-			for offsetY := -3; offsetY <= 3; offsetY++ {
-				candidatePos := data.Position{
-					X: playerPos.X + normalizedX + offsetX,
-					Y: playerPos.Y + normalizedY + offsetY,
-				}
-
-				if s.Data.AreaData.IsWalkable(candidatePos) {
-					candidatePositions = append(candidatePositions, candidatePos)
-				}
-			}
-		}
-	}
-
-	// Generate positions in a circle with smaller angle increments for more candidates
-	// Try positions in different directions around the player
-	for angle := 0; angle < 360; angle += 5 {
-		radians := float64(angle) * math.Pi / 180
-
-		// Try multiple distances from the player
-		for distance := minSafeMonsterDistance; distance <= safeDistance+5; distance += 2 {
-			dx := int(math.Cos(radians) * float64(distance))
-			dy := int(math.Sin(radians) * float64(distance))
-
-			basePos := data.Position{
-				X: playerPos.X + dx,
-				Y: playerPos.Y + dy,
-			}
-
-			// Check a small area around the base position
-			for offsetX := -1; offsetX <= 1; offsetX++ {
-				for offsetY := -1; offsetY <= 1; offsetY++ {
-					candidatePos := data.Position{
-						X: basePos.X + offsetX,
-						Y: basePos.Y + offsetY,
-					}
-
-					if s.Data.AreaData.IsWalkable(candidatePos) {
-						candidatePositions = append(candidatePositions, candidatePos)
-					}
-				}
-			}
-		}
-	}
-
-	// No walkable positions found
-	if len(candidatePositions) == 0 {
-		return data.Position{}, false
-	}
-
-	// Evaluate all candidate positions
+	// Generate candidate positions in a ring around the TARGET at attack range.
+	// This ensures we teleport to a position where we can actually cast, rather than
+	// generating escape positions around the player that may not be in range.
 	type scoredPosition struct {
 		pos   data.Position
 		score float64
 	}
 
-	scoredPositions := []scoredPosition{}
+	var scoredPositions []scoredPosition
 
-	for _, pos := range candidatePositions {
-		// Check if this position has line of sight to target
-		if !ctx.PathFinder.LineOfSight(pos, targetMonster.Position) {
-			continue
+	// Collect alive enemies once for scoring
+	aliveEnemies := make([]data.Monster, 0)
+	for _, m := range s.Data.Monsters.Enemies() {
+		if m.Stats[stat.Life] > 0 {
+			aliveEnemies = append(aliveEnemies, m)
 		}
+	}
 
-		// Calculate minimum distance to any monster
-		minMonsterDistance := math.MaxFloat64
-		for _, monster := range s.Data.Monsters.Enemies() {
-			if monster.Stats[stat.Life] <= 0 {
+	// Generate ring of candidates at attack range (8-16 tiles) around the target
+	for angle := 0; angle < 360; angle += 15 {
+		radians := float64(angle) * math.Pi / 180
+		for dist := minBlizzSorceressAttackDistance; dist <= maxBlizzSorceressAttackDistance; dist += 4 {
+			dx := int(math.Cos(radians) * float64(dist))
+			dy := int(math.Sin(radians) * float64(dist))
+
+			pos := data.Position{
+				X: targetMonster.Position.X + dx,
+				Y: targetMonster.Position.Y + dy,
+			}
+
+			if !s.Data.AreaData.IsWalkable(pos) {
 				continue
 			}
 
-			monsterDistance := pather.DistanceFromPoint(pos, monster.Position)
-			if float64(monsterDistance) < minMonsterDistance {
-				minMonsterDistance = float64(monsterDistance)
+			// Must have line of sight to the target
+			if !ctx.PathFinder.LineOfSight(pos, targetMonster.Position) {
+				continue
+			}
+
+			// Calculate minimum distance to any alive enemy
+			minMonsterDist := math.MaxFloat64
+			for _, m := range aliveEnemies {
+				d := float64(pather.DistanceFromPoint(pos, m.Position))
+				if d < minMonsterDist {
+					minMonsterDist = d
+				}
+			}
+
+			// Skip positions that are too close to any monster
+			if minMonsterDist < float64(dangerDistance) {
+				continue
+			}
+
+			// Distance from player — shorter teleport is preferable
+			playerDist := float64(pather.DistanceFromPoint(pos, playerPos))
+
+			// Score: balance safety with short teleports for speed
+			score := minMonsterDist*2.0 - playerDist*1.0
+
+			scoredPositions = append(scoredPositions, scoredPosition{pos: pos, score: score})
+		}
+	}
+
+	// If no positions in the ring work (tight spaces, surrounded), try positions
+	// in the opposite direction from the closest threat as a fallback escape
+	if len(scoredPositions) == 0 {
+		closestEnemy := data.Position{}
+		closestDist := math.MaxFloat64
+		for _, m := range aliveEnemies {
+			d := float64(pather.DistanceFromPoint(playerPos, m.Position))
+			if d < closestDist {
+				closestDist = d
+				closestEnemy = m.Position
 			}
 		}
 
-		// Strictly skip positions that are too close to monsters
-		if minMonsterDistance < minSafeMonsterDistance {
-			continue
-		}
-
-		// Calculate distance to target monster
-		targetDistance := pather.DistanceFromPoint(pos, targetMonster.Position)
-
-		// Score the position based on multiple factors:
-		// 1. Distance from monsters (higher is better, with a strong preference for safety)
-		// 2. Distance to target (should be in attack range)
-		// 3. Distance from current position (closer is better for quick repositioning)
-		distanceFromPlayer := pather.DistanceFromPoint(pos, playerPos)
-
-		// Calculate attack range score (highest when in optimal attack range)
-		attackRangeScore := 0.0
-		if targetDistance >= minBlizzSorceressAttackDistance && targetDistance <= maxBlizzSorceressAttackDistance {
-			attackRangeScore = 10.0
+		// Flee direction: away from closest enemy
+		vx := float64(playerPos.X - closestEnemy.X)
+		vy := float64(playerPos.Y - closestEnemy.Y)
+		length := math.Sqrt(vx*vx + vy*vy)
+		if length > 0 {
+			vx /= length
+			vy /= length
 		} else {
-			// Penalize positions outside attack range
-			attackRangeScore = -math.Abs(float64(targetDistance) - float64(minBlizzSorceressAttackDistance+maxBlizzSorceressAttackDistance)/2.0)
+			vx, vy = 1, 0
 		}
 
-		// Final score calculation - heavily weight monster distance for safety
-		score := minMonsterDistance*3.0 + attackRangeScore*2.0 - float64(distanceFromPlayer)*0.5
+		for dist := safeDistance; dist <= safeDistance+6; dist += 2 {
+			for spread := -3; spread <= 3; spread++ {
+				pos := data.Position{
+					X: playerPos.X + int(vx*float64(dist)) + spread,
+					Y: playerPos.Y + int(vy*float64(dist)) + spread,
+				}
+				if !s.Data.AreaData.IsWalkable(pos) {
+					continue
+				}
 
-		// Extra bonus for positions that are very safe (far from monsters)
-		if minMonsterDistance > float64(dangerDistance) {
-			score += 5.0
+				minMonsterDist := math.MaxFloat64
+				for _, m := range aliveEnemies {
+					d := float64(pather.DistanceFromPoint(pos, m.Position))
+					if d < minMonsterDist {
+						minMonsterDist = d
+					}
+				}
+
+				playerDist := float64(pather.DistanceFromPoint(pos, playerPos))
+				score := minMonsterDist*2.0 - playerDist*1.0
+
+				scoredPositions = append(scoredPositions, scoredPosition{pos: pos, score: score})
+			}
 		}
-
-		scoredPositions = append(scoredPositions, scoredPosition{
-			pos:   pos,
-			score: score,
-		})
 	}
 
-	// Sort positions by score (highest first)
+	// Sort by score (highest = safest)
 	sort.Slice(scoredPositions, func(i, j int) bool {
 		return scoredPositions[i].score > scoredPositions[j].score
 	})
