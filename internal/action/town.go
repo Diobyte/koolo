@@ -22,11 +22,7 @@ func StashFull() bool {
 	// Tabs 2-N = Shared stash pages (N = 2 + SharedStashPages - 1)
 	// Non-DLC: 3 shared pages (tabs 2-4)
 	// DLC: 5 shared pages (tabs 2-6)
-	sharedPages := ctx.Data.Inventory.SharedStashPages
-	if sharedPages == 0 {
-		// Fallback: assume 3 pages if not detected
-		sharedPages = 3
-	}
+	sharedPages := sharedStashPageCount(ctx)
 
 	tabsToCheck := make([]int, sharedPages)
 	for i := 0; i < sharedPages; i++ {
@@ -106,6 +102,7 @@ func PreRun(firstRun bool) error {
 	ManageBelt()
 	// Just to make sure messages like TZ change or public game spam arent on the way
 	ClearMessages()
+	RefillRejuvsFromDLCStash()
 	RefillBeltFromInventory()
 
 	// barb shield remove under 31

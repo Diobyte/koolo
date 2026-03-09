@@ -37,6 +37,19 @@ const (
 	StashTabRunes     = 102
 )
 
+// sharedStashPageCount returns the number of shared stash pages for the
+// current character. It reads the value from memory and falls back to 5
+// (DLC/ROTW) or 3 (base game) when the count is not detected.
+func sharedStashPageCount(ctx *context.Status) int {
+	if p := ctx.Data.Inventory.SharedStashPages; p > 0 {
+		return p
+	}
+	if ctx.Data.IsDLC() {
+		return 5
+	}
+	return 3
+}
+
 func Stash(forceStash bool) error {
 	ctx := context.Get()
 	ctx.SetLastAction("Stash")
@@ -204,11 +217,50 @@ func stashInventory(firstRun bool) {
 	step.CloseAllMenus()
 }
 
+// dlcTabForItem returns the DLC stash tab constant for an item that belongs in
+// a specialized tab (gems, runes, materials), or 0 if the item is not a DLC
+// stackable type. This is used to try the correct DLC tab first before falling
+// through to regular shared stash pages.
+func dlcTabForItem(i data.Item) int {
+	desc := i.Desc()
+	// Gems: TypeGem covers all gem types
+	if strings.Contains(desc.Type, "gem") {
+		return StashTabGems
+	}
+	// Runes
+	if desc.Type == item.TypeRune {
+		return StashTabRunes
+	}
+	// Materials: keys, essences, organs, worldstone shards, uber ancient mats,
+	// tokens, rejuv potions. Check by name in the DLC coords lookup since there
+	// is no single item type code for "materials".
+	if _, ok := ui.GetDLCTabScreenCoords(i.Name); ok {
+		// It's in the DLC coords table but not a gem or rune, so it's a material.
+		return StashTabMaterials
+	}
+	return 0
+}
+
 // stashItemAcrossTabs attempts to stash the given item across available tabs, applying the same logic
 // used by the main stash routine. It returns true if the item was stashed successfully.
 func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, firstRun bool) bool {
 	ctx := context.Get()
 	displayName := formatItemName(i)
+
+	// For DLC characters, try the specialized tab first (Gems/Runes/Materials).
+	// The game auto-sorts these via Ctrl+Click, but explicitly switching to
+	// the correct tab is more robust and avoids silent fallthrough if the
+	// auto-sort fails for any reason.
+	if ctx.Data.IsDLC() {
+		if dlcTab := dlcTabForItem(i); dlcTab != 0 {
+			SwitchStashTab(dlcTab)
+			if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+				ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to DLC tab %d", displayName, i.Quality.ToString(), dlcTab))
+				return true
+			}
+			ctx.Logger.Debug(fmt.Sprintf("DLC tab %d full or failed for %s, falling through to regular tabs", dlcTab, displayName))
+		}
+	}
 
 	startTab := 1
 	if ctx.CharacterCfg.Character.StashToShared {
@@ -223,15 +275,7 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 	itemStashed := false
 	// Tab 1=Personal, Tabs 2..N=Shared stash pages.
 	// Non-DLC: 3 shared pages (tabs 2-4). DLC: 5 shared pages (tabs 2-6).
-	// Use SharedStashPages from memory to determine actual count.
-	sharedPages := ctx.Data.Inventory.SharedStashPages
-	if sharedPages == 0 {
-		if ctx.Data.IsDLC() {
-			sharedPages = 5
-		} else {
-			sharedPages = 3
-		}
-	}
+	sharedPages := sharedStashPageCount(ctx)
 	maxTab := 1 + sharedPages // personal (1) + all shared pages
 
 	for tabAttempt := targetStartTab; tabAttempt <= maxTab; tabAttempt++ {
@@ -367,7 +411,12 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	jewelCount := 0
 
 	// Count ALL non-NIP jewels in stash (regardless of quality: magic, rare, unique, etc.)
-	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	// Include DLC tabs so gems/runes/materials stored there are counted correctly.
+	stashLocations := []item.LocationType{item.LocationStash, item.LocationSharedStash}
+	if ctx.Data.IsDLC() {
+		stashLocations = append(stashLocations, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab)
+	}
+	for _, it := range FilterDLCGhostItems(ctx.Data.Inventory.ByLocation(stashLocations...)) {
 		if string(it.Name) == "Jewel" {
 			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
 				jewelCount++
@@ -681,14 +730,7 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			// the Shared tab does NOT always land on page 1. Force-reset to
 			// page 1 by clicking prev the maximum number of times, then
 			// navigate forward to the target page.
-			sharedPages := ctx.Data.Inventory.SharedStashPages
-			if sharedPages == 0 {
-				if ctx.Data.IsDLC() {
-					sharedPages = 5
-				} else {
-					sharedPages = 3
-				}
-			}
+			sharedPages := sharedStashPageCount(ctx)
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
 				utils.PingSleep(utils.Medium, 250)
@@ -751,14 +793,7 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 			// the Shared tab does NOT always land on page 1. Force-reset to
 			// page 1 by clicking prev the maximum number of times, then
 			// navigate forward to the target page.
-			sharedPages := ctx.Data.Inventory.SharedStashPages
-			if sharedPages == 0 {
-				if ctx.Data.IsDLC() {
-					sharedPages = 5
-				} else {
-					sharedPages = 3
-				}
-			}
+			sharedPages := sharedStashPageCount(ctx)
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
 				utils.PingSleep(utils.Medium, 250)

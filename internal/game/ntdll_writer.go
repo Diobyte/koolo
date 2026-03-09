@@ -440,6 +440,57 @@ func polyGetKeyStateHookPerCall(key byte) []byte {
 	}
 }
 
+// polyGetKeyStateHookDual patches GetKeyState to return 0x8000 (key pressed)
+// when the queried key matches EITHER key1 or key2. This enables simultaneous
+// modifier combinations like Ctrl+Shift for ROTW direct-to-cube transfers.
+// Three variants are selected randomly to vary the byte pattern on each call,
+// matching the polymorphic style of polyGetKeyStateHookPerCall.
+// All variants fit within the 18-byte getKeyStateOrigBytes buffer.
+func polyGetKeyStateHookDual(key1, key2 byte) []byte {
+	b := make([]byte, 1)
+	variant := 0
+	if _, err := rand.Read(b); err == nil {
+		variant = int(b[0]) % 3
+	}
+	switch variant {
+	case 0:
+		// key1 first, 17 bytes
+		return []byte{
+			0x31, 0xC0, // xor eax, eax
+			0x80, 0xF9, key1, // cmp cl, key1
+			0x74, 0x05, // je pressed (+5 → 0x0C)
+			0x80, 0xF9, key2, // cmp cl, key2
+			0x75, 0x04, // jne done (+4 → 0x10)
+			0x66, 0xB8, 0x00, 0x80, // pressed: mov ax, 0x8000
+			0xC3, // done: ret
+		}
+	case 1:
+		// key2 first, nop prefix, 18 bytes
+		return []byte{
+			0x90,       // nop
+			0x31, 0xC0, // xor eax, eax
+			0x80, 0xF9, key2, // cmp cl, key2
+			0x74, 0x05, // je pressed (+5 → 0x0D)
+			0x80, 0xF9, key1, // cmp cl, key1
+			0x75, 0x04, // jne done (+4 → 0x11)
+			0x66, 0xB8, 0x00, 0x80, // pressed: mov ax, 0x8000
+			0xC3, // done: ret
+		}
+	default:
+		// key2 first, nop before ret, 18 bytes
+		return []byte{
+			0x31, 0xC0, // xor eax, eax
+			0x80, 0xF9, key2, // cmp cl, key2
+			0x74, 0x05, // je pressed (+5 → 0x0C)
+			0x80, 0xF9, key1, // cmp cl, key1
+			0x75, 0x05, // jne done (+5 → 0x11)
+			0x66, 0xB8, 0x00, 0x80, // pressed: mov ax, 0x8000
+			0x90, // nop
+			0xC3, // done: ret
+		}
+	}
+}
+
 func ntProtectMemory(handle windows.Handle, addr uintptr, size uintptr, newProtect uint32) (uint32, error) {
 	baseAddr := addr
 	regionSize := size

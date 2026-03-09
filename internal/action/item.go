@@ -15,33 +15,47 @@ import (
 )
 
 func doesExceedQuantity(rule nip.Rule) bool {
-    ctx := context.Get()
-    ctx.SetLastAction("doesExceedQuantity")
+	ctx := context.Get()
+	ctx.SetLastAction("doesExceedQuantity")
 
-    stashItems := ctx.Data.Inventory.ByLocation(
-        item.LocationStash,
-        item.LocationSharedStash,
-        item.LocationRunesTab,
-        item.LocationGemsTab,
-        item.LocationMaterialsTab,
-    )
-    stashItems = FilterDLCGhostItems(stashItems)
+	stashItems := ctx.Data.Inventory.ByLocation(
+		item.LocationStash,
+		item.LocationSharedStash,
+		item.LocationRunesTab,
+		item.LocationGemsTab,
+		item.LocationMaterialsTab,
+	)
+	stashItems = FilterDLCGhostItems(stashItems)
 
-    maxQuantity := rule.MaxQuantity()
-    if maxQuantity == 0 {
-        return false
-    }
+	maxQuantity := rule.MaxQuantity()
+	if maxQuantity == 0 {
+		return false
+	}
 
-    matchedItemsInStash := 0
+	matchedItemsInStash := 0
 
-    for _, stashItem := range stashItems {
-        res, _ := rule.Evaluate(stashItem)
-        if res == nip.RuleResultFullMatch {
-            matchedItemsInStash += GetItemQuantity(stashItem)
-        }
-    }
+	for _, stashItem := range stashItems {
+		res, _ := rule.Evaluate(stashItem)
+		if res == nip.RuleResultFullMatch {
+			qty := GetItemQuantity(stashItem)
+			matchedItemsInStash += qty
 
-    return matchedItemsInStash >= maxQuantity
+			// Warn when a DLC stacked item exceeds MaxQuantity — these can't
+			// be individually dropped from DLC tabs, so the user may need to
+			// consume or cube them manually.
+			if matchedItemsInStash >= maxQuantity {
+				switch stashItem.Location.LocationType {
+				case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
+					if qty > 1 {
+						ctx.Logger.Warn(fmt.Sprintf("DLC stacked item %s (qty %d) exceeds MaxQuantity %d — excess cannot be auto-dropped from DLC tabs",
+							stashItem.Name, qty, maxQuantity))
+					}
+				}
+			}
+		}
+	}
+
+	return matchedItemsInStash >= maxQuantity
 }
 
 func DropMouseItem() {
