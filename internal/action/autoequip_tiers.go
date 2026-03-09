@@ -20,6 +20,7 @@ var (
 		stat.AddClassSkills: 175.0,
 		stat.AddSkillTab:    125.0,
 		stat.SingleSkill:    40.0,
+		stat.FireSkills:     40.0,
 	}
 
 	resistWeightsMain = map[stat.ID]float64{
@@ -154,6 +155,22 @@ var (
 			stat.FasterCastRate:       -4.5,
 			stat.ManaRecovery:         -1.5,
 		},
+		data.Warlock: {
+			stat.FasterCastRate:       3.0,
+			stat.IncreasedAttackSpeed: 2.0,
+			stat.LifeSteal:            10.0,
+			stat.ManaSteal:            10.0,
+			stat.MinDamage:            5.0,
+			stat.MaxDamage:            5.0,
+			stat.FireResist:           1.0,
+			stat.ColdResist:           1.0,
+			stat.LightningResist:      1.0,
+			stat.PoisonResist:         0.5,
+			stat.MaxLife:              1.0,
+			stat.MaxMana:              1.0,
+			stat.FasterHitRecovery:    2.0,
+			stat.Energy:               1.5,
+		},
 	}
 
 	mercWeights = map[stat.ID]float64{
@@ -257,10 +274,11 @@ func PlayerScore(itm data.Item) map[item.LocationType]float64 {
 	// Should move valid location checks here maybe to avoid unneccessary calcs
 	scores := make(map[item.LocationType]float64)
 
+	generalScore := calculateGeneralScore(itm)
+	skillScore := calculateSkillScore(itm)
+
 	for _, loc := range bodyLocs {
-		generalScore := calculateGeneralScore(itm)
 		resistScore := calculateResistScore(itm, loc)
-		skillScore := calculateSkillScore(itm)
 
 		totalScore := BaseScore + generalScore + resistScore + skillScore
 
@@ -604,8 +622,7 @@ func calculateSkillScore(itm data.Item) float64 {
 		for sk := range ctx.Data.PlayerUnit.Skills {
 			for _, fireSkill := range fireSkills {
 				if sk == fireSkill {
-					const fireSkillWeight = 40.0
-					fireSkillScore := float64(fireSkillsStat.Value) * fireSkillWeight
+					fireSkillScore := float64(fireSkillsStat.Value) * skillWeights[stat.FireSkills]
 					//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to Fire Skills, weight: %.1f, score: %.1f", itm.IdentifiedName, fireSkillsStat.Value, fireSkillWeight, fireSkillScore))
 					score += fireSkillScore
 				}

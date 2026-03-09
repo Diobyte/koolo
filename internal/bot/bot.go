@@ -72,10 +72,13 @@ func (b *Bot) updateActivityAndPosition() {
 	b.lastActivityTimeMux.Lock()
 	defer b.lastActivityTimeMux.Unlock()
 	b.lastActivityTime = time.Now()
-	// Update lastKnownPosition and lastPositionCheckTime only if current game data is valid
+	// Only update position tracking when the player has actually moved,
+	// so the global idle timer isn't constantly reset while standing still.
 	if b.ctx.Data.PlayerUnit.Position != (data.Position{}) {
-		b.lastKnownPosition = b.ctx.Data.PlayerUnit.Position
-		b.lastPositionCheckTime = time.Now()
+		if b.lastKnownPosition != b.ctx.Data.PlayerUnit.Position {
+			b.lastKnownPosition = b.ctx.Data.PlayerUnit.Position
+			b.lastPositionCheckTime = time.Now()
+		}
 	}
 }
 
@@ -215,7 +218,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 
 				// Check for max game length (this is a separate check from idle)
-				if time.Since(gameStartedAt).Seconds() > float64(b.ctx.CharacterCfg.MaxGameLength) {
+				if b.ctx.CharacterCfg.MaxGameLength > 0 && time.Since(gameStartedAt).Seconds() > float64(b.ctx.CharacterCfg.MaxGameLength) {
 					b.ctx.Logger.Info("Max game length reached, try to exit game", slog.Float64("duration", time.Since(gameStartedAt).Seconds()))
 					b.Stop() // This will set PriorityStop and detach the context
 					return fmt.Errorf(

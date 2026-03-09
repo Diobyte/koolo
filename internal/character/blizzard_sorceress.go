@@ -82,47 +82,34 @@ func (s BlizzardSorceress) KillMonsterSequence(
 		if s.Context.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
-			return health.ErrDied // Or return an error that indicates death if desired by higher-level logic
+			return health.ErrDied
 		}
 
-		// First check if we need to reposition due to nearby monsters
-		//needsRepos, dangerousMonster := s.needsRepositioning()
 		needsRepos, _ := s.needsRepositioning()
 		if needsRepos && time.Since(lastReposition) > time.Second*1 {
 			lastReposition = time.Now()
 
-			// Get the target monster ID
 			targetID, found := monsterSelector(*s.Data)
 			if !found {
 				return nil
 			}
 
-			// Find the monster
 			targetMonster, found := s.Data.Monsters.FindByID(targetID)
 			if !found {
-				s.Logger.Info("Target monster not found for repositioning")
 				return nil
 			}
 
-			/*s.Logger.Info(fmt.Sprintf("Dangerous monster detected at distance %d, repositioning...",
-			pather.DistanceFromPoint(s.Data.PlayerUnit.Position, dangerousMonster.Position)))*/
-
-			// Find a safe position
 			safePos, found := s.findSafePosition(targetMonster)
 			if found {
 				step.MoveTo(safePos, step.WithIgnoreMonsters())
-			} else {
-				s.Logger.Info("Could not find safe position for repositioning")
 			}
 		}
 
-		// Get the monster to attack
 		id, found := monsterSelector(*s.Data)
 		if !found {
 			return nil
 		}
 
-		// If the monster has changed, reset the attack loop counter
 		if previousUnitID != int(id) {
 			completedAttackLoops = 0
 		}
@@ -131,7 +118,6 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		// If we've exceeded the maximum number of attacks, finish the loop.
 		if completedAttackLoops >= sorceressMaxAttacksLoop {
 			return nil
 		}
@@ -142,7 +128,6 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		// If we're on cooldown, attack with a primary attack
 		if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 			step.PrimaryAttack(id, 2, true, attackOpts)
 		}
@@ -434,7 +419,11 @@ func (s BlizzardSorceress) KillMephisto() error {
 }
 
 func (s BlizzardSorceress) KillIzual() error {
-	m, _ := s.Data.Monsters.FindOne(npc.Izual, data.MonsterTypeUnique)
+	m, found := s.Data.Monsters.FindOne(npc.Izual, data.MonsterTypeUnique)
+	if !found {
+		s.Logger.Error("Izual not found")
+		return nil
+	}
 	_ = step.SecondaryAttack(skill.StaticField, m.UnitID, 4, step.Distance(5, 8))
 
 	return s.killMonsterByName(npc.Izual, data.MonsterTypeUnique, nil)
@@ -481,7 +470,11 @@ func (s BlizzardSorceress) KillNihlathak() error {
 }
 
 func (s BlizzardSorceress) KillBaal() error {
-	m, _ := s.Data.Monsters.FindOne(npc.BaalCrab, data.MonsterTypeUnique)
+	m, found := s.Data.Monsters.FindOne(npc.BaalCrab, data.MonsterTypeUnique)
+	if !found {
+		s.Logger.Error("Baal not found")
+		return nil
+	}
 	step.SecondaryAttack(skill.StaticField, m.UnitID, 4, step.Distance(5, 8))
 
 	return s.killMonsterByName(npc.BaalCrab, data.MonsterTypeUnique, nil)
@@ -642,28 +635,9 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 		return scoredPositions[i].score > scoredPositions[j].score
 	})
 
-	// Return the best position if we found any
 	if len(scoredPositions) > 0 {
-		/*s.Logger.Info(fmt.Sprintf("Found safe position with score %.2f at distance %.2f from nearest monster",
-		scoredPositions[0].score, minMonsterDistance(scoredPositions[0].pos, s.Data.Monsters)))*/
 		return scoredPositions[0].pos, true
 	}
 
 	return data.Position{}, false
-}
-
-// Helper function to calculate minimum monster distance
-func minMonsterDistance(pos data.Position, monsters data.Monsters) float64 {
-	minDistance := math.MaxFloat64
-	for _, monster := range monsters.Enemies() {
-		if monster.Stats[stat.Life] <= 0 {
-			continue
-		}
-
-		distance := pather.DistanceFromPoint(pos, monster.Position)
-		if float64(distance) < minDistance {
-			minDistance = float64(distance)
-		}
-	}
-	return minDistance
 }

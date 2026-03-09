@@ -304,8 +304,11 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 			playerLevel = lvl.Value
 		}
 
-		//Avoid equiping 2 handed unless it's a runeword
-		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
+		// Warlock with Levitate can wield 2H weapons alongside an offhand
+		isWarlock := ctx.Data.PlayerUnit.Class == data.Warlock
+
+		//Avoid equiping 2 handed unless it's a runeword (or Warlock with Levitate)
+		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword && !isWarlock {
 			return false
 		}
 
@@ -327,15 +330,12 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 
 	// Main Requirement Check (Level, Strength, Dexterity)
 	if target == item.LocationEquipped {
-		var playerLevel int
+		playerLevel := 1
 		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
 			playerLevel = lvl.Value
 		}
 
-		itemLevelReq := 0
-		if lvlReqStat, found := newItem.FindStat(stat.LevelRequire, 0); found {
-			itemLevelReq = lvlReqStat.Value
-		}
+		itemLevelReq := newItem.LevelReq
 
 		// Explicitly log the level comparison
 		if playerLevel < itemLevelReq {
@@ -356,7 +356,24 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 			}
 		}
 
-		if baseStr < newItem.Desc().RequiredStrength || baseDex < newItem.Desc().RequiredDexterity {
+		reqStr := newItem.Desc().RequiredStrength
+		reqDex := newItem.Desc().RequiredDexterity
+
+		// Warlock's Levitate reduces weapon stat requirements by 20% per level
+		if isWeapon && ctx.Data.PlayerUnit.Class == data.Warlock {
+			levitateLevel := GetSkillTotalLevel(skill.Levitate)
+			if levitateLevel > 0 {
+				reduction := float64(levitateLevel) * 0.2
+				if reduction > 1.0 {
+					reduction = 1.0
+				}
+				requireMulti := 1.0 - reduction
+				reqStr = int(float64(reqStr) * requireMulti)
+				reqDex = int(float64(reqDex) * requireMulti)
+			}
+		}
+
+		if baseStr < reqStr || baseDex < reqDex {
 			return false
 		}
 	}
@@ -460,6 +477,14 @@ func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.Locatio
 				return false
 			}
 			return isClaws
+
+		case data.Warlock:
+			// Warlock with Levitate can equip offhand (grimoire, shield) alongside a 2H weapon
+			if GetSkillTotalLevel(skill.Levitate) > 0 {
+				return isShield || itemType == "grim"
+			}
+			return false
+
 		default:
 			return false
 		}
@@ -543,7 +568,10 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 
 		if items, ok := itemsByLoc[item.LocLeftArm]; ok && len(items) > 0 {
 			if _, found := items[0].FindStat(stat.TwoHandedMinDamage, 0); found {
-				if !isBarbLeveling && (class != data.Barbarian || items[0].Desc().Type != "swor") {
+				// Warlock with Levitate can wield 2H + offhand simultaneously, skip combo logic
+				if class == data.Warlock && GetSkillTotalLevel(skill.Levitate) > 0 {
+					// No need to compare combos — keep both
+				} else if !isBarbLeveling && (class != data.Barbarian || items[0].Desc().Type != "swor") {
 					var bestComboScore float64
 					for _, itm := range items {
 						if _, isTwoHanded := itm.FindStat(stat.TwoHandedMinDamage, 0); !isTwoHanded {

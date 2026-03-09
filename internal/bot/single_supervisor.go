@@ -528,6 +528,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
 				s.bot.ctx.Logger.Error(fmt.Sprintf("Error trying to exit game: %s", exitErr.Error()))
+				s.bot.ctx.Logger.Info("Killing client after failed game exit attempt.")
+				if killErr := s.KillClient(); killErr != nil {
+					s.bot.ctx.Logger.Error(fmt.Sprintf("Failed to kill client after exit game failure: %s", killErr.Error()))
+				}
 				return ErrUnrecoverableClientState
 			}
 
