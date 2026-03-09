@@ -15,34 +15,35 @@ import (
 
 // ArmoryItem represents an item with all its properties for display
 type ArmoryItem struct {
-	ID             int              `json:"id"`
-	Name           string           `json:"name"`
-	IdentifiedName string           `json:"identifiedName"`
-	Quality        string           `json:"quality"`
-	QualityInt     int              `json:"qualityInt"`
-	Ethereal       bool             `json:"ethereal"`
-	Identified     bool             `json:"identified"`
-	IsRuneword     bool             `json:"isRuneword"`
-	RunewordName   string           `json:"runewordName"`
-	LevelReq       int              `json:"levelReq"`
-	Position       data.Position    `json:"position"`
-	Width          int              `json:"width"`
-	Height         int              `json:"height"`
-	Location       string           `json:"location"`
-	BodyLocation   string           `json:"bodyLocation"`
-	StashPage      int              `json:"stashPage"`
-	Stats          []ArmoryItemStat `json:"stats"`
-	BaseStats      []ArmoryItemStat `json:"baseStats"`
-	Sockets        []ArmoryItem     `json:"sockets"`
-	HasSockets     bool             `json:"hasSockets"`
-	SocketCount    int              `json:"socketCount"`
-	ImageName      string           `json:"imageName"`
-	ItemType       string           `json:"itemType"`
-	Defense        int              `json:"defense"`
-	MinDamage      int              `json:"minDamage"`
-	MaxDamage      int              `json:"maxDamage"`
-	Durability     int              `json:"durability"`
-	MaxDurability  int              `json:"maxDurability"`
+	ID              int              `json:"id"`
+	Name            string           `json:"name"`
+	IdentifiedName  string           `json:"identifiedName"`
+	Quality         string           `json:"quality"`
+	QualityInt      int              `json:"qualityInt"`
+	Ethereal        bool             `json:"ethereal"`
+	Identified      bool             `json:"identified"`
+	IsRuneword      bool             `json:"isRuneword"`
+	RunewordName    string           `json:"runewordName"`
+	LevelReq        int              `json:"levelReq"`
+	Position        data.Position    `json:"position"`
+	Width           int              `json:"width"`
+	Height          int              `json:"height"`
+	Location        string           `json:"location"`
+	BodyLocation    string           `json:"bodyLocation"`
+	StashPage       int              `json:"stashPage"`
+	Stats           []ArmoryItemStat `json:"stats"`
+	BaseStats       []ArmoryItemStat `json:"baseStats"`
+	Sockets         []ArmoryItem     `json:"sockets"`
+	HasSockets      bool             `json:"hasSockets"`
+	SocketCount     int              `json:"socketCount"`
+	ImageName       string           `json:"imageName"`
+	ItemType        string           `json:"itemType"`
+	Defense         int              `json:"defense"`
+	MinDamage       int              `json:"minDamage"`
+	MaxDamage       int              `json:"maxDamage"`
+	Durability      int              `json:"durability"`
+	MaxDurability   int              `json:"maxDurability"`
+	StackedQuantity int              `json:"stackedQuantity"`
 }
 
 // ArmoryItemStat represents a single stat on an item
@@ -110,28 +111,29 @@ func convertArmoryItem(itm data.Item, assetsPath string) ArmoryItem {
 	desc := itm.Desc()
 
 	armoryItem := ArmoryItem{
-		ID:             itm.ID,
-		Name:           string(itm.Name),
-		IdentifiedName: itm.IdentifiedName,
-		Quality:        itm.Quality.ToString(),
-		QualityInt:     int(itm.Quality),
-		Ethereal:       itm.Ethereal,
-		Identified:     itm.Identified,
-		IsRuneword:     itm.IsRuneword,
-		RunewordName:   string(itm.RunewordName),
-		LevelReq:       itm.LevelReq,
-		Position:       itm.Position,
-		Width:          desc.InventoryWidth,
-		Height:         desc.InventoryHeight,
-		Location:       string(itm.Location.LocationType),
-		BodyLocation:   string(itm.Location.BodyLocation),
-		StashPage:      itm.Location.Page,
-		HasSockets:     itm.HasSockets,
-		SocketCount:    len(itm.Sockets),
-		ImageName:      getArmoryItemImageName(itm, assetsPath),
-		ItemType:       desc.Type,
-		MinDamage:      desc.MinDamage,
-		MaxDamage:      desc.MaxDamage,
+		ID:              itm.ID,
+		Name:            string(itm.Name),
+		IdentifiedName:  itm.IdentifiedName,
+		Quality:         itm.Quality.ToString(),
+		QualityInt:      int(itm.Quality),
+		Ethereal:        itm.Ethereal,
+		Identified:      itm.Identified,
+		IsRuneword:      itm.IsRuneword,
+		RunewordName:    string(itm.RunewordName),
+		LevelReq:        itm.LevelReq,
+		Position:        itm.Position,
+		Width:           desc.InventoryWidth,
+		Height:          desc.InventoryHeight,
+		Location:        string(itm.Location.LocationType),
+		BodyLocation:    string(itm.Location.BodyLocation),
+		StashPage:       itm.Location.Page,
+		HasSockets:      itm.HasSockets,
+		SocketCount:     len(itm.Sockets),
+		ImageName:       getArmoryItemImageName(itm, assetsPath),
+		ItemType:        desc.Type,
+		MinDamage:       desc.MinDamage,
+		MaxDamage:       desc.MaxDamage,
+		StackedQuantity: itm.StackedQuantity,
 	}
 
 	// Convert stats

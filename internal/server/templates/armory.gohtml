@@ -369,6 +369,103 @@
             display: block;
         }
 
+        /* DLC Tab Styles */
+        .dlc-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Shared Stash Page Sub-navigation */
+        .shared-page-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .shared-page-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 30, 50, 0.6);
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shared-page-btn:hover {
+            background: rgba(60, 60, 80, 0.8);
+            color: #aaa;
+        }
+
+        .shared-page-btn.active {
+            background: rgba(80, 80, 100, 0.8);
+            color: #fff;
+            border-color: #666;
+        }
+
+        .shared-page {
+            display: none;
+        }
+
+        .shared-page.active {
+            display: block;
+        }
+
+        .dlc-tab-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 6px;
+            padding: 8px;
+        }
+
+        .dlc-tab-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(20, 20, 40, 0.6);
+            border: 1px solid #333;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dlc-tab-item:hover {
+            background: rgba(40, 40, 60, 0.8);
+            border-color: #555;
+        }
+
+        .dlc-tab-icon {
+            width: 28px;
+            height: 28px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+            flex-shrink: 0;
+        }
+
+        .dlc-tab-name {
+            font-size: 12px;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dlc-tab-qty {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4CAF50;
+            flex-shrink: 0;
+        }
+
         /* Item Selection Styles */
         .inventory-item.selectable {
             cursor: pointer;
@@ -1489,9 +1586,10 @@
                 
                 <div class="stash-tabs">
                     <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
-                    <button class="stash-tab" onclick="showStashTab('shared1')">Shared 1</button>
-                    <button class="stash-tab" onclick="showStashTab('shared2')">Shared 2</button>
-                    <button class="stash-tab" onclick="showStashTab('shared3')">Shared 3</button>
+                    <button class="stash-tab" onclick="showStashTab('shared')">Shared</button>
+                    {{ if .Armory.GemsTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('gems')"><i class="bi bi-gem"></i> Gems</button>{{ end }}
+                    {{ if .Armory.MaterialsTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('materials')"><i class="bi bi-box2"></i> Materials</button>{{ end }}
+                    {{ if .Armory.RunesTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('runes')"><i class="bi bi-stars"></i> Runes</button>{{ end }}
                 </div>
                 
                 <!-- Personal Stash -->
@@ -1519,80 +1617,205 @@
                     </div>
                 </div>
 
-                <!-- Shared Stash 1 -->
-                <div id="stash-shared1" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
-                        </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash1 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
+                <!-- Shared Stash (all pages) -->
+                <div id="stash-shared" class="stash-content">
+                    <div class="shared-page-tabs">
+                        <button class="shared-page-btn active" onclick="showSharedPage(1)">1</button>
+                        <button class="shared-page-btn" onclick="showSharedPage(2)">2</button>
+                        <button class="shared-page-btn" onclick="showSharedPage(3)">3</button>
+                        {{ if .Armory.SharedStash4 }}<button class="shared-page-btn" onclick="showSharedPage(4)">4</button>{{ end }}
+                        {{ if .Armory.SharedStash5 }}<button class="shared-page-btn" onclick="showSharedPage(5)">5</button>{{ end }}
+                    </div>
+
+                    <!-- Page 1 -->
+                    <div id="shared-page-1" class="shared-page active">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
                             </div>
-                            {{ end }}
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash1 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Page 2 -->
+                    <div id="shared-page-2" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash2 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Page 3 -->
+                    <div id="shared-page-3" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash3 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Page 4 (DLC) -->
+                    {{ if .Armory.SharedStash4 }}
+                    <div id="shared-page-4" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash4 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+
+                    <!-- Page 5 (DLC) -->
+                    {{ if .Armory.SharedStash5 }}
+                    <div id="shared-page-5" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash5 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
 
-                <!-- Shared Stash 2 -->
-                <div id="stash-shared2" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
+                <!-- DLC Gems Tab -->
+                {{ if .Armory.GemsTab }}
+                <div id="stash-gems" class="stash-content">
+                    <div class="dlc-tab-grid">
+                        {{ range .Armory.GemsTab }}
+                        <div class="dlc-tab-item"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                            <div class="dlc-tab-icon" style="background-image: url('/items/{{ .ImageName }}');"></div>
+                            <span class="dlc-tab-name item-quality-{{ .Quality | lower }}">{{ .Name }}</span>
+                            {{ if gt .StackedQuantity 0 }}<span class="dlc-tab-qty">x{{ .StackedQuantity }}</span>{{ end }}
                         </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash2 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
-                            </div>
-                            {{ end }}
-                        </div>
+                        {{ end }}
                     </div>
                 </div>
+                {{ end }}
 
-                <!-- Shared Stash 3 -->
-                <div id="stash-shared3" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
+                <!-- DLC Materials Tab -->
+                {{ if .Armory.MaterialsTab }}
+                <div id="stash-materials" class="stash-content">
+                    <div class="dlc-tab-grid">
+                        {{ range .Armory.MaterialsTab }}
+                        <div class="dlc-tab-item"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                            <div class="dlc-tab-icon" style="background-image: url('/items/{{ .ImageName }}');"></div>
+                            <span class="dlc-tab-name item-quality-{{ .Quality | lower }}">{{ .Name }}</span>
+                            {{ if gt .StackedQuantity 0 }}<span class="dlc-tab-qty">x{{ .StackedQuantity }}</span>{{ end }}
                         </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash3 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
-                            </div>
-                            {{ end }}
-                        </div>
+                        {{ end }}
                     </div>
                 </div>
+                {{ end }}
+
+                <!-- DLC Runes Tab -->
+                {{ if .Armory.RunesTab }}
+                <div id="stash-runes" class="stash-content">
+                    <div class="dlc-tab-grid">
+                        {{ range .Armory.RunesTab }}
+                        <div class="dlc-tab-item"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                            <div class="dlc-tab-icon" style="background-image: url('/items/{{ .ImageName }}');"></div>
+                            <span class="dlc-tab-name item-quality-{{ .Quality | lower }}">{{ .Name }}</span>
+                            {{ if gt .StackedQuantity 0 }}<span class="dlc-tab-qty">x{{ .StackedQuantity }}</span>{{ end }}
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
             </div>
 
             <!-- Cube -->
@@ -1826,12 +2049,20 @@
             event.target.classList.add('active');
         }
 
+        function showSharedPage(page) {
+            document.querySelectorAll('.shared-page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.shared-page-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('shared-page-' + page).classList.add('active');
+            event.target.classList.add('active');
+        }
+
         // ============ SELECTION MODE ============
         
         function toggleSelectionMode() {
             selectionMode = !selectionMode;
             const btn = document.getElementById('selectionModeBtn');
-            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared1 .inventory-item, #stash-shared2 .inventory-item, #stash-shared3 .inventory-item');
+            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared .inventory-item, #stash-gems .dlc-tab-item, #stash-materials .dlc-tab-item, #stash-runes .dlc-tab-item');
             
             if (selectionMode) {
                 btn.classList.add('active');
@@ -1875,9 +2106,10 @@
 
         function getItemStashTab(element) {
             if (element.closest('#stash-personal')) return 'personal';
-            if (element.closest('#stash-shared1')) return 'shared1';
-            if (element.closest('#stash-shared2')) return 'shared2';
-            if (element.closest('#stash-shared3')) return 'shared3';
+            if (element.closest('#stash-shared')) return 'shared';
+            if (element.closest('#stash-gems')) return 'gems';
+            if (element.closest('#stash-materials')) return 'materials';
+            if (element.closest('#stash-runes')) return 'runes';
             return 'unknown';
         }
 
@@ -2165,6 +2397,11 @@
                 html += `<div class="item-type">${item.name}</div>`;
             }
             
+            // Stacked quantity (DLC tab items)
+            if (item.stackedQuantity > 1) {
+                html += `<div class="stat-line base" style="color: #4CAF50;">Quantity: ${item.stackedQuantity}</div>`;
+            }
+            
             // Defense
             if (item.defense > 0) {
                 html += `<div class="stat-line base">Defense: ${item.defense}</div>`;
@@ -2255,9 +2492,9 @@
                     event.preventDefault();
                     toggleSelectionMode();
                 }
-                // 1-4 for stash tabs
-                if (event.key >= '1' && event.key <= '4') {
-                    const tabs = ['personal', 'shared1', 'shared2', 'shared3'];
+                // 1-5 for stash tabs
+                if (event.key >= '1' && event.key <= '5') {
+                    const tabs = ['personal', 'shared', 'gems', 'materials', 'runes'];
                     const tabIndex = parseInt(event.key) - 1;
                     const tabBtn = document.querySelector(`.stash-tab[onclick*="${tabs[tabIndex]}"]`);
                     if (tabBtn) tabBtn.click();
@@ -2343,6 +2580,11 @@
                     { items: armory.sharedStash1 || [], location: 'Shared Stash 1' },
                     { items: armory.sharedStash2 || [], location: 'Shared Stash 2' },
                     { items: armory.sharedStash3 || [], location: 'Shared Stash 3' },
+                    { items: armory.sharedStash4 || [], location: 'Shared Stash 4' },
+                    { items: armory.sharedStash5 || [], location: 'Shared Stash 5' },
+                    { items: armory.gemsTab || [], location: 'Gems Tab' },
+                    { items: armory.materialsTab || [], location: 'Materials Tab' },
+                    { items: armory.runesTab || [], location: 'Runes Tab' },
                     { items: armory.cube || [], location: 'Cube' },
                     { items: armory.belt || [], location: 'Belt' },
                 ];
@@ -2453,7 +2695,12 @@
                     ...(armory.stash || []),
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
-                    ...(armory.sharedStash3 || [])
+                    ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
+                    ...(armory.gemsTab || []),
+                    ...(armory.materialsTab || []),
+                    ...(armory.runesTab || [])
                 ];
                 
                 const notableItems = allItems.filter(i => 
@@ -2587,6 +2834,11 @@
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
                     ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
+                    ...(armory.gemsTab || []),
+                    ...(armory.materialsTab || []),
+                    ...(armory.runesTab || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
@@ -2600,7 +2852,9 @@
                         // Handle both "RalRune" and "Ral Rune" formats
                         const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
                         console.log('Found rune:', item.name, '->', runeName);
-                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
+                        // DLC runes tab items are stacked; count by quantity not just 1
+                        const qty = item.stackedQuantity > 1 ? item.stackedQuantity : 1;
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + qty;
                     }
                 }
             }
@@ -2685,6 +2939,8 @@
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
                     ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
