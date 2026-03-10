@@ -43,6 +43,8 @@ const (
 	FireEyeRun          Run = "fire_eye"
 	RakanishuRun        Run = "rakanishu"
 	ShoppingRun         Run = "shopping"
+	MaggotLairRun       Run = "maggot_lair"
+	ViperTempleRun      Run = "viper_temple"
 	//Leveling Sequence
 	DenRun                   Run = "den"
 	BloodravenRun            Run = "bloodraven"
@@ -121,6 +123,8 @@ var AvailableRuns = map[Run]interface{}{
 	UtilityRun:          nil,
 	FireEyeRun:          nil,
 	ShoppingRun:         nil,
+	MaggotLairRun:       nil,
+	ViperTempleRun:      nil,
 	OrgansRun:           nil,
 	PandemoniumRun:      nil,
 	DevelopmentRun:      nil,
@@ -198,6 +202,7 @@ var SequencerRuns = []Run{
 	LamEsenRun,
 	LowerKurastChestRun,
 	LowerKurastRun,
+	MaggotLairRun,
 	MausoleumRun,
 	MephistoRun,
 	NihlathakRun,
@@ -220,6 +225,7 @@ var SequencerRuns = []Run{
 	TravincalRun,
 	TristramEarlyGoldfarmRun,
 	TristramRun,
+	ViperTempleRun,
 	OrgansRun,
 	UberIzualRun,
 	UberDurielRun,
