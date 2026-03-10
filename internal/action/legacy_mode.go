@@ -50,7 +50,7 @@ func enableLegacyMode(ctx *context.Status, closeMiniPanel bool) bool {
 		return false
 	}
 
-	if len(ctx.Data.KeyBindings.LegacyToggle.Key1) == 0 {
+	if ctx.Data.KeyBindings.LegacyToggle.Key1[0] == 0 {
 		ctx.Logger.Warn("Legacy toggle key binding not configured, skipping legacy mode switch")
 		return false
 	}

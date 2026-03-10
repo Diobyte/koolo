@@ -156,7 +156,7 @@ func getNPCPosition(npc npc.ID, d *game.Data) (data.Position, bool) {
 	}
 
 	n, found := d.NPCs.FindOne(npc)
-	if !found {
+	if !found || len(n.Positions) == 0 {
 		return data.Position{}, false
 	}
 
