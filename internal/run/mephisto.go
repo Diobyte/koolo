@@ -130,6 +130,13 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	// After the moat trick, the character is far from Mephisto's death location.
+	// Move back near his drop spot so items are within scan range.
+	if m.ctx.CharacterCfg.Character.BlizzardSorceress.UseMoatTrick ||
+		m.ctx.CharacterCfg.Character.SorceressLeveling.UseMoatTrick {
+		action.MoveToCoords(data.Position{X: 17568, Y: 8069})
+	}
+
 	action.ItemPickup(30)
 
 	if m.ctx.CharacterCfg.Game.Mephisto.OpenChests || m.ctx.CharacterCfg.Game.Mephisto.KillCouncilMembers {
