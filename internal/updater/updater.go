@@ -374,6 +374,31 @@ func (u *Updater) buildNewVersion(ctx repoContext) error {
 	buildTime := time.Now().Format(time.RFC3339)
 	outputExe := filepath.Join(buildDir, buildID+".exe")
 
+	// Generate per-build noise (matches better_build.bat)
+	noiseScript := filepath.Join(ctx.RepoDir, "generate_noise.ps1")
+	if _, err := os.Stat(noiseScript); err == nil {
+		u.log("Generating per-build noise...")
+		noiseCmd := newCommand("powershell", "-ExecutionPolicy", "Bypass", "-File", noiseScript)
+		noiseCmd.Dir = ctx.RepoDir
+		if output, err := noiseCmd.CombinedOutput(); err != nil {
+			u.log(fmt.Sprintf("Noise generation failed (non-fatal): %s", strings.TrimSpace(string(output))))
+		} else {
+			u.log(fmt.Sprintf("Noise generated: %s", strings.TrimSpace(string(output))))
+		}
+	}
+
+	// Regenerate Windows resources (matches better_build.bat)
+	winresDir := filepath.Join(ctx.RepoDir, "cmd", "koolo")
+	winresJSON := filepath.Join(winresDir, "winres", "winres.json")
+	if _, err := os.Stat(winresJSON); err == nil {
+		u.log("Regenerating Windows resources...")
+		winresCmd := newCommand("go-winres", "make", "--in", "winres/winres.json")
+		winresCmd.Dir = winresDir
+		if output, err := winresCmd.CombinedOutput(); err != nil {
+			u.log(fmt.Sprintf("go-winres not found or failed (non-fatal): %s", strings.TrimSpace(string(output))))
+		}
+	}
+
 	u.log("Starting Garble build...")
 	u.log(fmt.Sprintf("Build ID: %s", buildID))
 
