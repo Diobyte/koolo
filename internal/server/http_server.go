@@ -2081,6 +2081,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 	// Muling
 	if sections.Muling {
 		cfg.Muling.Enabled = values.Get("mulingEnabled") == "on"
+		cfg.Muling.AutoMuling = values.Get("autoMuling") == "on"
 		cfg.Muling.ReturnTo = values.Get("mulingReturnTo")
 
 		// Validate mule profiles
@@ -3105,6 +3106,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Muling
 		cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"
+		cfg.Muling.AutoMuling = r.FormValue("autoMuling") == "on"
 
 		// Validate mule profiles - filter out any deleted mule profiles
 		requestedMuleProfiles := r.Form["mulingMuleProfiles[]"]

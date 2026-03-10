@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/mule"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -60,9 +61,25 @@ func PreRun(firstRun bool) error {
 			muleIndex := ctx.CharacterCfg.MulingState.CurrentMuleIndex
 
 			if muleIndex >= len(muleProfiles) {
-				ctx.Logger.Error("All mules are full! Cannot stash more items. Stopping.")
-				ctx.StopSupervisor()
-				return errors.New("all mules are full")
+				// All existing mules exhausted — auto-create a new one if enabled
+				if ctx.CharacterCfg.Muling.AutoMuling {
+					ctx.Logger.Info("All existing mules are full, auto-creating a new mule profile.")
+					newMuleName, err := mule.CreateAutoMuleProfile(ctx.Logger, ctx.Name, ctx.CharacterCfg)
+					if err != nil {
+						ctx.Logger.Error("Failed to auto-create mule profile", "error", err)
+						ctx.StopSupervisor()
+						return fmt.Errorf("auto-mule creation failed: %w", err)
+					}
+					// muleProfiles and index are now updated (CreateAutoMuleProfile appended to MuleProfiles)
+					muleProfiles = ctx.CharacterCfg.Muling.MuleProfiles
+					muleIndex = len(muleProfiles) - 1
+					ctx.CharacterCfg.MulingState.CurrentMuleIndex = muleIndex
+					ctx.Logger.Info("Auto-mule created, switching to new mule.", "mule", newMuleName, "index", muleIndex)
+				} else {
+					ctx.Logger.Error("All mules are full! Cannot stash more items. Stopping.")
+					ctx.StopSupervisor()
+					return errors.New("all mules are full")
+				}
 			}
 
 			nextMule := muleProfiles[muleIndex]
