@@ -213,24 +213,20 @@ func (a Quests) rescueCainQuest() error {
 		return fmt.Errorf("error interacting with Inifuss Tree: %w", err)
 	}
 
-	scrollInifussUnitID := 539
-	scrollInifussAfterAkara := 540
-	scrollInifussName := "Scroll of Inifuss"
-
 PickupLoop:
 	for i := 0; i < 5; i++ {
 		a.ctx.RefreshGameData()
 
 		foundInInv := false
 		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-			if itm.ID == scrollInifussUnitID || itm.ID == scrollInifussAfterAkara {
+			if isInifussScroll(itm) {
 				foundInInv = true
 				break
 			}
 		}
 
 		if foundInInv {
-			a.ctx.Logger.Info(fmt.Sprintf("%s found in inventory. Proceeding with quest.", scrollInifussName))
+			a.ctx.Logger.Info(fmt.Sprintf("%s found in inventory. Proceeding with quest.", ScrollInifussName))
 			break PickupLoop
 		}
 
@@ -238,7 +234,7 @@ PickupLoop:
 		var scrollObj data.Item
 		foundOnGround := false
 		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationGround) {
-			if itm.ID == scrollInifussUnitID {
+			if isInifussScroll(itm) {
 				scrollObj = itm
 				foundOnGround = true
 				break
@@ -246,7 +242,7 @@ PickupLoop:
 		}
 
 		if foundOnGround {
-			a.ctx.Logger.Info(fmt.Sprintf("%s found on the ground at position %v. Attempting pickup (Attempt %d)...", scrollInifussName, scrollObj.Position, i+1))
+			a.ctx.Logger.Info(fmt.Sprintf("%s found on the ground at position %v. Attempting pickup (Attempt %d)...", ScrollInifussName, scrollObj.Position, i+1))
 
 			playerPos := a.ctx.Data.PlayerUnit.Position
 			safeAwayPos := atDistance(scrollObj.Position, playerPos, -5)
@@ -282,32 +278,32 @@ PickupLoop:
 				a.ctx.RefreshGameData()
 				foundInInvAfterPickup := false
 				for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-					if itm.ID == scrollInifussUnitID {
+					if isInifussScroll(itm) {
 						foundInInvAfterPickup = true
 						break
 					}
 				}
 				if foundInInvAfterPickup {
-					a.ctx.Logger.Info(fmt.Sprintf("Pickup confirmed for %s after %d attempts. Proceeding.", scrollInifussName, pickupAttempts+1))
+					a.ctx.Logger.Info(fmt.Sprintf("Pickup confirmed for %s after %d attempts. Proceeding.", ScrollInifussName, pickupAttempts+1))
 					break PickupLoop
 				}
 				pickupAttempts++
 			}
 		} else {
-			a.ctx.Logger.Debug(fmt.Sprintf("%s not found on the ground on attempt %d. Retrying.", scrollInifussName, i+1))
+			a.ctx.Logger.Debug(fmt.Sprintf("%s not found on the ground on attempt %d. Retrying.", ScrollInifussName, i+1))
 			utils.Sleep(1000)
 		}
 	}
 
 	foundInInv := false
 	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if itm.ID == scrollInifussUnitID {
+		if isInifussScroll(itm) {
 			foundInInv = true
 			break
 		}
 	}
 	if !foundInInv {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to pick up %s after all attempts. Aborting current run.", scrollInifussName))
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to pick up %s after all attempts. Aborting current run.", ScrollInifussName))
 		return errors.New("failed to pick up Scroll of Inifuss")
 	}
 

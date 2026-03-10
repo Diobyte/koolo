@@ -21,6 +21,19 @@ const ScrollInifussUnitID = 539
 const ScrollInifussAfterAkara = 540
 const ScrollInifussName = "Scroll of Inifuss"
 
+// isInifussScroll returns true if the item is any variant of the Scroll of Inifuss,
+// including the DLC-renamed "KeyToTheCairnStones".
+func isInifussScroll(itm data.Item) bool {
+	if itm.ID == ScrollInifussUnitID || itm.ID == ScrollInifussAfterAkara {
+		return true
+	}
+	switch itm.Name {
+	case ScrollInifussName, "ScrollOfInifuss", "KeyToTheCairnStones":
+		return true
+	}
+	return false
+}
+
 type RescueCain struct {
 	ctx *context.Status
 }
@@ -61,7 +74,7 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 
 	infusInInventory := false
 	for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if itm.ID == ScrollInifussUnitID || itm.ID == ScrollInifussAfterAkara {
+		if isInifussScroll(itm) {
 			infusInInventory = true
 			break
 		}
@@ -208,7 +221,7 @@ PickupLoop:
 
 		foundInInv := false
 		for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-			if itm.ID == ScrollInifussUnitID {
+			if isInifussScroll(itm) {
 				foundInInv = true
 				break
 			}
@@ -223,7 +236,7 @@ PickupLoop:
 		var scrollObj data.Item
 		foundOnGround := false
 		for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationGround) {
-			if itm.ID == ScrollInifussUnitID {
+			if isInifussScroll(itm) {
 				scrollObj = itm
 				foundOnGround = true
 				break
@@ -267,7 +280,7 @@ PickupLoop:
 				rc.ctx.RefreshGameData()
 				foundInInvAfterPickup := false
 				for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-					if itm.ID == ScrollInifussUnitID {
+					if isInifussScroll(itm) {
 						foundInInvAfterPickup = true
 						break
 					}
@@ -286,7 +299,7 @@ PickupLoop:
 
 	infusInInventory := false
 	for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if itm.ID == ScrollInifussUnitID {
+		if isInifussScroll(itm) {
 			infusInInventory = true
 			break
 		}
