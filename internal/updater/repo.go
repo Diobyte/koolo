@@ -56,7 +56,7 @@ func resolveRepoContext() (repoContext, error) {
 		return repoContext{}, err
 	}
 
-	cloneCmd := newCommand("git", "clone", "https://github.com/kwader2k/koolo.git", repoDir)
+	cloneCmd := newCommand("git", "clone", "https://github.com/Diobyte/koolo.git", repoDir)
 	cloneCmd.Dir = workDir
 	if output, err := cloneCmd.CombinedOutput(); err != nil {
 		return repoContext{}, fmt.Errorf("failed to clone upstream repository: %w\nOutput: %s", err, strings.TrimSpace(string(output)))
