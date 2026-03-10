@@ -23,7 +23,7 @@ func StashFull() bool {
 	// Tabs 2-N = Shared stash pages (N = 2 + SharedStashPages - 1)
 	// Non-DLC: 3 shared pages (tabs 2-4)
 	// DLC: 5 shared pages (tabs 2-6)
-	sharedPages := sharedStashPageCount(ctx)
+	sharedPages := SharedStashPageCount(ctx)
 
 	tabsToCheck := make([]int, sharedPages)
 	for i := 0; i < sharedPages; i++ {

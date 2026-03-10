@@ -110,8 +110,10 @@ func CreateAutoMuleProfile(logger *slog.Logger, farmerName string, farmerCfg *co
 	muleCfg.Muling.Enabled = true
 	muleCfg.Muling.ReturnTo = farmerName
 
-	// Copy relevant settings
-	muleCfg.KillD2OnStop = farmerCfg.KillD2OnStop
+	// Mules must kill D2R on stop so the crash detector fires and triggers the
+	// character switch flow (restartFunc). Without this, the client would stay
+	// alive at the character selection screen and the next supervisor never starts.
+	muleCfg.KillD2OnStop = true
 	muleCfg.ClassicMode = farmerCfg.ClassicMode
 
 	// Save the mule config

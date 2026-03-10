@@ -97,18 +97,53 @@ func (m Mule) Run(parameters *RunParameters) error {
 		}
 	} else {
 		// Stash is not full, proceed with muling logic
+		// Tab mapping depends on game version:
+		// DLC (Reign of the Warlock): Tab 1=Shared, Tab 2=Personal
+		// Non-DLC (Lord of Destruction): Tab 1=Personal, Tabs 2+=Shared
+		isDLC := ctx.Data.IsDLC()
+		var personalTab int
+		var sharedTabStart, sharedTabEnd int
+
+		if isDLC {
+			personalTab = 2
+			sharedTabStart = 1
+			sharedTabEnd = 1 // DLC has a single shared stash tab
+		} else {
+			personalTab = 1
+			sharedTabStart = 2
+			sharedPages := action.SharedStashPageCount(ctx)
+			sharedTabEnd = 1 + sharedPages // tabs 2..N
+		}
+
+		ctx.Logger.Info("Mule stash layout detected",
+			"isDLC", isDLC,
+			"personalTab", personalTab,
+			"sharedTabStart", sharedTabStart,
+			"sharedTabEnd", sharedTabEnd)
+
 		for {
 			movedItemInLoop := false
 
-			// Phase 1: Move items from all shared tabs to inventory
-			for sharedTab := 2; sharedTab <= 4; sharedTab++ {
+			// Phase 1: Move items from shared stash tab(s) to inventory
+			for sharedTab := sharedTabStart; sharedTab <= sharedTabEnd; sharedTab++ {
 				action.SwitchStashTab(sharedTab)
 				utils.Sleep(MuleActionDelay)
 
 				ctx.RefreshGameData()
-				itemsToMove := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
+
+				// ByLocation returns ALL shared stash items regardless of page.
+				// Filter to only items on the currently visible page.
+				currentPage := sharedTab - sharedTabStart // tab offset → page 0, 1, 2...
+				allSharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
+				var itemsToMove []data.Item
+				for _, it := range allSharedItems {
+					if it.Location.Page == currentPage {
+						itemsToMove = append(itemsToMove, it)
+					}
+				}
+
 				if len(itemsToMove) > 0 {
-					ctx.Logger.Info("Found items in shared stash", "tab", sharedTab, "count", len(itemsToMove))
+					ctx.Logger.Info("Found items in shared stash", "tab", sharedTab, "page", currentPage, "count", len(itemsToMove))
 				}
 
 				for _, itemToMove := range itemsToMove {
@@ -124,13 +159,14 @@ func (m Mule) Run(parameters *RunParameters) error {
 			}
 
 			// Phase 2: Move all items from inventory to private stash
-			action.SwitchStashTab(1)
+			action.SwitchStashTab(personalTab)
 			utils.Sleep(MuleActionDelay)
 
+			// Refresh and verify we're on the personal tab before depositing
 			ctx.RefreshGameData()
 			itemsToDeposit := ctx.Data.Inventory.ByLocation(item.LocationInventory)
 			if len(itemsToDeposit) > 0 {
-				ctx.Logger.Info("Depositing items from inventory to private stash", "count", len(itemsToDeposit))
+				ctx.Logger.Info("Depositing items from inventory to private stash", "tab", personalTab, "count", len(itemsToDeposit))
 			}
 
 			for _, itemToDeposit := range itemsToDeposit {
@@ -176,6 +212,11 @@ func (m Mule) Run(parameters *RunParameters) error {
 
 	ctx.RestartWithCharacter = ctx.CurrentGame.SwitchToCharacter
 	ctx.CleanStopRequested = true
+
+	// Ensure the client is killed on stop so the crash detector fires restartFunc
+	// and the next character supervisor starts. Without this, if KillD2OnStop is false,
+	// the D2R process stays alive at the character screen and the switch never happens.
+	ctx.CharacterCfg.KillD2OnStop = true
 
 	if err := ctx.Manager.ExitGame(); err != nil {
 		ctx.Logger.Error("Failed to exit game before character switch", "error", err)

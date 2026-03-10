@@ -37,10 +37,10 @@ const (
 	StashTabRunes     = 102
 )
 
-// sharedStashPageCount returns the number of shared stash pages for the
+// SharedStashPageCount returns the number of shared stash pages for the
 // current character. It reads the value from memory and falls back to 5
 // (DLC/ROTW) or 3 (base game) when the count is not detected.
-func sharedStashPageCount(ctx *context.Status) int {
+func SharedStashPageCount(ctx *context.Status) int {
 	if p := ctx.Data.Inventory.SharedStashPages; p > 0 {
 		return p
 	}
@@ -275,7 +275,7 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 	itemStashed := false
 	// Tab 1=Personal, Tabs 2..N=Shared stash pages.
 	// Non-DLC: 3 shared pages (tabs 2-4). DLC: 5 shared pages (tabs 2-6).
-	sharedPages := sharedStashPageCount(ctx)
+	sharedPages := SharedStashPageCount(ctx)
 	maxTab := 1 + sharedPages // personal (1) + all shared pages
 
 	for tabAttempt := targetStartTab; tabAttempt <= maxTab; tabAttempt++ {
@@ -730,7 +730,7 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			// the Shared tab does NOT always land on page 1. Force-reset to
 			// page 1 by clicking prev the maximum number of times, then
 			// navigate forward to the target page.
-			sharedPages := sharedStashPageCount(ctx)
+			sharedPages := SharedStashPageCount(ctx)
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
 				utils.PingSleep(utils.Medium, 250)
@@ -793,7 +793,7 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 			// the Shared tab does NOT always land on page 1. Force-reset to
 			// page 1 by clicking prev the maximum number of times, then
 			// navigate forward to the target page.
-			sharedPages := sharedStashPageCount(ctx)
+			sharedPages := SharedStashPageCount(ctx)
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
 				utils.PingSleep(utils.Medium, 250)
