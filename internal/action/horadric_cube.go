@@ -40,55 +40,15 @@ func CubeAddItems(items ...data.Item) error {
 	ClearMessages()
 	ctx.Logger.Info("Adding items to the Horadric Cube", slog.Any("items", items))
 
-	// Separate DLC tab items from regular items. DLC items will be moved
-	// directly into the cube via Ctrl+Shift+Click (ROTW feature), skipping
-	// the intermediate inventory step entirely.
-	var dlcItems []data.Item
-	var regularItems []data.Item
+	// If items are on the Stash, pickup them to the inventory
 	for _, itm := range items {
-		switch itm.Location.LocationType {
-		case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
-			dlcItems = append(dlcItems, itm)
-		default:
-			regularItems = append(regularItems, itm)
-		}
-	}
-
-	// Open and empty the cube BEFORE picking up recipe items from stash.
-	// ensureCubeIsEmpty() may call stashInventory() which would stash any
-	// loose inventory items — including recipe ingredients if we picked
-	// them up first.
-	err := ensureCubeIsOpen()
-	if err != nil {
-		return err
-	}
-
-	err = ensureCubeIsEmpty()
-	if err != nil {
-		return err
-	}
-
-	// Close the cube so we can access stash tabs to pick up recipe items.
-	ctx.HID.PressKey(win.VK_ESCAPE)
-	utils.Sleep(300)
-	ctx.RefreshGameData()
-
-	// Ensure stash is open for picking up regular items
-	if len(regularItems) > 0 && !ctx.Data.OpenMenus.Stash {
-		bank, _ := ctx.Data.Objects.FindOne(object.Bank)
-		err = InteractObject(bank, func() bool {
-			return ctx.Data.OpenMenus.Stash
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	// Pick up regular stash items (personal/shared) to inventory
-	for _, itm := range regularItems {
 		nwIt := itm
+		// Check if item is in any stash location (personal, shared, or DLC tabs)
 		if nwIt.Location.LocationType != item.LocationStash &&
-			nwIt.Location.LocationType != item.LocationSharedStash {
+			nwIt.Location.LocationType != item.LocationSharedStash &&
+			nwIt.Location.LocationType != item.LocationGemsTab &&
+			nwIt.Location.LocationType != item.LocationMaterialsTab &&
+			nwIt.Location.LocationType != item.LocationRunesTab {
 			continue
 		}
 
@@ -98,11 +58,18 @@ func CubeAddItems(items ...data.Item) error {
 			}
 			SwitchStashTab(1)
 		} else {
+			// Check in which tab the item is and switch to it
 			switch nwIt.Location.LocationType {
 			case item.LocationStash:
 				SwitchStashTab(1)
 			case item.LocationSharedStash:
 				SwitchStashTab(nwIt.Location.Page + 1)
+			case item.LocationGemsTab:
+				SwitchStashTab(StashTabGems)
+			case item.LocationMaterialsTab:
+				SwitchStashTab(StashTabMaterials)
+			case item.LocationRunesTab:
+				SwitchStashTab(StashTabRunes)
 			}
 		}
 
@@ -123,8 +90,12 @@ func CubeAddItems(items ...data.Item) error {
 		utils.Sleep(300)
 	}
 
-	// Open cube to place items from inventory
-	err = ensureCubeIsOpen()
+	err := ensureCubeIsOpen()
+	if err != nil {
+		return err
+	}
+
+	err = ensureCubeIsEmpty()
 	if err != nil {
 		return err
 	}
@@ -133,28 +104,46 @@ func CubeAddItems(items ...data.Item) error {
 	// not their original stash/DLC tab positions from before the pickup phase.
 	ctx.RefreshGameData()
 
-	// Move regular items from inventory into cube
+	// Track DLC items already matched by their new UnitID to avoid matching
+	// the same inventory item twice when multiple identical items are needed
+	// (e.g., 3x PerfectAmethyst for a grand charm reroll).
 	usedUnitIDs := make(map[data.UnitID]struct{})
 
-	for _, itm := range regularItems {
+	for _, itm := range items {
 		var found *data.Item
 
+		// DLC tab items (gems, runes, materials) get new UnitIDs when moved to
+		// inventory, so we must match by Name in inventory instead of by UnitID.
+		isDLC := itm.Location.LocationType == item.LocationGemsTab ||
+			itm.Location.LocationType == item.LocationMaterialsTab ||
+			itm.Location.LocationType == item.LocationRunesTab
+
 		for _, updatedItem := range ctx.Data.Inventory.AllItems {
-			if updatedItem.UnitID == itm.UnitID {
-				found = &updatedItem
-				break
+			if isDLC {
+				if _, used := usedUnitIDs[updatedItem.UnitID]; used {
+					continue
+				}
+				if updatedItem.Name == itm.Name && updatedItem.Location.LocationType == item.LocationInventory {
+					found = &updatedItem
+					break
+				}
+			} else {
+				if updatedItem.UnitID == itm.UnitID {
+					found = &updatedItem
+					break
+				}
 			}
 		}
 
-		if found == nil {
+		if found != nil {
+			usedUnitIDs[found.UnitID] = struct{}{}
+		} else {
 			ctx.Logger.Warn("Item not found in inventory for cube",
 				slog.String("Item", string(itm.Name)),
 				slog.Int("UnitID", int(itm.UnitID)),
 			)
 			continue
 		}
-
-		usedUnitIDs[found.UnitID] = struct{}{}
 
 		ctx.Logger.Debug("Moving Item to the Horadric Cube",
 			slog.String("Item", string(found.Name)),
@@ -166,37 +155,6 @@ func CubeAddItems(items ...data.Item) error {
 		screenPos := ui.GetScreenCoordsForItem(*found)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
 		utils.Sleep(500)
-	}
-
-	// ROTW: Move DLC tab items directly into the cube via Ctrl+Shift+Click.
-	// This skips the intermediate inventory step, saving time on every recipe
-	// that uses gems, runes, or materials from DLC tabs.
-	//
-	// The cube overlay replaces the stash panel, so we must close it first.
-	// Ctrl+Shift+Click moves items into the cube container regardless of
-	// whether the cube window is displayed; CubeTransmute reopens it.
-	if len(dlcItems) > 0 {
-		ctx.HID.PressKey(win.VK_ESCAPE)
-		utils.Sleep(300)
-	}
-	for _, itm := range dlcItems {
-		switch itm.Location.LocationType {
-		case item.LocationGemsTab:
-			SwitchStashTab(StashTabGems)
-		case item.LocationMaterialsTab:
-			SwitchStashTab(StashTabMaterials)
-		case item.LocationRunesTab:
-			SwitchStashTab(StashTabRunes)
-		}
-
-		screenPos := ui.GetScreenCoordsForItem(itm)
-		ctx.Logger.Debug("Moving DLC item directly to cube via Ctrl+Shift+Click",
-			slog.String("Item", string(itm.Name)),
-			slog.Int("ScreenX", screenPos.X),
-			slog.Int("ScreenY", screenPos.Y),
-		)
-		ctx.HID.ClickWithModifiers(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey, game.ShiftKey)
-		utils.Sleep(300)
 	}
 
 	return nil

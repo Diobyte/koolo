@@ -175,16 +175,6 @@ func (i *MemoryInjector) OverrideGetKeyState(key byte) error {
 	return writeAndClean(i.handle, i.getKeyStateAddr, code)
 }
 
-// OverrideGetKeyStateDual patches GetKeyState to report two keys as pressed
-// simultaneously (e.g. Ctrl+Shift). Used for ROTW Ctrl+Shift+Click.
-func (i *MemoryInjector) OverrideGetKeyStateDual(key1, key2 byte) error {
-	if !i.isLoaded {
-		return nil
-	}
-
-	code := polyGetKeyStateHookDual(key1, key2)
-	return writeAndClean(i.handle, i.getKeyStateAddr, code)
-}
 func (i *MemoryInjector) OverrideSetCursorPos() error {
 	blob := perCallReturn1()
 	err := writeAndClean(i.handle, i.setCursorPosAddr, blob)

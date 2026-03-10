@@ -63,15 +63,6 @@ func (hid *HID) ClickWithModifier(btn MouseButton, x, y int, modifier ModifierKe
 	hid.gi.RestoreGetKeyState()
 }
 
-// ClickWithModifiers holds two modifier keys simultaneously (e.g. Ctrl+Shift)
-// while performing a click. Used for ROTW Ctrl+Shift+Click to move DLC tab
-// items directly into the Horadric Cube.
-func (hid *HID) ClickWithModifiers(btn MouseButton, x, y int, mod1, mod2 ModifierKey) {
-	hid.gi.OverrideGetKeyStateDual(byte(mod1), byte(mod2))
-	hid.Click(btn, x, y)
-	hid.gi.RestoreGetKeyState()
-}
-
 func calculateLparam(x, y int) uintptr {
 	return uintptr(y<<16 | x)
 }
