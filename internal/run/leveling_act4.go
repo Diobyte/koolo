@@ -48,21 +48,12 @@ func (a Leveling) act4() error {
 	rawFireRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.FireResist, 0)
 	rawLightRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.LightningResist, 0)
 
-	// Apply difficulty-appropriate resistance penalty
-	var resPenalty int
-	switch a.ctx.CharacterCfg.Game.Difficulty {
-	case difficulty.Nightmare:
-		resPenalty = 40
-	case difficulty.Hell:
-		resPenalty = 100
-	default:
-		resPenalty = 0
-	}
-	effectiveFireRes := rawFireRes.Value - resPenalty
-	effectiveLightRes := rawLightRes.Value - resPenalty
+	// Apply Nightmare difficulty penalty (-40) to resistances for effective values
+	effectiveFireRes := rawFireRes.Value - 40
+	effectiveLightRes := rawLightRes.Value - 40
 
 	// Log the effective resistance values
-	a.ctx.Logger.Info(fmt.Sprintf("Current effective resistances (penalty %d applied) - Fire: %d, Lightning: %d", resPenalty, effectiveFireRes, effectiveLightRes))
+	a.ctx.Logger.Info(fmt.Sprintf("Current effective resistances (Nightmare penalty applied) - Fire: %d, Lightning: %d", effectiveFireRes, effectiveLightRes))
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	_, found := a.ctx.Data.Objects.FindOne(object.LastLastPortal)
@@ -75,12 +66,9 @@ func (a Leveling) act4() error {
 		harrogathPortal, found := a.ctx.Data.Objects.FindOne(object.LastLastPortal)
 		if !found { // portal was already opened before so we must talk to Tyrael to get to A5
 			a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-			utils.Sleep(1000)
-			a.ctx.RefreshGameData()
-			harrogathPortal, found = a.ctx.Data.Objects.FindOne(object.LastLastPortal)
-			if !found {
-				return errors.New("portal to Harrogath not found after talking to Tyrael")
-			}
+			// After attempting to open it with key sequence, you should re-check if it's found
+			// If still not found, then it's an error.
+
 		}
 
 		err = action.InteractObject(harrogathPortal, func() bool {
@@ -142,7 +130,7 @@ func (a Leveling) act4() error {
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
-		a.ctx.Logger.Debug(fmt.Sprintf("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
+		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
 		if err != nil {
 			return err
 		}
@@ -163,12 +151,9 @@ func (a Leveling) act4() error {
 		harrogathPortal, found := a.ctx.Data.Objects.FindOne(object.LastLastPortal)
 		if !found { // portal was already opened before so we must talk to Tyrael to get to A5
 			a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-			utils.Sleep(1000)
-			a.ctx.RefreshGameData()
-			harrogathPortal, found = a.ctx.Data.Objects.FindOne(object.LastLastPortal)
-			if !found {
-				return errors.New("portal to Harrogath not found after talking to Tyrael")
-			}
+			// After attempting to open it with key sequence, you should re-check if it's found
+			// If still not found, then it's an error.
+
 		}
 
 		err = action.InteractObject(harrogathPortal, func() bool {
@@ -186,11 +171,11 @@ func (a Leveling) act4() error {
 		return nil
 	}
 
-	a.ctx.Logger.Debug(fmt.Sprintf("Current Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
+	a.ctx.Logger.Debug("Current Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
-		a.ctx.Logger.Debug(fmt.Sprintf("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
+		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
 		if err != nil {
 			return err
 		}
@@ -234,14 +219,14 @@ func (a Leveling) OuterSteppes() error {
 
 	err := action.MoveToArea(area.OuterSteppes)
 	if err != nil {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to move to Outer Steppes area: %v", err))
+		a.ctx.Logger.Error("Failed to move to Outer Steppes area: %v", err)
 		return err
 	}
 	a.ctx.Logger.Debug("Successfully reached Outer Steppes.")
 
 	err = action.ClearCurrentLevel(false, data.MonsterAnyFilter())
 	if err != nil {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to clear Outer Steppes area: %v", err))
+		a.ctx.Logger.Error("Failed to clear Outer Steppes area: %v", err)
 		return err
 	}
 	a.ctx.Logger.Debug("Successfully cleared Outer Steppes area.")

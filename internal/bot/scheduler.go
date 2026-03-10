@@ -17,9 +17,9 @@ import (
 type SchedulerPhase string
 
 const (
-	PhaseResting SchedulerPhase = "resting"
-	PhasePlaying SchedulerPhase = "playing"
-	PhaseOnBreak SchedulerPhase = "onBreak"
+	PhaseResting  SchedulerPhase = "resting"
+	PhasePlaying  SchedulerPhase = "playing"
+	PhaseOnBreak  SchedulerPhase = "onBreak"
 )
 
 // ScheduledBreak represents a pre-calculated break
@@ -46,12 +46,12 @@ type DurationState struct {
 
 // HistoryEntry represents one day's play session
 type HistoryEntry struct {
-	Date              string           `json:"date"`
-	WakeTime          string           `json:"wakeTime"`
-	SleepTime         string           `json:"sleepTime"`
-	TotalPlayMinutes  int              `json:"totalPlayMinutes"`
-	TotalBreakMinutes int              `json:"totalBreakMinutes"`
-	Breaks            []ScheduledBreak `json:"breaks"`
+	Date             string           `json:"date"`
+	WakeTime         string           `json:"wakeTime"`
+	SleepTime        string           `json:"sleepTime"`
+	TotalPlayMinutes int              `json:"totalPlayMinutes"`
+	TotalBreakMinutes int             `json:"totalBreakMinutes"`
+	Breaks           []ScheduledBreak `json:"breaks"`
 }
 
 // SchedulerHistory stores the last 30 days of play history
@@ -60,9 +60,9 @@ type SchedulerHistory struct {
 }
 
 type Scheduler struct {
-	manager *SupervisorManager
-	logger  *slog.Logger
-	stop    chan struct{}
+	manager       *SupervisorManager
+	logger        *slog.Logger
+	stop          chan struct{}
 
 	// Duration mode state (per supervisor)
 	durationState map[string]*DurationState
@@ -186,7 +186,7 @@ func (s *Scheduler) checkDurationSchedule(supervisorName string, cfg *config.Cha
 	now := time.Now()
 
 	// Get or create state for this supervisor
-	state := s.getOrCreateState(supervisorName)
+	state := s.getOrCreateState(supervisorName, cfg)
 
 	// Check if we need to reset for a new day
 	if s.isNewDay(state, now) {
@@ -212,7 +212,7 @@ func (s *Scheduler) checkDurationSchedule(supervisorName string, cfg *config.Cha
 					"supervisor", supervisorName,
 					"playedMinutes", state.PlayedMinutes,
 					"remainingMinutes", remainingMinutes)
-				s.resumeWithRemainingTime(supervisorName, state, now, remainingMinutes)
+				s.resumeWithRemainingTime(supervisorName, cfg, state, now, remainingMinutes)
 				s.transitionToPlaying(supervisorName, state, now)
 			} else {
 				// Never played today (forgot) - give full schedule from now
@@ -295,7 +295,7 @@ func (s *Scheduler) checkDurationSchedule(supervisorName string, cfg *config.Cha
 }
 
 // getOrCreateState gets existing state or creates new one
-func (s *Scheduler) getOrCreateState(supervisorName string) *DurationState {
+func (s *Scheduler) getOrCreateState(supervisorName string, cfg *config.CharacterCfg) *DurationState {
 	s.stateMux.Lock()
 	defer s.stateMux.Unlock()
 
@@ -423,7 +423,7 @@ func (s *Scheduler) generateBreakSchedule(cfg *config.CharacterCfg, wakeTime tim
 	sort.Ints(breakSlots)
 
 	// Assign meal breaks to slots closest to typical meal times (4h and 11h into play for lunch/dinner)
-	mealSlotIndices := s.pickMealSlots(breakSlots, duration.MealBreakCount)
+	mealSlotIndices := s.pickMealSlots(breakSlots, duration.MealBreakCount, playHours)
 
 	for i, slotMinutes := range breakSlots {
 		breakTime := wakeTime.Add(time.Duration(slotMinutes) * time.Minute)
@@ -458,7 +458,7 @@ func (s *Scheduler) generateBreakSchedule(cfg *config.CharacterCfg, wakeTime tim
 }
 
 // pickMealSlots selects which break slots should be meal breaks
-func (s *Scheduler) pickMealSlots(breakSlots []int, mealCount int) []int {
+func (s *Scheduler) pickMealSlots(breakSlots []int, mealCount int, playHours int) []int {
 	if mealCount == 0 || len(breakSlots) == 0 {
 		return []int{}
 	}
@@ -551,7 +551,7 @@ func (s *Scheduler) transitionToResting(supervisorName string, state *DurationSt
 }
 
 // resumeWithRemainingTime handles manual start during rest when partially played
-func (s *Scheduler) resumeWithRemainingTime(supervisorName string, state *DurationState, now time.Time, remainingMinutes int) {
+func (s *Scheduler) resumeWithRemainingTime(supervisorName string, cfg *config.CharacterCfg, state *DurationState, now time.Time, remainingMinutes int) {
 	// Set rest time to now + remaining minutes (no breaks for partial sessions)
 	state.TodayRestTime = now.Add(time.Duration(remainingMinutes) * time.Minute)
 	state.ScheduledBreaks = []ScheduledBreak{} // No breaks for short remaining time

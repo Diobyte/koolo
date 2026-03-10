@@ -127,7 +127,7 @@ func BuildRun(run string) Run {
 	case string(config.SpiderCavernRun):
 		return NewSpiderCavern()
 	case string(config.DrifterCavernRun):
-		return NewDrifterCavern()
+		return NewDriverCavern()
 	case string(config.EnduguRun):
 		return NewEndugu()
 	case string(config.UtilityRun):
@@ -138,10 +138,6 @@ func BuildRun(run string) Run {
 		return NewRakanishu()
 	case string(config.ShoppingRun):
 		return NewShopping()
-	case string(config.MaggotLairRun):
-		return NewMaggotLair()
-	case string(config.ViperTempleRun):
-		return NewViperTemple()
 	//Quests Runs
 	case string(config.DenRun):
 		return NewDen()

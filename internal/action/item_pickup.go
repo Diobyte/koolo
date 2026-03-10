@@ -399,11 +399,6 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationGround) {
-		// Skip items already picked up (game data may not have refreshed yet)
-		if _, alreadyPicked := ctx.CurrentGame.PickedUpItems[int(itm.UnitID)]; alreadyPicked {
-			continue
-		}
-
 		// Skip itempickup on party leveling Maggot Lair, is too narrow and causes characters to get stuck
 		if isLevelingChar && itm.Name != "StaffOfKings" && (ctx.Data.PlayerUnit.Area == area.MaggotLairLevel1 ||
 			ctx.Data.PlayerUnit.Area == area.MaggotLairLevel2 ||
@@ -519,7 +514,7 @@ func shouldBePickedUp(i data.Item) bool {
 	if specialRuns {
 		questItem := false
 		switch i.Name {
-		case "Scroll of Inifuss", "ScrollOfInifuss", "KeyToTheCairnStones", "LamEsensTome", "HoradricCube", "HoradricMalus",
+		case "Scroll of Inifuss", "ScrollOfInifuss", "LamEsensTome", "HoradricCube", "HoradricMalus",
 			"AmuletoftheViper", "StaffofKings", "HoradricStaff",
 			"AJadeFigurine", "KhalimsEye", "KhalimsBrain", "KhalimsHeart", "KhalimsFlail", "HellforgeHammer", "TheGidbinn":
 			questItem = true
@@ -536,7 +531,7 @@ func shouldBePickedUp(i data.Item) bool {
 				return false
 			}
 			switch i.Name {
-			case "Scroll of Inifuss", "ScrollOfInifuss", "KeyToTheCairnStones":
+			case "Scroll of Inifuss", "ScrollOfInifuss":
 				if ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() {
 					return false
 				}
@@ -595,7 +590,7 @@ func shouldBePickedUp(i data.Item) bool {
 		}
 	}
 	// Specific ID checks (e.g. Book of Skill and Scroll of Inifuss).
-	if i.ID == 567 || i.ID == 539 || i.ID == 540 {
+	if i.ID == 567 || i.ID == 539 {
 		return true
 	}
 

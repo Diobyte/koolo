@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -74,12 +73,9 @@ func (b Bloodraven) Run(parameters *RunParameters) error {
 			break
 		}
 
-		if err := b.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+		b.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			return bloodRaven.UnitID, true
-		}, nil); err != nil {
-			b.ctx.Logger.Warn("Failed to kill Blood Raven", slog.String("error", err.Error()))
-			break
-		}
+		}, nil)
 	}
 
 	action.ItemPickup(30)

@@ -656,7 +656,7 @@ func (a Leveling) RockyWaste() error {
 	// Use action.MoveToArea to navigate to Rocky Waste, similar to the Izual quest.
 	err := action.MoveToArea(area.RockyWaste)
 	if err != nil {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to move to Rocky Waste area: %v", err))
+		a.ctx.Logger.Error("Failed to move to Rocky Waste area: %v", err)
 		return err // Return the error if navigation fails
 	}
 	a.ctx.Logger.Info("Successfully reached Rocky Waste.")
@@ -664,7 +664,7 @@ func (a Leveling) RockyWaste() error {
 	// Attempt to clear the current level (Rocky Waste).
 	err = action.ClearCurrentLevel(false, data.MonsterAnyFilter())
 	if err != nil {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to clear Rocky Waste area: %v", err))
+		a.ctx.Logger.Error("Failed to clear Rocky Waste area: %v", err)
 		return err // Return the error if clearing fails
 	}
 	a.ctx.Logger.Info("Successfully cleared Rocky Waste area.")
@@ -679,7 +679,7 @@ func (a Leveling) FarOasis() error {
 	// Attempt to clear the current level (Far Oasis).
 	err := action.ClearCurrentLevel(false, data.MonsterEliteFilter())
 	if err != nil {
-		a.ctx.Logger.Error(fmt.Sprintf("Failed to clear Far Oasis area: %v", err))
+		a.ctx.Logger.Error("Failed to clear Far Oasis area: %v", err)
 		return err // Return the error if clearing fails
 	}
 

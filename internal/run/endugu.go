@@ -1,8 +1,6 @@
 package run
 
 import (
-	"errors"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
@@ -62,7 +60,7 @@ func (e Endugu) Run(parameters *RunParameters) error {
 	var khalimChest2 data.Object
 
 	// Move to KhalimChest
-	err = action.MoveTo(func() (data.Position, bool) {
+	action.MoveTo(func() (data.Position, bool) {
 		for _, o := range e.ctx.Data.Objects {
 			if o.Name == object.KhalimChest2 {
 				khalimChest2 = o
@@ -71,13 +69,6 @@ func (e Endugu) Run(parameters *RunParameters) error {
 		}
 		return data.Position{}, false
 	})
-	if err != nil {
-		return err
-	}
-
-	if khalimChest2.Name == 0 {
-		return errors.New("KhalimChest2 not found")
-	}
 
 	// Clear monsters around player
 	action.ClearAreaAroundPlayer(15, data.MonsterEliteFilter())

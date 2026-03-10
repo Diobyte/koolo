@@ -566,7 +566,7 @@ func (d Duriel) prepareStaff() error {
 
 			bank, found := d.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				return errors.New("bank object not found, cannot retrieve horadric staff from stash")
+				d.ctx.Logger.Info("bank object not found")
 			}
 
 			err := action.InteractObject(bank, func() bool {

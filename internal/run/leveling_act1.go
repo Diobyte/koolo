@@ -151,9 +151,7 @@ func (a Leveling) act1() error {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 4
 		}
 
-		if err := NewTristram().Run(nil); err != nil {
-			a.ctx.Logger.Warn("Tristram run failed during leveling", "error", err)
-		}
+		NewTristram().Run(nil)
 
 	}
 
@@ -280,12 +278,9 @@ func (a Leveling) killRavenGetMerc() error {
 			break
 		}
 
-		if err := a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+		a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			return bloodRaven.UnitID, true
-		}, nil); err != nil {
-			a.ctx.Logger.Warn("Failed to kill Blood Raven during leveling", "error", err)
-			break
-		}
+		}, nil)
 	}
 
 	action.ItemPickup(30)
@@ -341,8 +336,7 @@ func gambleAct1Belt(ctx *context.Status) error {
 	itemsToGamble := []string{"Belt"}
 
 	// Loop until the desired item is found and purchased
-	const maxGambleRefreshes = 50
-	for attempt := 0; attempt < maxGambleRefreshes; attempt++ {
+	for {
 		// Check for any of the desired items in the vendor's inventory
 		for _, itmName := range itemsToGamble {
 			itm, found := ctx.Data.Inventory.Find(item.Name(itmName), item.LocationVendor)
@@ -365,9 +359,6 @@ func gambleAct1Belt(ctx *context.Status) error {
 		}
 		utils.Sleep(500)
 	}
-
-	ctx.Logger.Warn("Failed to find desired belt after max gambling attempts")
-	return nil
 }
 
 // atDistance is a helper function to calculate a position a certain distance away from a target.

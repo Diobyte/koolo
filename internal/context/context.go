@@ -45,7 +45,6 @@ type Context struct {
 	ExecutionPriority         Priority
 	CharacterCfg              *config.CharacterCfg
 	Data                      *game.Data
-	DataMu                    sync.RWMutex // Protects Data pointer during concurrent refresh (pointer swap)
 	EventListener             *event.Listener
 	HID                       *game.HID
 	Logger                    *slog.Logger
@@ -177,26 +176,16 @@ func getGoroutineID() uint64 {
 }
 
 func (ctx *Context) RefreshGameData() {
-	newData := ctx.GameReader.GetData()
+	*ctx.Data = ctx.GameReader.GetData()
 	if ctx.IsLevelingCharacter == nil {
 		_, isLevelingCharacter := ctx.Char.(LevelingCharacter)
 		ctx.IsLevelingCharacter = &isLevelingCharacter
 	}
-	newData.IsLevelingCharacter = *ctx.IsLevelingCharacter
-
-	// Swap the pointer under write lock. Readers that loaded the old pointer
-	// continue to reference a valid, fully-formed Data struct (kept alive by GC).
-	// This eliminates torn reads that occur with copy-through-pointer.
-	ctx.DataMu.Lock()
-	ctx.Data = &newData
-	ctx.DataMu.Unlock()
+	ctx.Data.IsLevelingCharacter = *ctx.IsLevelingCharacter
 }
 
 func (ctx *Context) RefreshInventory() {
-	inv := ctx.GameReader.GetInventory()
-	ctx.DataMu.Lock()
-	ctx.Data.Inventory = inv
-	ctx.DataMu.Unlock()
+	ctx.Data.Inventory = ctx.GameReader.GetInventory()
 }
 
 func (ctx *Context) Detach() {

@@ -19,10 +19,10 @@ import (
 
 // VendorRefillOpts configures vendor refill behavior
 type VendorRefillOpts struct {
-	ForceRefill    bool    // Force refill even if not needed
-	SellJunk       bool    // Sell junk items to vendor
-	BuyConsumables bool    // Buy potions, scrolls, keys (default behavior when not specified)
-	LockConfig     [][]int // Inventory slots to protect from selling
+	ForceRefill    bool     // Force refill even if not needed
+	SellJunk       bool     // Sell junk items to vendor
+	BuyConsumables bool     // Buy potions, scrolls, keys (default behavior when not specified)
+	LockConfig     [][]int  // Inventory slots to protect from selling
 }
 
 func VendorRefill(opts VendorRefillOpts) (err error) {
@@ -116,7 +116,7 @@ func BuyAtVendor(vendor npc.ID, items ...VendorItemRequest) error {
 
 	// Jamella trade button is the first one
 	if vendor == npc.Jamella {
-		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
+		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 	} else {
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 	}

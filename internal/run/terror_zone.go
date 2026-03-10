@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -37,23 +36,7 @@ func (tz TerrorZone) CheckConditions(parameters *RunParameters) SequencerResult 
 func (tz TerrorZone) Run(parameters *RunParameters) error {
 
 	availableTzs := tz.AvailableTZs()
-
-	// Terror zone data may not be populated yet right after entering a new
-	// game. Retry a few times with short delays so we don't silently skip
-	// the run when the data simply hasn't arrived from the server.
 	if len(availableTzs) == 0 {
-		for i := 0; i < 5; i++ {
-			time.Sleep(1 * time.Second)
-			availableTzs = tz.AvailableTZs()
-			if len(availableTzs) > 0 {
-				tz.ctx.Logger.Debug("Terror zone data became available after retry", "attempt", i+1)
-				break
-			}
-		}
-	}
-
-	if len(availableTzs) == 0 {
-		tz.ctx.Logger.Info("No available terror zones found, skipping TZ run")
 		return nil
 	}
 
@@ -88,7 +71,7 @@ func (tz TerrorZone) Run(parameters *RunParameters) error {
 
 	routes := terrorzones.RoutesFor(primary)
 	if len(routes) == 0 {
-		tz.ctx.Logger.Debug(fmt.Sprintf("No terror zone route defined for %v", primary.Area().Name))
+		tz.ctx.Logger.Debug("No terror zone route defined for %v", primary.Area().Name)
 		return nil
 	}
 

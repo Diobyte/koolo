@@ -31,7 +31,7 @@ const (
 	findItemRange     = 5
 )
 
-func (s *Berserker) ShouldIgnoreMonster(m data.Monster) bool {
+func (s Berserker) ShouldIgnoreMonster(m data.Monster) bool {
 	return false
 }
 

@@ -78,6 +78,8 @@ func (n Nihlathak) runStandard(parameters *RunParameters) error {
 		return err
 	}
 
+	var nihlaObject data.Object
+
 	o, found := n.ctx.Data.Objects.FindOne(object.NihlathakWildernessStartPositionName)
 	if !found {
 		return errors.New("failed to find Nihlathak's Start Position")
@@ -108,7 +110,7 @@ func (n Nihlathak) runStandard(parameters *RunParameters) error {
 
 		n.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			for _, m := range d.Monsters.Enemies() {
-				if d := pather.DistanceFromPoint(o.Position, m.Position); d < 15 {
+				if d := pather.DistanceFromPoint(nihlaObject.Position, m.Position); d < 15 {
 					return m.UnitID, true
 				}
 			}

@@ -686,14 +686,10 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		// Attempting to equip the best item
-		displayName := bestCandidate.IdentifiedName
-		if displayName == "" {
-			displayName = string(bestCandidate.Name)
-		}
-		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", displayName, loc))
+		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", bestCandidate.IdentifiedName, loc))
 		err := equip(bestCandidate, loc, target)
 		if err == nil {
-			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", displayName, loc))
+			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", bestCandidate.IdentifiedName, loc))
 			equippedSomething = true
 			*ctx.Data = ctx.GameReader.GetData() // Refresh data after a successful equip
 			continue                             // Move to the next location
@@ -734,7 +730,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		// For other errors, log it and continue to the next item slot
-		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", displayName, loc, err))
+		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", bestCandidate.IdentifiedName, loc, err))
 	}
 
 	return equippedSomething, nil
@@ -993,6 +989,96 @@ func equipBestWeapons(itemsByLoc map[item.LocationType][]data.Item, itemScores m
 	return false, nil
 }
 
+func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) {
+	ctx := context.Get()
+
+	allRingsMap := make(map[data.UnitID]data.Item)
+	for _, ring := range itemsByLoc[item.LocLeftRing] {
+		allRingsMap[ring.UnitID] = ring
+	}
+	for _, ring := range itemsByLoc[item.LocRightRing] {
+		allRingsMap[ring.UnitID] = ring
+	}
+
+	var allRings []data.Item
+	for _, ring := range allRingsMap {
+		allRings = append(allRings, ring)
+	}
+
+	sort.Slice(allRings, func(i, j int) bool {
+
+		scoreI := PlayerScore(allRings[i])[item.LocLeftRing]
+		scoreJ := PlayerScore(allRings[j])[item.LocLeftRing]
+		return scoreI > scoreJ
+	})
+
+	if len(allRings) == 0 {
+		return false, nil
+	}
+
+	bestRing := allRings[0]
+	var secondBestRing data.Item
+	if len(allRings) > 1 {
+		secondBestRing = allRings[1]
+	}
+
+	leftEquipped := GetEquippedItem(ctx.Data.Inventory, item.LocLeftRing)
+	rightEquipped := GetEquippedItem(ctx.Data.Inventory, item.LocRightRing)
+
+	equippedRings := []data.Item{leftEquipped, rightEquipped}
+	idealIDs := map[data.UnitID]bool{
+		bestRing.UnitID: true,
+	}
+	if secondBestRing.UnitID != 0 {
+		idealIDs[secondBestRing.UnitID] = true
+	}
+
+	var ringToReplace data.Item
+	for _, equipped := range equippedRings {
+		if equipped.UnitID != 0 && !idealIDs[equipped.UnitID] {
+			ringToReplace = equipped
+			break
+		}
+	}
+
+	if ringToReplace.UnitID != 0 {
+		var replacementRing data.Item
+		if bestRing.UnitID != leftEquipped.UnitID && bestRing.UnitID != rightEquipped.UnitID {
+			replacementRing = bestRing
+		} else if secondBestRing.UnitID != 0 && (secondBestRing.UnitID != leftEquipped.UnitID && secondBestRing.UnitID != rightEquipped.UnitID) {
+			replacementRing = secondBestRing
+		}
+
+		if replacementRing.UnitID != 0 {
+			ctx.Logger.Info(fmt.Sprintf("Replacing ring %s with %s.", ringToReplace.IdentifiedName, replacementRing.IdentifiedName))
+			err := equip(replacementRing, ringToReplace.Location.BodyLocation, item.LocationEquipped)
+			if err != nil {
+				return false, fmt.Errorf("failed to equip ring: %w", err)
+			}
+			return true, nil
+		}
+	}
+
+	if leftEquipped.UnitID == 0 {
+		if bestRing.UnitID != rightEquipped.UnitID {
+			ctx.Logger.Info(fmt.Sprintf("Equipping best ring %s in empty left slot.", bestRing.IdentifiedName))
+			if err := equip(bestRing, item.LocLeftRing, item.LocationEquipped); err == nil {
+				return true, nil
+			}
+		}
+	}
+	if rightEquipped.UnitID == 0 {
+		if secondBestRing.UnitID != 0 && secondBestRing.UnitID != leftEquipped.UnitID {
+			ctx.Logger.Info(fmt.Sprintf("Equipping second best ring %s in empty right slot.", secondBestRing.IdentifiedName))
+			if err := equip(secondBestRing, item.LocRightRing, item.LocationEquipped); err == nil {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // equip handles the physical process of equipping an item. Returns ErrNotEnoughSpace if it fails.
 func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) error {
 	ctx := context.Get()
@@ -1000,11 +1086,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	defer step.CloseAllMenus()
 
 	if target == item.LocationEquipped && !isAllowedEtherealForPlayer(itm) {
-		itmName := itm.IdentifiedName
-		if itmName == "" {
-			itmName = string(itm.Name)
-		}
-		return fmt.Errorf("ethereal item %s is not allowed for player equip", itmName)
+		return fmt.Errorf("ethereal item %s is not allowed for player equip", itm.IdentifiedName)
 	}
 
 	// Move item from stash to inventory if needed
@@ -1038,11 +1120,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			}
 		}
 		if !found {
-			itmName := itm.IdentifiedName
-			if itmName == "" {
-				itmName = string(itm.Name)
-			}
-			return fmt.Errorf("item %s not found in inventory after moving from stash", itmName)
+			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.IdentifiedName)
 		}
 		step.CloseAllMenus()
 	}

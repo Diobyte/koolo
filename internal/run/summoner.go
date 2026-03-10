@@ -2,7 +2,6 @@ package run
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -81,11 +80,11 @@ func (s Summoner) runTerrorZone() error {
 
 	// Clear all 4 lanes
 	for lane := 0; lane < 4; lane++ {
-		s.ctx.Logger.Info(fmt.Sprintf("Clearing Arcane Sanctuary TZ - Lane %d/4", lane+1))
+		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ - Lane %d/4", lane+1)
 
 		// Clear this lane properly (handles Summoner only if encountered at lane end)
 		if err := lanes.ClearLane(s.clearMonsterFilter, summonerNPC, summonerFound); err != nil {
-			s.ctx.Logger.Warn(fmt.Sprintf("Lane %d clearing issue: %v", lane+1, err))
+			s.ctx.Logger.Warn("Lane %d clearing issue: %v", lane+1, err)
 		}
 
 		// Open chests at end of lane
@@ -111,10 +110,7 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 	if s.ctx.CharacterCfg.Game.Summoner.KillFireEye && !isQuestRun {
 		NewFireEye().Run(parameters) // same pattern as other quest runs
 
-		obj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
-		if !found {
-			return errors.New("ArcaneSanctuaryPortal not found after Fire Eye")
-		}
+		obj, _ := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
 
 		err := action.InteractObject(obj, func() bool {
 			updatedObj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
@@ -216,7 +212,7 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			al.clearRange,
 			filter,
 		); err != nil {
-			al.ctx.Logger.Debug(fmt.Sprintf("ClearThroughPath error at checkpoint %d: %v", idx, err))
+			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint %d: %v", idx, err)
 			// Continue even on error
 		}
 
@@ -228,9 +224,9 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			)
 
 			if summonerDistance < 20 {
-				al.ctx.Logger.Info(fmt.Sprintf("Summoner detected on this lane (distance: %d) - killing...", summonerDistance))
+				al.ctx.Logger.Info("Summoner detected on this lane (distance: %d) - killing...", summonerDistance)
 				if err := al.ctx.Char.KillSummoner(); err != nil {
-					al.ctx.Logger.Warn(fmt.Sprintf("Failed to kill Summoner: %v", err))
+					al.ctx.Logger.Warn("Failed to kill Summoner: %v", err)
 				} else {
 					al.ctx.Logger.Info("Summoner killed successfully")
 					action.ItemPickup(30)
@@ -276,7 +272,7 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 		}
 
 		if err := action.MoveToCoords(obj.Position); err != nil {
-			al.ctx.Logger.Debug(fmt.Sprintf("Failed to move to chest: %v", err))
+			al.ctx.Logger.Debug("Failed to move to chest: %v", err)
 			continue
 		}
 
@@ -284,14 +280,14 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 			chest, found := al.ctx.Data.Objects.FindByID(obj.ID)
 			return found && !chest.Selectable
 		}); err != nil {
-			al.ctx.Logger.Debug(fmt.Sprintf("Failed to open chest: %v", err))
+			al.ctx.Logger.Debug("Failed to open chest: %v", err)
 		} else {
 			chestsOpened++
 		}
 	}
 
 	if chestsOpened > 0 {
-		al.ctx.Logger.Debug(fmt.Sprintf("Opened %d chests at lane end", chestsOpened))
+		al.ctx.Logger.Debug("Opened %d chests at lane end", chestsOpened)
 	}
 }
 

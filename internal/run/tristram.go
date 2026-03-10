@@ -96,10 +96,7 @@ func (t Tristram) Run(parameters *RunParameters) error {
 	// Enter Tristram portal
 
 	// Find the portal object
-	tristPortal, found := t.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
-	if !found {
-		return errors.New("Tristram portal not found")
-	}
+	tristPortal, _ := t.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 
 	// Interact with the portal
 	if err = action.InteractObject(tristPortal, func() bool {
@@ -115,21 +112,18 @@ func (t Tristram) Run(parameters *RunParameters) error {
 	if o, found := t.ctx.Data.Objects.FindOne(object.CainGibbet); found && o.Selectable {
 
 		// Move to cain
-		if err = action.MoveToCoords(o.Position); err != nil {
-			t.ctx.Logger.Warn("Failed to move to Cain", "error", err)
-		}
+		action.MoveToCoords(o.Position)
 
-		if err = action.InteractObject(o, func() bool {
+		action.InteractObject(o, func() bool {
 			obj, _ := t.ctx.Data.Objects.FindOne(object.CainGibbet)
+
 			return !obj.Selectable
-		}); err != nil {
-			t.ctx.Logger.Warn("Failed to interact with Cain gibbet", "error", err)
-		}
+		})
 	}
 
 	t.ctx.CharacterCfg.Character.ClearPathDist = 25
 	if err := config.SaveSupervisorConfig(t.ctx.CharacterCfg.ConfigFolderName, t.ctx.CharacterCfg); err != nil {
-		t.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
+		t.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 	}
 
 	t.ctx.Logger.Info("Clearing Tristram")
@@ -175,10 +169,7 @@ func (t Tristram) openPortalIfNotOpened() error {
 			object.CairnStoneDelta,
 		} {
 			st := cainStone
-			stone, found := t.ctx.Data.Objects.FindOne(st)
-			if !found {
-				continue
-			}
+			stone, _ := t.ctx.Data.Objects.FindOne(st)
 			if stone.Selectable {
 
 				action.InteractObject(stone, func() bool {

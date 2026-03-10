@@ -21,14 +21,6 @@ const ScrollInifussUnitID = 539
 const ScrollInifussAfterAkara = 540
 const ScrollInifussName = "Scroll of Inifuss"
 
-func isInifussScroll(itm data.Item) bool {
-	if itm.ID == ScrollInifussUnitID || itm.ID == ScrollInifussAfterAkara {
-		return true
-	}
-	name := string(itm.Name)
-	return name == ScrollInifussName || name == "ScrollOfInifuss" || name == "KeyToTheCairnStones"
-}
-
 type RescueCain struct {
 	ctx *context.Status
 }
@@ -69,7 +61,7 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 
 	infusInInventory := false
 	for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if isInifussScroll(itm) {
+		if itm.ID == ScrollInifussUnitID || itm.ID == ScrollInifussAfterAkara {
 			infusInInventory = true
 			break
 		}
@@ -163,7 +155,7 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 func (rc RescueCain) gatherInfussScroll() error {
 	rc.ctx.CharacterCfg.Character.ClearPathDist = 20
 	if err := config.SaveSupervisorConfig(rc.ctx.CharacterCfg.ConfigFolderName, rc.ctx.CharacterCfg); err != nil {
-		rc.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
+		rc.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 	}
 
 	err := action.WayPoint(area.DarkWood)
@@ -173,7 +165,7 @@ func (rc RescueCain) gatherInfussScroll() error {
 
 	rc.ctx.CharacterCfg.Character.ClearPathDist = 30
 	if err := config.SaveSupervisorConfig(rc.ctx.CharacterCfg.ConfigFolderName, rc.ctx.CharacterCfg); err != nil {
-		rc.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
+		rc.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 	}
 
 	// Find the Inifuss Tree position.
@@ -216,7 +208,7 @@ PickupLoop:
 
 		foundInInv := false
 		for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-			if isInifussScroll(itm) {
+			if itm.ID == ScrollInifussUnitID {
 				foundInInv = true
 				break
 			}
@@ -231,7 +223,7 @@ PickupLoop:
 		var scrollObj data.Item
 		foundOnGround := false
 		for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationGround) {
-			if isInifussScroll(itm) {
+			if itm.ID == ScrollInifussUnitID {
 				scrollObj = itm
 				foundOnGround = true
 				break
@@ -275,7 +267,7 @@ PickupLoop:
 				rc.ctx.RefreshGameData()
 				foundInInvAfterPickup := false
 				for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-					if isInifussScroll(itm) {
+					if itm.ID == ScrollInifussUnitID {
 						foundInInvAfterPickup = true
 						break
 					}
@@ -294,7 +286,7 @@ PickupLoop:
 
 	infusInInventory := false
 	for _, itm := range rc.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if isInifussScroll(itm) {
+		if itm.ID == ScrollInifussUnitID {
 			infusInInventory = true
 			break
 		}
@@ -320,8 +312,8 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 
 	rc.ctx.Logger.Debug("Tristram portal not detected, trying to open it")
 
-outerLoop:
 	for range 6 {
+		//stoneTries := 0
 		activeStones := 0
 		for _, cainStone := range []object.Name{
 			object.CairnStoneAlpha,
@@ -330,10 +322,7 @@ outerLoop:
 			object.CairnStoneLambda,
 			object.CairnStoneDelta,
 		} {
-			stone, found := rc.ctx.Data.Objects.FindOne(cainStone)
-			if !found {
-				continue
-			}
+			stone, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 			if stone.Selectable {
 				rc.ctx.PathFinder.RandomMovement()
 				utils.Sleep(250)
@@ -341,15 +330,17 @@ outerLoop:
 					st, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 					return !st.Selectable
 				})
+
 			} else {
 				utils.Sleep(200)
 				activeStones++
 			}
 			_, tristPortal := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 			if activeStones >= 5 || tristPortal {
-				break outerLoop
+				break
 			}
 		}
+
 	}
 
 	// Wait upto 15 seconds for the portal to open, checking every second if its up

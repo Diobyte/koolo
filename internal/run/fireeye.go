@@ -1,7 +1,6 @@
 package run
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -48,10 +47,7 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 		return fmt.Errorf("could not travel to Arcane Sanctuary: %w", err)
 	}
 
-	obj, found := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
-	if !found {
-		return errors.New("ArcaneSanctuaryPortal not found")
-	}
+	obj, _ := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
 
 	err = action.InteractObject(obj, func() bool {
 		updatedObj, found := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
@@ -82,8 +78,8 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 	monster, found := areaData.NPCs.FindOne(750)
 
 	if !found || len(monster.Positions) == 0 {
-		f.ctx.Logger.Error("fireEye not found")
-		return errors.New("Fire Eye NPC not found in area data")
+		f.ctx.Logger.Error("fireEye not found]")
+		return err
 	}
 
 	action.MoveTo(func() (data.Position, bool) {
@@ -111,7 +107,10 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 		}
 
 		if found && fireEye.IsImmune(stat.FireImmune) && fireEye.IsImmune(stat.ColdImmune) && fireEye.Stats[stat.Life] > 0 {
-			isKillable = false
+			if !isKillable {
+				isKillable = false
+			}
+
 			return 0, false
 		}
 
