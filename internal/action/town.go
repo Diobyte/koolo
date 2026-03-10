@@ -3,7 +3,6 @@ package action
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
@@ -18,37 +17,14 @@ func StashFull() bool {
 	ctx := context.Get()
 	totalUsedSpace := 0
 
-	// Stash tabs are 1-indexed:
-	// Tab 1 = Personal stash
-	// Tabs 2-N = Shared stash pages (N = 2 + SharedStashPages - 1)
-	// Non-DLC: 3 shared pages (tabs 2-4)
-	// DLC: 5 shared pages (tabs 2-6)
+	// ByLocation(LocationSharedStash) returns items from ALL shared stash
+	// pages at once (each item carries a Location.Page field), so no stash
+	// opening or tab switching is needed — the memory reader sees everything.
 	sharedPages := SharedStashPageCount(ctx)
 
-	tabsToCheck := make([]int, sharedPages)
-	for i := 0; i < sharedPages; i++ {
-		tabsToCheck[i] = i + 2 // Tabs start at 2 (first shared page)
+	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationSharedStash) {
+		totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
 	}
-
-	// Open the stash before switching tabs — SwitchStashTab sends UI clicks
-	// that would be interpreted as movement commands if the stash isn't open.
-	if err := OpenStash(); err != nil {
-		ctx.Logger.Error("StashFull: failed to open stash, assuming not full", "error", err)
-		return false
-	}
-
-	for _, tabIndex := range tabsToCheck {
-		SwitchStashTab(tabIndex)
-		time.Sleep(time.Millisecond * 500)
-		ctx.RefreshGameData()
-
-		sharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
-		for _, it := range sharedItems {
-			totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
-		}
-	}
-
-	step.CloseAllMenus()
 
 	// Each page has 100 spaces. 80% threshold for muling.
 	// Non-DLC: 3 pages × 100 = 300 spaces, 80% = 240

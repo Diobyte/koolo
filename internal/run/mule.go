@@ -115,7 +115,9 @@ func (m Mule) Run(parameters *RunParameters) error {
 
 				// ByLocation returns ALL shared stash items regardless of page.
 				// Filter to only items on the currently visible page.
-				currentPage := sharedTab - 2 // tab 2 = page 0, tab 3 = page 1, etc.
+				// Location.Page is 1-based for shared stash: Page 1 = first
+				// shared page (tab 2), Page 2 = second (tab 3), etc.
+				currentPage := sharedTab - 1 // tab 2 = page 1, tab 3 = page 2, etc.
 				allSharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
 				var itemsToMove []data.Item
 				for _, it := range allSharedItems {
