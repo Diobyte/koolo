@@ -127,7 +127,7 @@ func BuildRun(run string) Run {
 	case string(config.SpiderCavernRun):
 		return NewSpiderCavern()
 	case string(config.DrifterCavernRun):
-		return NewDriverCavern()
+		return NewDrifterCavern()
 	case string(config.EnduguRun):
 		return NewEndugu()
 	case string(config.UtilityRun):

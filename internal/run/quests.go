@@ -486,10 +486,14 @@ func (a Quests) killRadamentQuest() error {
 
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-		itm, _ := a.ctx.Data.Inventory.Find("BookofSkill")
-		screenPos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(200)
-		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+		itm, found := a.ctx.Data.Inventory.Find("BookofSkill")
+		if !found {
+			a.ctx.Logger.Warn("BookofSkill not found in inventory, skipping use")
+		} else {
+			screenPos := ui.GetScreenCoordsForItem(itm)
+			utils.Sleep(200)
+			a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+		}
 		step.CloseAllMenus()
 
 	}
@@ -822,10 +826,14 @@ func (a Quests) rescueAnyaQuest() error {
 
 	step.CloseAllMenus()
 	a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-	itm, _ := a.ctx.Data.Inventory.Find("ScrollOfResistance")
-	screenPos := ui.GetScreenCoordsForItem(itm)
-	utils.Sleep(200)
-	a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+	itm, found := a.ctx.Data.Inventory.Find("ScrollOfResistance")
+	if !found {
+		a.ctx.Logger.Warn("ScrollOfResistance not found in inventory, skipping use")
+	} else {
+		screenPos := ui.GetScreenCoordsForItem(itm)
+		utils.Sleep(200)
+		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+	}
 	step.CloseAllMenus()
 
 	return nil

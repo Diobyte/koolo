@@ -39,10 +39,17 @@ func (t Rakanishu) Run(parameters *RunParameters) error {
 	}
 
 	cairnStone := data.Object{}
+	found := false
 	for _, o := range t.ctx.Data.Objects {
 		if o.Name == object.CairnStoneAlpha {
 			cairnStone = o
+			found = true
 		}
+	}
+
+	if !found {
+		t.ctx.Logger.Warn("CairnStoneAlpha not found in Stony Field")
+		return nil
 	}
 
 	// Trying to not be too close to avoid jumpimg in a monster pack

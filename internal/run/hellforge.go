@@ -89,7 +89,8 @@ func (h Hellforge) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	for h.ctx.PathFinder.DistanceFromMe(hellforge.Position) < 5 {
+	const maxMoveAttempts = 20
+	for i := 0; i < maxMoveAttempts && h.ctx.PathFinder.DistanceFromMe(hellforge.Position) < 5; i++ {
 		h.ctx.PathFinder.RandomMovement()
 		utils.Sleep(500)
 	}

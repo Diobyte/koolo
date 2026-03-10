@@ -312,8 +312,8 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 
 	rc.ctx.Logger.Debug("Tristram portal not detected, trying to open it")
 
+outerLoop:
 	for range 6 {
-		//stoneTries := 0
 		activeStones := 0
 		for _, cainStone := range []object.Name{
 			object.CairnStoneAlpha,
@@ -322,7 +322,10 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 			object.CairnStoneLambda,
 			object.CairnStoneDelta,
 		} {
-			stone, _ := rc.ctx.Data.Objects.FindOne(cainStone)
+			stone, found := rc.ctx.Data.Objects.FindOne(cainStone)
+			if !found {
+				continue
+			}
 			if stone.Selectable {
 				rc.ctx.PathFinder.RandomMovement()
 				utils.Sleep(250)
@@ -330,17 +333,15 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 					st, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 					return !st.Selectable
 				})
-
 			} else {
 				utils.Sleep(200)
 				activeStones++
 			}
 			_, tristPortal := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 			if activeStones >= 5 || tristPortal {
-				break
+				break outerLoop
 			}
 		}
-
 	}
 
 	// Wait upto 15 seconds for the portal to open, checking every second if its up

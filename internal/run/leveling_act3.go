@@ -203,7 +203,9 @@ func (a Leveling) act3() error {
 		a.ctx.Logger.Info("KhalimsBrain found, skipping quest")
 	} else if !willFound && !a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
 		a.ctx.Logger.Info("KhalimsBrain not found, starting quest")
-		NewEndugu().Run(nil)
+		if err := NewEndugu().Run(nil); err != nil {
+			a.ctx.Logger.Warn("Endugu run failed", "error", err)
+		}
 		// Sometimes it doesn't pick up the brain
 		utils.Sleep(500)
 		action.ItemPickup(10)

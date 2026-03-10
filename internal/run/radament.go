@@ -138,7 +138,12 @@ func (r Radament) finishQuest() error {
 
 	step.CloseAllMenus()
 	r.ctx.HID.PressKeyBinding(r.ctx.Data.KeyBindings.Inventory)
-	itm, _ := r.ctx.Data.Inventory.Find("BookofSkill")
+	itm, found := r.ctx.Data.Inventory.Find("BookofSkill")
+	if !found {
+		r.ctx.Logger.Warn("BookofSkill not found in inventory, skipping use")
+		step.CloseAllMenus()
+		return nil
+	}
 	screenPos := ui.GetScreenCoordsForItem(itm)
 	utils.Sleep(200)
 	r.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)

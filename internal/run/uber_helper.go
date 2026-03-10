@@ -119,17 +119,8 @@ func findTownPortal(ctx *context.Status) (data.Object, error) {
 	}
 
 	if !portalFound {
-		for _, obj := range ctx.Data.Objects {
-			if obj.IsRedPortal() {
-				portal = obj
-				portalFound = true
-				break
-			}
-		}
-	}
-
-	if !portalFound {
-		return data.Object{}, errors.New("failed to find portal back to town")
+		// All red portals lead to UberTristram — no valid town portal exists
+		return data.Object{}, errors.New("failed to find portal back to town: all red portals lead to UberTristram")
 	}
 
 	return portal, nil

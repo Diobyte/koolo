@@ -96,7 +96,10 @@ func (t Tristram) Run(parameters *RunParameters) error {
 	// Enter Tristram portal
 
 	// Find the portal object
-	tristPortal, _ := t.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	tristPortal, found := t.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	if !found {
+		return errors.New("Tristram portal not found")
+	}
 
 	// Interact with the portal
 	if err = action.InteractObject(tristPortal, func() bool {
@@ -112,13 +115,16 @@ func (t Tristram) Run(parameters *RunParameters) error {
 	if o, found := t.ctx.Data.Objects.FindOne(object.CainGibbet); found && o.Selectable {
 
 		// Move to cain
-		action.MoveToCoords(o.Position)
+		if err = action.MoveToCoords(o.Position); err != nil {
+			t.ctx.Logger.Warn("Failed to move to Cain", "error", err)
+		}
 
-		action.InteractObject(o, func() bool {
+		if err = action.InteractObject(o, func() bool {
 			obj, _ := t.ctx.Data.Objects.FindOne(object.CainGibbet)
-
 			return !obj.Selectable
-		})
+		}); err != nil {
+			t.ctx.Logger.Warn("Failed to interact with Cain gibbet", "error", err)
+		}
 	}
 
 	t.ctx.CharacterCfg.Character.ClearPathDist = 25
@@ -169,7 +175,10 @@ func (t Tristram) openPortalIfNotOpened() error {
 			object.CairnStoneDelta,
 		} {
 			st := cainStone
-			stone, _ := t.ctx.Data.Objects.FindOne(st)
+			stone, found := t.ctx.Data.Objects.FindOne(st)
+			if !found {
+				continue
+			}
 			if stone.Selectable {
 
 				action.InteractObject(stone, func() bool {

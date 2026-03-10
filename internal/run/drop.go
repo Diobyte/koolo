@@ -151,9 +151,14 @@ func (d Drop) runSingle(ctx *context.Status, req *drop.Request) error {
 	// to stop functioning. Therefore, we must run a local goroutine here to keep the
 	// Game Data up-to-date during the Drop process.
 	// This goroutine is automatically terminated via defer when Drop finishes.
+	//
+	// Concurrency safety: RefreshGameData() uses a pointer-swap under a sync.RWMutex
+	// write lock (Context.DataMu). Each call allocates a new game.Data and atomically
+	// swaps the ctx.Data pointer. Readers that loaded the old pointer keep referencing
+	// a valid, fully-formed struct (GC keeps it alive), eliminating torn reads.
 
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 		for {
 			select {

@@ -111,7 +111,10 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 	if s.ctx.CharacterCfg.Game.Summoner.KillFireEye && !isQuestRun {
 		NewFireEye().Run(parameters) // same pattern as other quest runs
 
-		obj, _ := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		obj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		if !found {
+			return errors.New("ArcaneSanctuaryPortal not found after Fire Eye")
+		}
 
 		err := action.InteractObject(obj, func() bool {
 			updatedObj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)

@@ -163,9 +163,10 @@ func (a Andariel) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	err = action.MoveToArea(area.CatacombsLevel3)
-	action.MoveToArea(area.CatacombsLevel4)
-	if err != nil {
+	if err = action.MoveToArea(area.CatacombsLevel3); err != nil {
+		return err
+	}
+	if err = action.MoveToArea(area.CatacombsLevel4); err != nil {
 		return err
 	}
 

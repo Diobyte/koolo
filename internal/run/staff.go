@@ -1,6 +1,8 @@
 package run
 
 import (
+	"errors"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
@@ -90,7 +92,7 @@ func (s Staff) Run(parameters *RunParameters) error {
 
 	obj, found := s.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)
 	if !found {
-		return err
+		return errors.New("Staff of Kings chest not found")
 	}
 
 	err = action.InteractObject(obj, func() bool {

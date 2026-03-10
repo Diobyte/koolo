@@ -13,7 +13,7 @@ type DrifterCavern struct {
 	ctx *context.Status
 }
 
-func NewDriverCavern() *DrifterCavern {
+func NewDrifterCavern() *DrifterCavern {
 	return &DrifterCavern{
 		ctx: context.Get(),
 	}

@@ -134,12 +134,15 @@ func (a Ancients) killAncients() error {
 			break
 		}
 
-		a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+		if err := a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			for _, m := range d.Monsters.Enemies(data.MonsterEliteFilter()) {
 				return m.UnitID, true
 			}
 			return 0, false
-		}, nil)
+		}, nil); err != nil {
+			a.ctx.Logger.Warn("Failed to kill ancient", "error", err)
+			break
+		}
 	}
 
 	return nil
