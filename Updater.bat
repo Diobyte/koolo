@@ -21,15 +21,39 @@ echo -----------------------------------
 echo [1/2] Updating Repository...
 echo -----------------------------------
 
-git checkout main
-git restore .
-git pull origin main
+:: Ensure upstream remote points to Diobyte/koolo
+git remote get-url upstream >nul 2>nul
+if errorlevel 1 (
+    echo Adding upstream remote for Diobyte/koolo...
+    git remote add upstream https://github.com/Diobyte/koolo.git
+) else (
+    for /f "delims=" %%u in ('git remote get-url upstream') do set "UPSTREAM_URL=%%u"
+    echo !UPSTREAM_URL! | findstr /i "Diobyte/koolo" >nul
+    if errorlevel 1 (
+        echo Updating upstream remote to Diobyte/koolo...
+        git remote set-url upstream https://github.com/Diobyte/koolo.git
+    )
+)
+
+echo Fetching latest from Diobyte/koolo...
+git fetch upstream main
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Git pull failed.
+    echo ERROR: Git fetch from upstream failed.
     pause
     exit /b
+)
+
+echo Merging upstream/main...
+git merge upstream/main --no-edit
+
+if errorlevel 1 (
+    echo.
+    echo WARNING: Merge conflict detected. Resetting to upstream/main...
+    git merge --abort
+    git reset --hard upstream/main
+    git clean -fd
 )
 
 echo.

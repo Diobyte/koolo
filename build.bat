@@ -14,6 +14,12 @@ echo Cleaning up previous artifacts...
 for /f "delims=" %%a in ('powershell "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
 for /f "delims=" %%b in ('powershell "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
+:: Capture git commit hash and time for the updater version check
+for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "COMMIT_HASH=%%h"
+for /f "delims=" %%t in ('git show -s --format=%%cI HEAD 2^>nul') do set "COMMIT_TIME=%%t"
+if not defined COMMIT_HASH set "COMMIT_HASH="
+if not defined COMMIT_TIME set "COMMIT_TIME="
+
 echo Generating per-build noise...
 powershell -ExecutionPolicy Bypass -File "%~dp0generate_noise.ps1"
 
@@ -24,7 +30,7 @@ popd
 
 echo Building Koolo binary...
 if "%1"=="" (set VERSION=dev) else (set VERSION=%1)
-garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "build\%BUILD_ID%.exe" ./cmd/koolo > NUL || goto :error
+garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%' -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitHash=%COMMIT_HASH%' -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitTime=%COMMIT_TIME%'" -o "build\%BUILD_ID%.exe" ./cmd/koolo > NUL || goto :error
 
 echo Copying assets...
 mkdir build\config > NUL || goto :error

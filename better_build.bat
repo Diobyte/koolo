@@ -168,6 +168,12 @@ call :print_info "Building %VERSION%"
 for /f "delims=" %%a in ('powershell -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
 for /f "delims=" %%b in ('powershell -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
+:: Capture git commit hash and time for the updater version check
+for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "COMMIT_HASH=%%h"
+for /f "delims=" %%t in ('git show -s --format=%%cI HEAD 2^>nul') do set "COMMIT_TIME=%%t"
+if not defined COMMIT_HASH set "COMMIT_HASH="
+if not defined COMMIT_TIME set "COMMIT_TIME="
+
 :: Set the expected output executable path
 set "OUTPUT_EXE=build\%BUILD_ID%.exe"
 
@@ -185,7 +191,7 @@ if !errorlevel! neq 0 (
 popd
 
 (
-    garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
+    garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%' -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitHash=%COMMIT_HASH%' -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitTime=%COMMIT_TIME%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
 set "GARBLE_EXIT_CODE=!errorlevel!"
 
