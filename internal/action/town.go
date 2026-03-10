@@ -30,6 +30,13 @@ func StashFull() bool {
 		tabsToCheck[i] = i + 2 // Tabs start at 2 (first shared page)
 	}
 
+	// Open the stash before switching tabs — SwitchStashTab sends UI clicks
+	// that would be interpreted as movement commands if the stash isn't open.
+	if err := OpenStash(); err != nil {
+		ctx.Logger.Error("StashFull: failed to open stash, assuming not full", "error", err)
+		return false
+	}
+
 	for _, tabIndex := range tabsToCheck {
 		SwitchStashTab(tabIndex)
 		time.Sleep(time.Millisecond * 500)
@@ -40,6 +47,8 @@ func StashFull() bool {
 			totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
 		}
 	}
+
+	step.CloseAllMenus()
 
 	// Each page has 100 spaces. 80% threshold for muling.
 	// Non-DLC: 3 pages × 100 = 300 spaces, 80% = 240
