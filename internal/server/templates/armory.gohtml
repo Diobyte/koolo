@@ -335,18 +335,20 @@
 
         .stash-tabs {
             display: flex;
+            flex-wrap: wrap;
             gap: 4px;
             margin-bottom: 8px;
         }
 
         .stash-tab {
-            padding: 6px 16px;
+            padding: 6px 10px;
             background: rgba(40, 40, 60, 0.8);
             border: 1px solid #444;
             border-radius: 4px 4px 0 0;
             cursor: pointer;
             color: #888;
-            font-size: 12px;
+            font-size: 11px;
+            white-space: nowrap;
             transition: all 0.2s;
         }
 
@@ -1589,7 +1591,7 @@
         <!-- Row 2: Stash | Cube | Mercenary -->
         <div class="panel border rounded-lg flex flex-wrap mt-6 armory-row">
             <!-- Stash -->
-            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]" style="overflow: hidden;">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;"><i class="bi bi-box-seam mr-2"></i>Stash</h3>
                     <button class="selection-mode-toggle" id="selectionModeBtn" onclick="toggleSelectionMode()">
