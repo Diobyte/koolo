@@ -54,6 +54,36 @@ func CubeAddItems(items ...data.Item) error {
 		}
 	}
 
+	// Open and empty the cube BEFORE picking up recipe items from stash.
+	// ensureCubeIsEmpty() may call stashInventory() which would stash any
+	// loose inventory items — including recipe ingredients if we picked
+	// them up first.
+	err := ensureCubeIsOpen()
+	if err != nil {
+		return err
+	}
+
+	err = ensureCubeIsEmpty()
+	if err != nil {
+		return err
+	}
+
+	// Close the cube so we can access stash tabs to pick up recipe items.
+	ctx.HID.PressKey(win.VK_ESCAPE)
+	utils.Sleep(300)
+	ctx.RefreshGameData()
+
+	// Ensure stash is open for picking up regular items
+	if len(regularItems) > 0 && !ctx.Data.OpenMenus.Stash {
+		bank, _ := ctx.Data.Objects.FindOne(object.Bank)
+		err = InteractObject(bank, func() bool {
+			return ctx.Data.OpenMenus.Stash
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	// Pick up regular stash items (personal/shared) to inventory
 	for _, itm := range regularItems {
 		nwIt := itm
@@ -93,12 +123,8 @@ func CubeAddItems(items ...data.Item) error {
 		utils.Sleep(300)
 	}
 
-	err := ensureCubeIsOpen()
-	if err != nil {
-		return err
-	}
-
-	err = ensureCubeIsEmpty()
+	// Open cube to place items from inventory
+	err = ensureCubeIsOpen()
 	if err != nil {
 		return err
 	}
