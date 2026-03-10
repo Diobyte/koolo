@@ -71,7 +71,7 @@ func (o Organs) Run(parameters *RunParameters) error {
 			continue
 		}
 
-		portal, areaName, err := o.openPortal(portalKeys, portalPositions[portalNum-1], portalNum)
+		portal, areaName, err := o.openPortal(portalKeys, portalPositions[portalNum-1])
 		if err != nil {
 			o.ctx.Logger.Warn(fmt.Sprintf("Failed to open portal %d: %v", portalNum, err))
 			continue
@@ -127,7 +127,7 @@ var portalPositions = []data.Position{
 	{X: 5131, Y: 5068},
 }
 
-func (o Organs) openPortal(keys []data.Item, position data.Position, portalNum int) (data.Object, string, error) {
+func (o Organs) openPortal(keys []data.Item, position data.Position) (data.Object, string, error) {
 	if err := action.CubeAddItems(keys[0], keys[1], keys[2]); err != nil {
 		return data.Object{}, "", fmt.Errorf("failed to add keys to cube: %w", err)
 	}

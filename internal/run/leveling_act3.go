@@ -2,6 +2,7 @@ package run
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -115,7 +116,7 @@ func (a Leveling) act3() error {
 		a.ctx.CharacterCfg.Game.Mephisto.ExitToA4 = true
 		err := NewMephisto(nil).Run(nil)
 		if err != nil {
-			a.ctx.Logger.Error("Mephisto run failed, ending Act 3 script.", err)
+			a.ctx.Logger.Error("Mephisto run failed, ending Act 3 script.", slog.Any("error", err))
 			return err
 		}
 		// If Mephisto run completes (successfully or not, but without an explicit error from NewMephisto),
@@ -131,8 +132,8 @@ func (a Leveling) act3() error {
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-				a.ctx.Logger.Error("Failed to interact with Hell Gate, ending Act 3 script.", err)
-				return err //
+				a.ctx.Logger.Error("Failed to interact with Hell Gate, ending Act 3 script.", slog.Any("error", err))
+				return err
 			}
 			a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")
 			utils.Sleep(500)

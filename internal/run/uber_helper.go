@@ -164,7 +164,7 @@ func enterTownPortal(ctx *context.Status, portal data.Object) error {
 			ctx.Logger.Warn(fmt.Sprintf("Portal entry failed (attempt %d/%d), checking for monsters...", attempt+1, maxAttempts))
 			ctx.RefreshGameData()
 
-			if hasMonstersNearPortal(ctx, portalPos) {
+			if hasMonstersNearPortal(ctx) {
 				if err := clearPortalArea(ctx, portalPos); err != nil {
 					ctx.Logger.Warn(fmt.Sprintf("Failed to clear portal area: %v", err))
 				}
@@ -175,7 +175,7 @@ func enterTownPortal(ctx *context.Status, portal data.Object) error {
 	return fmt.Errorf("timeout waiting for area change to town after %d attempts", maxAttempts)
 }
 
-func returnToUberTristram(ctx *context.Status, findPortalFunc func() (data.Object, error), enterPortalFunc func(data.Object) error) error {
+func returnToUberTristram(findPortalFunc func() (data.Object, error), enterPortalFunc func(data.Object) error) error {
 	portal, err := findPortalFunc()
 	if err != nil {
 		return fmt.Errorf("failed to find Uber Tristram portal: %w", err)
@@ -473,7 +473,7 @@ func clearPortalArea(ctx *context.Status, portalPos data.Position) error {
 	return nil
 }
 
-func hasMonstersNearPortal(ctx *context.Status, portalPos data.Position) bool {
+func hasMonstersNearPortal(ctx *context.Status) bool {
 	const checkRadius = 3
 
 	for _, m := range ctx.Data.Monsters.Enemies() {

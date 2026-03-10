@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	ho_sorceressMaxAttacksLoop = 40
-	ho_sorceressMinDistance    = 0
-	ho_sorceressMaxDistance    = 30
+	ho_sorceressMinDistance = 0
+	ho_sorceressMaxDistance = 30
 )
 
 type HydraOrbSorceress struct {

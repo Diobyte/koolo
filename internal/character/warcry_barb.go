@@ -23,7 +23,6 @@ const (
 	warcryBarbHorkRange      = 40
 	grimWardRange            = 8
 	grimWardCooldown         = 15 * time.Second
-	grimWardMaxAttempts      = 3
 	corpseRange              = 5
 )
 
