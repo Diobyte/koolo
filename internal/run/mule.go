@@ -97,35 +97,17 @@ func (m Mule) Run(parameters *RunParameters) error {
 		}
 	} else {
 		// Stash is not full, proceed with muling logic
-		// Tab mapping depends on game version:
-		// DLC (Reign of the Warlock): Tab 1=Shared, Tab 2=Personal
-		// Non-DLC (Lord of Destruction): Tab 1=Personal, Tabs 2+=Shared
-		isDLC := ctx.Data.IsDLC()
-		var personalTab int
-		var sharedTabStart, sharedTabEnd int
-
-		if isDLC {
-			personalTab = 2
-			sharedTabStart = 1
-			sharedTabEnd = 1 // DLC has a single shared stash tab
-		} else {
-			personalTab = 1
-			sharedTabStart = 2
-			sharedPages := action.SharedStashPageCount(ctx)
-			sharedTabEnd = 1 + sharedPages // tabs 2..N
-		}
-
-		ctx.Logger.Info("Mule stash layout detected",
-			"isDLC", isDLC,
-			"personalTab", personalTab,
-			"sharedTabStart", sharedTabStart,
-			"sharedTabEnd", sharedTabEnd)
+		// Tab 1 = Personal stash (always)
+		// Tabs 2..N = Shared stash pages (DLC: 1 page, Non-DLC LoD: 3 pages)
+		sharedPages := action.SharedStashPageCount(ctx)
+		maxSharedTab := 1 + sharedPages // personal (1) + shared pages
+		ctx.Logger.Info("Mule stash layout detected", "sharedPages", sharedPages, "maxSharedTab", maxSharedTab)
 
 		for {
 			movedItemInLoop := false
 
 			// Phase 1: Move items from shared stash tab(s) to inventory
-			for sharedTab := sharedTabStart; sharedTab <= sharedTabEnd; sharedTab++ {
+			for sharedTab := 2; sharedTab <= maxSharedTab; sharedTab++ {
 				action.SwitchStashTab(sharedTab)
 				utils.Sleep(MuleActionDelay)
 
@@ -133,7 +115,7 @@ func (m Mule) Run(parameters *RunParameters) error {
 
 				// ByLocation returns ALL shared stash items regardless of page.
 				// Filter to only items on the currently visible page.
-				currentPage := sharedTab - sharedTabStart // tab offset → page 0, 1, 2...
+				currentPage := sharedTab - 2 // tab 2 = page 0, tab 3 = page 1, etc.
 				allSharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
 				var itemsToMove []data.Item
 				for _, it := range allSharedItems {
@@ -159,14 +141,13 @@ func (m Mule) Run(parameters *RunParameters) error {
 			}
 
 			// Phase 2: Move all items from inventory to private stash
-			action.SwitchStashTab(personalTab)
+			action.SwitchStashTab(1)
 			utils.Sleep(MuleActionDelay)
 
-			// Refresh and verify we're on the personal tab before depositing
 			ctx.RefreshGameData()
 			itemsToDeposit := ctx.Data.Inventory.ByLocation(item.LocationInventory)
 			if len(itemsToDeposit) > 0 {
-				ctx.Logger.Info("Depositing items from inventory to private stash", "tab", personalTab, "count", len(itemsToDeposit))
+				ctx.Logger.Info("Depositing items from inventory to private stash", "count", len(itemsToDeposit))
 			}
 
 			for _, itemToDeposit := range itemsToDeposit {
