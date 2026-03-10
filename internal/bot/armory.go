@@ -65,6 +65,7 @@ type ArmoryCharacter struct {
 	StashedGold   [6]int       `json:"stashedGold"`
 	DumpTime      time.Time    `json:"dumpTime"`
 	GameName      string       `json:"gameName"`
+	IsDLC         bool         `json:"isDLC"`
 	Equipped      []ArmoryItem `json:"equipped"`
 	Inventory     []ArmoryItem `json:"inventory"`
 	Stash         []ArmoryItem `json:"stash"`
@@ -307,6 +308,7 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 		StashedGold:   gameData.Inventory.StashedGold,
 		DumpTime:      time.Now(),
 		GameName:      gameName,
+		IsDLC:         gameData.IsDLC(),
 	}
 
 	// Process items from AllItems

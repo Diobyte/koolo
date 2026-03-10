@@ -290,6 +290,17 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 			return template.JS(b)
 		},
 		"lower": strings.ToLower,
+		"sumQty": func(items []bot.ArmoryItem) int {
+			total := 0
+			for _, item := range items {
+				if item.StackedQuantity > 0 {
+					total += item.StackedQuantity
+				} else {
+					total++
+				}
+			}
+			return total
+		},
 		"pageTitle": func() string {
 			return windowname.SessionTitle()
 		},

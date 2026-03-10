@@ -466,6 +466,27 @@
             flex-shrink: 0;
         }
 
+        .dlc-tab-summary {
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            background: rgba(30, 30, 50, 0.6);
+            border: 1px solid #444;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .dlc-tab-summary strong {
+            color: #4CAF50;
+        }
+
+        .dlc-tab-empty {
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+        }
+
         /* Item Selection Styles */
         .inventory-item.selectable {
             cursor: pointer;
@@ -1587,9 +1608,9 @@
                 <div class="stash-tabs">
                     <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
                     <button class="stash-tab" onclick="showStashTab('shared')">Shared</button>
-                    {{ if .Armory.GemsTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('gems')"><i class="bi bi-gem"></i> Gems</button>{{ end }}
-                    {{ if .Armory.MaterialsTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('materials')"><i class="bi bi-box2"></i> Materials</button>{{ end }}
-                    {{ if .Armory.RunesTab }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('runes')"><i class="bi bi-stars"></i> Runes</button>{{ end }}
+                    {{ if or .Armory.GemsTab .Armory.IsDLC }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('gems')"><i class="bi bi-gem"></i> Gems</button>{{ end }}
+                    {{ if or .Armory.MaterialsTab .Armory.IsDLC }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('materials')"><i class="bi bi-box2"></i> Materials</button>{{ end }}
+                    {{ if or .Armory.RunesTab .Armory.IsDLC }}<button class="stash-tab dlc-tab-btn" onclick="showStashTab('runes')"><i class="bi bi-stars"></i> Runes</button>{{ end }}
                 </div>
                 
                 <!-- Personal Stash -->
@@ -1617,15 +1638,15 @@
                     </div>
                 </div>
 
-                <!-- Shared Stash (all pages) -->
+                <!-- Shared Stash -->
                 <div id="stash-shared" class="stash-content">
+                    {{ if not .Armory.IsDLC }}
                     <div class="shared-page-tabs">
                         <button class="shared-page-btn active" onclick="showSharedPage(1)">1</button>
                         <button class="shared-page-btn" onclick="showSharedPage(2)">2</button>
                         <button class="shared-page-btn" onclick="showSharedPage(3)">3</button>
-                        {{ if .Armory.SharedStash4 }}<button class="shared-page-btn" onclick="showSharedPage(4)">4</button>{{ end }}
-                        {{ if .Armory.SharedStash5 }}<button class="shared-page-btn" onclick="showSharedPage(5)">5</button>{{ end }}
                     </div>
+                    {{ end }}
 
                     <!-- Page 1 -->
                     <div id="shared-page-1" class="shared-page active">
@@ -1652,7 +1673,8 @@
                         </div>
                     </div>
 
-                    <!-- Page 2 -->
+                    {{ if not .Armory.IsDLC }}
+                    <!-- Pages 2-3 (LoD shared stash) -->
                     <div id="shared-page-2" class="shared-page">
                         <div class="inventory-container">
                             <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
@@ -1677,7 +1699,6 @@
                         </div>
                     </div>
 
-                    <!-- Page 3 -->
                     <div id="shared-page-3" class="shared-page">
                         <div class="inventory-container">
                             <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
@@ -1701,65 +1722,14 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Page 4 (DLC) -->
-                    {{ if .Armory.SharedStash4 }}
-                    <div id="shared-page-4" class="shared-page">
-                        <div class="inventory-container">
-                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                                {{ range $row := iterate 10 }}
-                                {{ range $col := iterate 10 }}
-                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                                {{ end }}
-                                {{ end }}
-                            </div>
-                            <div class="inventory-items-layer">
-                                {{ range .Armory.SharedStash4 }}
-                                <div class="inventory-item"
-                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                     data-item='{{ . | json }}'
-                                     onmouseenter="showTooltip(event, this)"
-                                     onmouseleave="hideTooltip()"
-                                     onmousemove="moveTooltip(event)"
-                                     oncontextmenu="showItemContextMenu(event, this)">
-                                </div>
-                                {{ end }}
-                            </div>
-                        </div>
-                    </div>
-                    {{ end }}
-
-                    <!-- Page 5 (DLC) -->
-                    {{ if .Armory.SharedStash5 }}
-                    <div id="shared-page-5" class="shared-page">
-                        <div class="inventory-container">
-                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                                {{ range $row := iterate 10 }}
-                                {{ range $col := iterate 10 }}
-                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                                {{ end }}
-                                {{ end }}
-                            </div>
-                            <div class="inventory-items-layer">
-                                {{ range .Armory.SharedStash5 }}
-                                <div class="inventory-item"
-                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                     data-item='{{ . | json }}'
-                                     onmouseenter="showTooltip(event, this)"
-                                     onmouseleave="hideTooltip()"
-                                     onmousemove="moveTooltip(event)"
-                                     oncontextmenu="showItemContextMenu(event, this)">
-                                </div>
-                                {{ end }}
-                            </div>
-                        </div>
-                    </div>
                     {{ end }}
                 </div>
 
                 <!-- DLC Gems Tab -->
-                {{ if .Armory.GemsTab }}
+                {{ if or .Armory.GemsTab .Armory.IsDLC }}
                 <div id="stash-gems" class="stash-content">
+                    {{ if .Armory.GemsTab }}
+                    <div class="dlc-tab-summary">Total: <strong>{{ sumQty .Armory.GemsTab }}</strong> gems ({{ len .Armory.GemsTab }} types)</div>
                     <div class="dlc-tab-grid">
                         {{ range .Armory.GemsTab }}
                         <div class="dlc-tab-item"
@@ -1774,12 +1744,17 @@
                         </div>
                         {{ end }}
                     </div>
+                    {{ else }}
+                    <div class="dlc-tab-empty"><i class="bi bi-gem"></i> No gems in stash</div>
+                    {{ end }}
                 </div>
                 {{ end }}
 
                 <!-- DLC Materials Tab -->
-                {{ if .Armory.MaterialsTab }}
+                {{ if or .Armory.MaterialsTab .Armory.IsDLC }}
                 <div id="stash-materials" class="stash-content">
+                    {{ if .Armory.MaterialsTab }}
+                    <div class="dlc-tab-summary">Total: <strong>{{ sumQty .Armory.MaterialsTab }}</strong> materials ({{ len .Armory.MaterialsTab }} types)</div>
                     <div class="dlc-tab-grid">
                         {{ range .Armory.MaterialsTab }}
                         <div class="dlc-tab-item"
@@ -1794,12 +1769,17 @@
                         </div>
                         {{ end }}
                     </div>
+                    {{ else }}
+                    <div class="dlc-tab-empty"><i class="bi bi-box2"></i> No materials in stash</div>
+                    {{ end }}
                 </div>
                 {{ end }}
 
                 <!-- DLC Runes Tab -->
-                {{ if .Armory.RunesTab }}
+                {{ if or .Armory.RunesTab .Armory.IsDLC }}
                 <div id="stash-runes" class="stash-content">
+                    {{ if .Armory.RunesTab }}
+                    <div class="dlc-tab-summary">Total: <strong>{{ sumQty .Armory.RunesTab }}</strong> runes ({{ len .Armory.RunesTab }} types)</div>
                     <div class="dlc-tab-grid">
                         {{ range .Armory.RunesTab }}
                         <div class="dlc-tab-item"
@@ -1814,6 +1794,9 @@
                         </div>
                         {{ end }}
                     </div>
+                    {{ else }}
+                    <div class="dlc-tab-empty"><i class="bi bi-stars"></i> No runes in stash</div>
+                    {{ end }}
                 </div>
                 {{ end }}
             </div>
