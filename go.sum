@@ -1,8 +1,8 @@
 git.wow.st/gmp/jni v0.0.0-20200827154156-014cd5c7c4c0/go.mod h1:+axXBRUTIDlCeE73IKeD/os7LoEnTKdkp8/gQOFjqyo=
 git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0 h1:bGG/g4ypjrCJoSvFrP5hafr9PPB5aw8SjcOWWila7ZI=
 git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0/go.mod h1:+axXBRUTIDlCeE73IKeD/os7LoEnTKdkp8/gQOFjqyo=
-github.com/Diobyte/d2go v0.0.0-20260306224610-4a344f9dd8f2 h1:GU0B7GmPyXs1S2jt9HVHEhZ42/zuTmTn1IhEtUQtoDI=
-github.com/Diobyte/d2go v0.0.0-20260306224610-4a344f9dd8f2/go.mod h1:EOVayMaK8D13wsZiZ6n8AK3+Qflm1wHZsCqnzlVIci0=
+github.com/Diobyte/d2go v0.0.0-20260310232254-182a3048e17a h1:HI3hSZcS2VVeVXPxhWLLjtv1eIMSXmaGlafZECwFcZ8=
+github.com/Diobyte/d2go v0.0.0-20260310232254-182a3048e17a/go.mod h1:EOVayMaK8D13wsZiZ6n8AK3+Qflm1wHZsCqnzlVIci0=
 github.com/billgraziano/dpapi v0.5.0 h1:pcxA17vyjbDqYuxCFZbgL9tYIk2xgbRZjRaIbATwh+8=
 github.com/billgraziano/dpapi v0.5.0/go.mod h1:lmEcZjRfLCSbUTsRu8V2ti6Q17MvnKn3N9gQqzDdTh0=
 github.com/bwmarrin/discordgo v0.28.1 h1:gXsuo2GBO7NbR6uqmrrBDplPUx2T3nzu775q/Rd1aG4=
