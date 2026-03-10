@@ -165,6 +165,19 @@ func MoveToArea(dst area.ID) error {
 		})
 	}
 
+	// Act 5 red portals: Abaddon, Pit of Acheron, Infernal Pit
+	if dst == area.Abaddon || dst == area.PitOfAcheron || dst == area.InfernalPit {
+		ctx.Logger.Debug("Act 5 red portal area detected, finding the red portal", slog.String("destination", dst.Area().Name))
+		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			return fmt.Errorf("red portal to %s not found", dst.Area().Name)
+		}
+		MoveToCoords(portal.Position)
+		return step.InteractObject(portal, func() bool {
+			return ctx.Data.PlayerUnit.Area == dst
+		})
+	}
+
 	lvl := data.Level{}
 	for _, a := range ctx.Data.AdjacentLevels {
 		if a.Area == dst {
