@@ -1,0 +1,21 @@
+{
+  "executable": "D2R.exe",
+
+  "signatures": [],
+
+  "overrides": {
+    "QuestInfo":        "0x1EBACD8",
+    "CharData":         "0x1DF55F8",
+    "SelectedCharName": "0x1D47195",
+    "LastGameName":     "0x25F1450",
+    "LastGamePassword": "0x25F14A8"
+  },
+
+  "crossRefs": [
+    {
+      "name":    "LastGamePassword",
+      "baseRef": "LastGameName",
+      "delta":   88
+    }
+  ]
+}
