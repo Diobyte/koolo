@@ -58,14 +58,19 @@
                 <button class="btn btn-start" onclick="location.href='/supervisorSettings'" title="Add Character">
                     <i class="bi bi-plus"></i>
                 </button>
+                <button id="toggleHiddenBtn" class="btn btn-outline" onclick="toggleHiddenSupervisors()" title="Toggle Hidden Supervisors" style="display:none;">
+                    <i class="bi bi-eye-slash"></i>
+                </button>
                 <button class="btn btn-outline attach-btn" onclick="showAttachPopup('${key}')" style="display:none;">
                     <i class="bi bi-link-45deg btn-icon"></i>Attach
                 </button>
             </div>
         </div>
         <div id="characters-container"></div>
+        <div id="hidden-supervisors-section" style="display:none;"></div>
     </div>
 </main>
+<script src="../assets/js/Sortable.min.js"></script>
 <script src="../assets/js/dashboard.js"></script>
 </body>
 </html>

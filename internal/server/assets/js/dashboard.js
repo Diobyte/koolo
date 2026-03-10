@@ -2,6 +2,11 @@ let socket;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
 const reconnectDelay = 3000;
+let sortableInstance = null;
+let currentSupervisorOrder = [];
+let latestDashboardData = null;
+let actionMenuCloseHandlerBound = false;
+let pendingSupervisorOrder = null;
 
 function connectWebSocket() {
   const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
@@ -29,7 +34,7 @@ function connectWebSocket() {
 }
 
 function fetchInitialData() {
-  fetch("/initial-data")
+  return fetch("/initial-data")
     .then((response) => response.json())
     .then((data) => {
       updateDashboard(data);
@@ -42,7 +47,264 @@ function fetchInitialData() {
     .catch((error) => console.error("Error fetching initial data:", error));
 }
 
+function replaceSupervisorNameInClientState(oldName, newName) {
+  const expandedCards =
+    JSON.parse(localStorage.getItem("expandedCards")) || [];
+  const renamedExpandedCards = expandedCards.map((cardId) =>
+    cardId === `card-${oldName}` ? `card-${newName}` : cardId
+  );
+  localStorage.setItem("expandedCards", JSON.stringify(renamedExpandedCards));
+
+  currentSupervisorOrder = currentSupervisorOrder.map((name) =>
+    name === oldName ? newName : name
+  );
+  if (pendingSupervisorOrder) {
+    pendingSupervisorOrder = pendingSupervisorOrder.map((name) =>
+      name === oldName ? newName : name
+    );
+  }
+  if (latestDashboardData?.supervisors) {
+    latestDashboardData.supervisors = latestDashboardData.supervisors.map(
+      (name) => (name === oldName ? newName : name)
+    );
+  }
+  if (latestDashboardData?.hiddenSupervisors) {
+    latestDashboardData.hiddenSupervisors =
+      latestDashboardData.hiddenSupervisors.map((name) =>
+        name === oldName ? newName : name
+      );
+  }
+}
+
+function normalizeSupervisorOrder(order, statusKeys) {
+  const statusSet = new Set(statusKeys);
+  const ordered = [];
+  const seen = new Set();
+
+  (Array.isArray(order) ? order : []).forEach((name) => {
+    if (!statusSet.has(name) || seen.has(name)) {
+      return;
+    }
+    ordered.push(name);
+    seen.add(name);
+  });
+
+  const fallback = [...statusKeys].sort();
+  fallback.forEach((name) => {
+    if (seen.has(name)) {
+      return;
+    }
+    ordered.push(name);
+  });
+
+  return ordered;
+}
+
+function arraysEqual(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let i = 0; i < left.length; i++) {
+    if (left[i] !== right[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getSupervisorOrder(data) {
+  const statusKeys = Object.keys(data.Status || {});
+  const serverOrder = normalizeSupervisorOrder(data.supervisors, statusKeys);
+
+  if (!pendingSupervisorOrder) {
+    return serverOrder;
+  }
+
+  const normalizedPendingOrder = normalizeSupervisorOrder(
+    pendingSupervisorOrder,
+    statusKeys
+  );
+
+  if (arraysEqual(serverOrder, normalizedPendingOrder)) {
+    pendingSupervisorOrder = null;
+    return serverOrder;
+  }
+
+  return normalizedPendingOrder;
+}
+
+function getHiddenSupervisorSet(data = latestDashboardData) {
+  return new Set(
+    data && Array.isArray(data.hiddenSupervisors)
+      ? data.hiddenSupervisors
+      : []
+  );
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderHiddenSupervisorControls(hiddenSupervisors) {
+  const toggleBtn = document.getElementById("toggleHiddenBtn");
+  const countEl = document.getElementById("hiddenSupervisorCount");
+  const section = document.getElementById("hidden-supervisors-section");
+  const list = document.getElementById("hidden-supervisors-list");
+
+  if (!toggleBtn || !countEl || !section || !list) {
+    return;
+  }
+
+  if (hiddenSupervisors.length === 0) {
+    toggleBtn.style.display = "none";
+    countEl.textContent = "0";
+    section.style.display = "none";
+    section.classList.remove("expanded");
+    list.innerHTML = "";
+    return;
+  }
+
+  toggleBtn.style.display = "inline-flex";
+  countEl.textContent = String(hiddenSupervisors.length);
+  section.style.display = section.classList.contains("expanded")
+    ? "block"
+    : "none";
+
+  list.innerHTML = "";
+  hiddenSupervisors.forEach((name) => {
+    const item = document.createElement("div");
+    item.className = "hidden-supervisor-pill";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "hidden-supervisor-name";
+    nameSpan.textContent = name;
+    item.appendChild(nameSpan);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hidden-supervisor-action";
+    btn.title = "Unhide " + name;
+    btn.innerHTML = '<i class="bi bi-eye"></i>';
+    btn.addEventListener("click", () => {
+      unhideSupervisor(name);
+    });
+    item.appendChild(btn);
+
+    list.appendChild(item);
+  });
+}
+
+function toggleHiddenSupervisors() {
+  const section = document.getElementById("hidden-supervisors-section");
+  if (!section) {
+    return;
+  }
+
+  section.classList.toggle("expanded");
+  section.style.display = section.classList.contains("expanded")
+    ? "block"
+    : "none";
+}
+
+function persistSupervisorOrder() {
+  const container = document.getElementById("characters-container");
+  if (!container) {
+    return;
+  }
+
+  const hiddenSupervisors = getHiddenSupervisorSet();
+  const visibleOrder = Array.from(
+    container.querySelectorAll(".character-card")
+  ).map((card) => card.dataset.supervisor || card.id.replace("card-", ""));
+
+  const newOrder = [];
+  let visibleIdx = 0;
+
+  currentSupervisorOrder.forEach((name) => {
+    if (hiddenSupervisors.has(name)) {
+      newOrder.push(name);
+      return;
+    }
+
+    if (visibleIdx < visibleOrder.length) {
+      newOrder.push(visibleOrder[visibleIdx]);
+      visibleIdx++;
+    }
+  });
+
+  for (; visibleIdx < visibleOrder.length; visibleIdx++) {
+    newOrder.push(visibleOrder[visibleIdx]);
+  }
+
+  currentSupervisorOrder = newOrder;
+  pendingSupervisorOrder = newOrder;
+
+  if (latestDashboardData) {
+    latestDashboardData.supervisors = [...newOrder];
+  }
+
+  fetch("/api/supervisors/reorder", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ supervisors: newOrder }),
+  }).catch((error) => {
+    pendingSupervisorOrder = null;
+    console.error("Error saving supervisor order:", error);
+  });
+}
+
+function ensureCardSorting() {
+  const container = document.getElementById("characters-container");
+  if (!container || typeof Sortable === "undefined" || sortableInstance) {
+    return;
+  }
+
+  sortableInstance = Sortable.create(container, {
+    animation: 150,
+    draggable: ".character-card",
+    filter:
+      "button, input, label, a, .card-actions-dropdown, .card-actions-dropdown *",
+    preventOnFilter: false,
+    onEnd: function () {
+      persistSupervisorOrder();
+    },
+  });
+}
+
+function closeAllActionMenus(exceptMenu = null) {
+  document.querySelectorAll(".card-actions-menu.open").forEach((menu) => {
+    if (menu === exceptMenu) {
+      return;
+    }
+    menu.classList.remove("open");
+    const card = menu.closest(".character-card");
+    if (card) {
+      card.classList.remove("actions-open");
+    }
+  });
+}
+
+function ensureActionMenuCloseHandler() {
+  if (actionMenuCloseHandlerBound) {
+    return;
+  }
+
+  document.addEventListener("click", () => {
+    closeAllActionMenus();
+  });
+
+  actionMenuCloseHandlerBound = true;
+}
+
 function updateDashboard(data) {
+  latestDashboardData = data;
+
   const versionElement = document.getElementById("version");
   if (versionElement) {
     versionElement.textContent = data.Version;
@@ -58,14 +320,28 @@ function updateDashboard(data) {
   if (Object.keys(data.Status).length === 0) {
     container.innerHTML =
       "<article><p>No characters found, start adding a new character.</p></article>";
+    renderHiddenSupervisorControls([]);
     return;
   }
 
-  for (const [key, value] of Object.entries(data.Status)) {
+  const orderedSupervisors = getSupervisorOrder(data);
+  currentSupervisorOrder = orderedSupervisors;
+
+  const hiddenSupervisors = getHiddenSupervisorSet(data);
+
+  const visibleSupervisors = orderedSupervisors.filter(
+    (name) => !hiddenSupervisors.has(name)
+  );
+  const hiddenSupervisorNames = orderedSupervisors.filter((name) =>
+    hiddenSupervisors.has(name)
+  );
+  const visibleCards = new Map();
+
+  for (const key of visibleSupervisors) {
+    const value = data.Status[key];
     let card = document.getElementById(`card-${key}`);
     if (!card) {
       card = createCharacterCard(key);
-      container.appendChild(card);
     }
     const schedulerInfo = data.schedulerStatus ? data.schedulerStatus[key] : null;
     updateCharacterCard(card, key, value, data.DropCount[key], schedulerInfo);
@@ -75,29 +351,59 @@ function updateDashboard(data) {
     if (autoStartCheckbox && data.AutoStart) {
       autoStartCheckbox.checked = !!data.AutoStart[key];
     }
+
+    visibleCards.set(key, card);
   }
+
+  visibleSupervisors.forEach((name, index) => {
+    const card = visibleCards.get(name);
+    if (!card) {
+      return;
+    }
+    if (!card.parentNode) {
+      container.insertBefore(card, container.children[index] || null);
+      return;
+    }
+
+    const currentNodeAtIndex = container.children[index];
+    if (currentNodeAtIndex !== card) {
+      container.insertBefore(card, currentNodeAtIndex || null);
+    }
+  });
 
   // Remove cards for characters that no longer exist
   Array.from(container.children).forEach((card) => {
-    if (!data.Status.hasOwnProperty(card.id.replace("card-", ""))) {
+    const name = card.dataset.supervisor || card.id.replace("card-", "");
+    if (!data.Status.hasOwnProperty(name) || hiddenSupervisors.has(name)) {
       container.removeChild(card);
     }
   });
+
+  renderHiddenSupervisorControls(hiddenSupervisorNames);
+  restoreExpandedState();
+  ensureCardSorting();
 }
 
 function createCharacterCard(key) {
   const card = document.createElement("div");
   card.className = "character-card";
   card.id = `card-${key}`;
+  card.dataset.supervisor = key;
+
+  const safeKey = escapeHtml(key);
+  const encodedKey = encodeURIComponent(key);
 
   card.innerHTML = `
             <div class="character-header">
                 <div class="character-stats">
                   <div class="character-info">
                     <label class="autostart-toggle" title="Include in Auto Start">
-                      <input type="checkbox" class="autostart-checkbox" data-character="${key}">
+                      <input type="checkbox" class="autostart-checkbox" data-character="${safeKey}">
                     </label>
-                    <span>${key}</span>
+                    <span class="supervisor-name">${safeKey}</span>
+                    <input type="text" class="supervisor-rename-input" style="display:none;" />
+                    <button class="btn btn-outline supervisor-rename-confirm" style="display:none;" title="Confirm Rename"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-outline supervisor-rename-cancel" style="display:none;" title="Cancel Rename"><i class="bi bi-x-lg"></i></button>
                      <div class="status-indicator"></div>
                      <div class="co-line co-line-with-stats">
                       <div class="co-info-left">
@@ -119,7 +425,7 @@ function createCharacterCard(key) {
                   </div>
                 </div>
                 <div class="character-controls">
-                      <button class="btn btn-outline companion-join-btn" onclick="showCompanionJoinPopup('${key}')" style="display:none;">
+                      <button class="btn btn-outline companion-join-btn" style="display:none;">
                           <i class="bi bi-door-open btn-icon"></i>Join Game
                       </button>
                       <button class="btn btn-outline btn-games">
@@ -128,27 +434,38 @@ function createCharacterCard(key) {
                       <button class="btn btn-outline btn-drops">
                           <i class="bi bi-gem btn-icon"></i><span class="drops-count">0</span>
                       </button>
-                          <button class="btn btn-outline reset-muling-btn" data-character-name="${key}" title="Reset Muling Progress">
+                          <button class="btn btn-outline reset-muling-btn" data-character-name="${safeKey}" title="Reset Muling Progress">
                               <i class="bi bi-arrow-counterclockwise"></i>
                           </button>
-                      <button class="btn btn-outline" onclick="location.href='/armory?character=${key}'" title="Armory">
+                      <button class="btn btn-outline armory-btn" title="Armory">
                           <i class="bi bi-shield-shaded"></i>
                       </button>
-                      <button class="btn btn-outline" onclick="location.href='/supervisorSettings?supervisor=${key}'" title="Settings">
+                      <button class="btn btn-outline settings-btn" title="Settings">
                           <i class="bi bi-gear"></i>
                       </button>
-                      <button class="start-pause btn btn-start" data-character="${key}" title="Start">
+                      <button class="start-pause btn btn-start" data-character="${safeKey}" title="Start">
                           <i class="bi bi-play-fill"></i>
                       </button>
-                      <button class="manual-play btn btn-manual" data-character="${key}" title="Manual Play" style="display:none;">
+                      <button class="manual-play btn btn-manual" data-character="${safeKey}" title="Manual Play" style="display:none;">
                           M
                       </button>
-                      <button class="stop btn btn-stop" data-character="${key}" style="display:none;" title="Stop">
+                      <button class="stop btn btn-stop" data-character="${safeKey}" style="display:none;" title="Stop">
                           <i class="bi bi-stop-fill"></i>
                       </button>
-                      <button class="btn btn-outline attach-btn" onclick="showAttachPopup('${key}')" style="display:none;" title="Attach">
+                      <button class="btn btn-outline attach-btn" style="display:none;" title="Attach">
                           <i class="bi bi-link-45deg"></i>
                       </button>
+                      <div class="card-actions-menu">
+                          <button class="btn btn-outline card-actions-toggle" title="More Actions">
+                              <i class="bi bi-three-dots-vertical"></i>
+                          </button>
+                          <div class="card-actions-dropdown" style="display:none;">
+                              <button class="card-action-rename"><i class="bi bi-pencil"></i> Rename</button>
+                              <button class="card-action-copy"><i class="bi bi-copy"></i> Copy</button>
+                              <button class="card-action-hide"><i class="bi bi-eye-slash"></i> Hide</button>
+                              <button class="card-action-delete"><i class="bi bi-trash"></i> Delete</button>
+                          </div>
+                      </div>
                       <button class="toggle-details" title="Toggle Details">
                           <i class="bi bi-chevron-down"></i>
                       </button>
@@ -199,7 +516,7 @@ function createCharacterCard(key) {
                     <div class="scheduler-next"></div>
                 </div>
                 <div class="expanded-controls">
-                    <button class="btn btn-outline" onclick="location.href='/debug?characterName=${key}'" title="Open Debug Page">
+                    <button class="btn btn-outline debug-btn" title="Open Debug Page">
                         <i class="bi bi-bug"></i>
                     </button>
                 </div>
@@ -211,27 +528,67 @@ function createCharacterCard(key) {
   return card;
 }
 
+function getCardSupervisorName(card) {
+  return card.dataset.supervisor || card.id.replace("card-", "");
+}
+
+function updateCardSupervisorIdentity(card, oldName, newName) {
+  card.id = "card-" + newName;
+  card.dataset.supervisor = newName;
+  const nameSpan = card.querySelector(".supervisor-name");
+  if (nameSpan) nameSpan.textContent = newName;
+  const autoStartCb = card.querySelector(".autostart-checkbox");
+  if (autoStartCb) autoStartCb.dataset.character = newName;
+  const startPauseBtn = card.querySelector(".start-pause");
+  if (startPauseBtn) startPauseBtn.dataset.character = newName;
+  const manualPlayBtn = card.querySelector(".manual-play");
+  if (manualPlayBtn) manualPlayBtn.dataset.character = newName;
+  const stopBtn = card.querySelector(".stop");
+  if (stopBtn) stopBtn.dataset.character = newName;
+  const resetMuleBtn = card.querySelector(".reset-muling-btn");
+  if (resetMuleBtn) resetMuleBtn.dataset.characterName = newName;
+}
+
 function setupEventListeners(card, key) {
   if (!card) return;
+
+  // Use a closure so handlers always read the current supervisor name
+  const getSupervisorName = () => getCardSupervisorName(card);
 
   const toggleDetailsBtn = card.querySelector(".toggle-details");
   const startPauseBtn = card.querySelector(".start-pause");
   const stopBtn = card.querySelector(".stop");
   const resetMuleBtn = card.querySelector(".reset-muling-btn");
   const autoStartCheckbox = card.querySelector(".autostart-checkbox");
+  const companionJoinBtn = card.querySelector(".companion-join-btn");
+  const armoryBtn = card.querySelector(".armory-btn");
+  const settingsBtn = card.querySelector(".settings-btn");
+  const attachBtn = card.querySelector(".attach-btn");
+  const debugBtn = card.querySelector(".debug-btn");
+  const actionsToggle = card.querySelector(".card-actions-toggle");
+  const actionsDropdown = card.querySelector(".card-actions-dropdown");
+  const renameBtn = card.querySelector(".card-action-rename");
+  const copyBtn = card.querySelector(".card-action-copy");
+  const hideBtn = card.querySelector(".card-action-hide");
+  const deleteBtn = card.querySelector(".card-action-delete");
+  const renameInput = card.querySelector(".supervisor-rename-input");
+  const renameConfirm = card.querySelector(".supervisor-rename-confirm");
+  const renameCancel = card.querySelector(".supervisor-rename-cancel");
+
   if (resetMuleBtn) {
     resetMuleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      const name = getSupervisorName();
       if (
         confirm(
-          `Are you sure you want to reset the muling progress for ${key}? This should only be done if you have manually emptied the mules.`
+          `Are you sure you want to reset the muling progress for ${name}? This should only be done if you have manually emptied the mules.`
         )
       ) {
-        fetch("/reset-muling?characterName=" + key, {
+        fetch("/reset-muling?characterName=" + encodeURIComponent(name), {
           method: "POST",
         }).then((response) => {
           if (response.ok) {
-            alert("Muling progress for " + key + " has been reset.");
+            alert("Muling progress for " + name + " has been reset.");
           } else {
             alert("Failed to reset muling progress.");
           }
@@ -258,7 +615,7 @@ function setupEventListeners(card, key) {
       const enabled = autoStartCheckbox.checked;
       fetch(
         `/autostart/toggle?characterName=${encodeURIComponent(
-          key
+          getSupervisorName()
         )}&enabled=${enabled}`,
         {
           method: "POST",
@@ -282,10 +639,9 @@ function setupEventListeners(card, key) {
       } else if (currentStatus === "In game") {
         action = "togglePause";
       } else {
-        // Paused
         action = "togglePause";
       }
-      fetch(`/${action}?characterName=${key}`)
+      fetch(`/${action}?characterName=${encodeURIComponent(getSupervisorName())}`)
         .then((response) => response.json())
         .then((data) => {
           updateDashboard(data);
@@ -293,23 +649,149 @@ function setupEventListeners(card, key) {
         .catch((error) => console.error("Error:", error));
     });
   }
+
   if (stopBtn) {
     stopBtn.addEventListener("click", function () {
-      fetch(`/stop?characterName=${key}`).then(() => fetchInitialData());
+      fetch(`/stop?characterName=${encodeURIComponent(getSupervisorName())}`).then(() => fetchInitialData());
     });
   }
 
   const manualPlayBtn = card.querySelector(".manual-play");
   if (manualPlayBtn) {
     manualPlayBtn.addEventListener("click", function () {
-      // Don't trigger if already running (yellow state)
       if (this.className.includes("btn-pause")) {
         return;
       }
-      fetch(`/start?characterName=${key}&manualMode=true`)
+      fetch(`/start?characterName=${encodeURIComponent(getSupervisorName())}&manualMode=true`)
         .then((response) => response.json())
         .then((data) => updateDashboard(data))
         .catch((error) => console.error("Error:", error));
+    });
+  }
+
+  if (companionJoinBtn) {
+    companionJoinBtn.addEventListener("click", () => {
+      showCompanionJoinPopup(getSupervisorName());
+    });
+  }
+
+  if (armoryBtn) {
+    armoryBtn.addEventListener("click", () => {
+      location.href = "/armory?character=" + encodeURIComponent(getSupervisorName());
+    });
+  }
+
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      location.href = "/supervisorSettings?supervisor=" + encodeURIComponent(getSupervisorName());
+    });
+  }
+
+  if (attachBtn) {
+    attachBtn.addEventListener("click", () => {
+      showAttachPopup(getSupervisorName());
+    });
+  }
+
+  if (debugBtn) {
+    debugBtn.addEventListener("click", () => {
+      location.href = "/debug?characterName=" + encodeURIComponent(getSupervisorName());
+    });
+  }
+
+  // Card actions menu toggle
+  if (actionsToggle && actionsDropdown) {
+    actionsToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = actionsDropdown.style.display !== "none";
+      closeAllActionMenus();
+      if (!wasOpen) {
+        actionsDropdown.style.display = "block";
+        card.classList.add("actions-open");
+        ensureActionMenuCloseHandler();
+      }
+    });
+  }
+
+  // Rename flow
+  if (renameBtn) {
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllActionMenus();
+      const nameSpan = card.querySelector(".supervisor-name");
+      if (nameSpan) nameSpan.style.display = "none";
+      renameInput.value = getSupervisorName();
+      renameInput.style.display = "";
+      renameConfirm.style.display = "";
+      renameCancel.style.display = "";
+      renameInput.focus();
+      renameInput.select();
+    });
+  }
+
+  if (renameConfirm) {
+    renameConfirm.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const newName = renameInput.value.trim();
+      if (newName && newName !== getSupervisorName()) {
+        renameSupervisor(getSupervisorName(), newName, card);
+      } else {
+        // Cancel if name unchanged
+        const nameSpan = card.querySelector(".supervisor-name");
+        if (nameSpan) nameSpan.style.display = "";
+        renameInput.style.display = "none";
+        renameConfirm.style.display = "none";
+        renameCancel.style.display = "none";
+      }
+    });
+  }
+
+  if (renameCancel) {
+    renameCancel.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const nameSpan = card.querySelector(".supervisor-name");
+      if (nameSpan) nameSpan.style.display = "";
+      renameInput.style.display = "none";
+      renameConfirm.style.display = "none";
+      renameCancel.style.display = "none";
+    });
+  }
+
+  if (renameInput) {
+    renameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        renameConfirm.click();
+      } else if (e.key === "Escape") {
+        renameCancel.click();
+      }
+    });
+  }
+
+  // Copy
+  if (copyBtn) {
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllActionMenus();
+      copySupervisor(getSupervisorName());
+    });
+  }
+
+  // Hide
+  if (hideBtn) {
+    hideBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllActionMenus();
+      hideSupervisor(getSupervisorName());
+    });
+  }
+
+  // Delete
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllActionMenus();
+      deleteSupervisor(getSupervisorName());
     });
   }
 }
@@ -1492,6 +1974,118 @@ function openDropManager() {
     window.location.protocol + "//" + window.location.host + "/Drop-manager";
 
   window.location.href = url;
+}
+
+function removeExpandedCardState(name) {
+  try {
+    const stored = localStorage.getItem("expandedCards");
+    if (!stored) return;
+    const arr = JSON.parse(stored);
+    const filtered = arr.filter((n) => n !== name);
+    localStorage.setItem("expandedCards", JSON.stringify(filtered));
+  } catch (_) {}
+}
+
+function hideSupervisor(name) {
+  fetch("/api/supervisors/hide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.text().then((t) => Promise.reject(t));
+      return fetchInitialData();
+    })
+    .catch((err) => alert("Hide failed: " + err));
+}
+
+function unhideSupervisor(name) {
+  fetch("/api/supervisors/unhide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.text().then((t) => Promise.reject(t));
+      return fetchInitialData();
+    })
+    .catch((err) => alert("Unhide failed: " + err));
+}
+
+function deleteSupervisor(name) {
+  if (
+    !confirm(
+      `Are you sure you want to DELETE the supervisor "${name}"?\nThis will remove its configuration permanently.`
+    )
+  )
+    return;
+
+  fetch("/api/supervisors/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.text().then((t) => Promise.reject(t));
+      removeExpandedCardState(name);
+      return fetchInitialData();
+    })
+    .catch((err) => alert("Delete failed: " + err));
+}
+
+function copySupervisor(name) {
+  const newName = prompt(`Enter name for the copy of "${name}":`);
+  if (!newName || !newName.trim()) return;
+
+  fetch("/api/supervisors/copy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ oldName: name, newName: newName.trim() }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.text().then((t) => Promise.reject(t));
+      return fetchInitialData();
+    })
+    .catch((err) => alert("Copy failed: " + err));
+}
+
+function renameSupervisor(oldName, newName, card) {
+  fetch("/api/supervisors/rename", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ oldName: oldName, newName: newName }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.text().then((t) => Promise.reject(t));
+
+      // Update card identity
+      updateCardSupervisorIdentity(card, oldName, newName);
+      replaceSupervisorNameInClientState(oldName, newName);
+
+      // Hide rename UI
+      const nameSpan = card.querySelector(".supervisor-name");
+      const renameInput = card.querySelector(".supervisor-rename-input");
+      const renameConfirm = card.querySelector(".supervisor-rename-confirm");
+      const renameCancel = card.querySelector(".supervisor-rename-cancel");
+      if (nameSpan) nameSpan.style.display = "";
+      if (renameInput) renameInput.style.display = "none";
+      if (renameConfirm) renameConfirm.style.display = "none";
+      if (renameCancel) renameCancel.style.display = "none";
+
+      return fetchInitialData();
+    })
+    .catch((err) => {
+      alert("Rename failed: " + err);
+      // Reset rename UI on failure
+      const nameSpan = card.querySelector(".supervisor-name");
+      const renameInput = card.querySelector(".supervisor-rename-input");
+      const renameConfirm = card.querySelector(".supervisor-rename-confirm");
+      const renameCancel = card.querySelector(".supervisor-rename-cancel");
+      if (nameSpan) nameSpan.style.display = "";
+      if (renameInput) renameInput.style.display = "none";
+      if (renameConfirm) renameConfirm.style.display = "none";
+      if (renameCancel) renameCancel.style.display = "none";
+    });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
