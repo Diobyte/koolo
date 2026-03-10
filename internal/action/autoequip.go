@@ -686,10 +686,14 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		// Attempting to equip the best item
-		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", bestCandidate.IdentifiedName, loc))
+		displayName := bestCandidate.IdentifiedName
+		if displayName == "" {
+			displayName = string(bestCandidate.Name)
+		}
+		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", displayName, loc))
 		err := equip(bestCandidate, loc, target)
 		if err == nil {
-			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", bestCandidate.IdentifiedName, loc))
+			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", displayName, loc))
 			equippedSomething = true
 			*ctx.Data = ctx.GameReader.GetData() // Refresh data after a successful equip
 			continue                             // Move to the next location
@@ -730,7 +734,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		// For other errors, log it and continue to the next item slot
-		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", bestCandidate.IdentifiedName, loc, err))
+		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", displayName, loc, err))
 	}
 
 	return equippedSomething, nil
@@ -1086,7 +1090,11 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	defer step.CloseAllMenus()
 
 	if target == item.LocationEquipped && !isAllowedEtherealForPlayer(itm) {
-		return fmt.Errorf("ethereal item %s is not allowed for player equip", itm.IdentifiedName)
+		itmName := itm.IdentifiedName
+		if itmName == "" {
+			itmName = string(itm.Name)
+		}
+		return fmt.Errorf("ethereal item %s is not allowed for player equip", itmName)
 	}
 
 	// Move item from stash to inventory if needed
@@ -1120,7 +1128,11 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			}
 		}
 		if !found {
-			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.IdentifiedName)
+			itmName := itm.IdentifiedName
+			if itmName == "" {
+				itmName = string(itm.Name)
+			}
+			return fmt.Errorf("item %s not found in inventory after moving from stash", itmName)
 		}
 		step.CloseAllMenus()
 	}

@@ -100,7 +100,7 @@ func (a Quests) clearDenQuest() error {
 
 	a.ctx.CharacterCfg.Character.ClearPathDist = 20
 	if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-		a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 	}
 
 	if err := action.ClearCurrentLevel(false, data.MonsterAnyFilter()); err != nil {
@@ -138,7 +138,7 @@ func (a Quests) rescueCainQuest() error {
 
 	a.ctx.CharacterCfg.Character.ClearPathDist = 20
 	if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-		a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 	}
 
 	err = action.WayPoint(area.DarkWood)
@@ -148,7 +148,7 @@ func (a Quests) rescueCainQuest() error {
 
 	a.ctx.CharacterCfg.Character.ClearPathDist = 30
 	if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-		a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 	}
 
 	// Find the Inifuss Tree position.

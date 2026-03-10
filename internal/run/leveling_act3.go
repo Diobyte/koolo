@@ -1,6 +1,7 @@
 package run
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -46,7 +47,7 @@ func (a Leveling) act3() error {
 
 		a.ctx.Logger.Info("Low on gold. Initiating Lower Kurast Chests gold farm.")
 		if err := NewLowerKurastChest().Run(nil); err != nil {
-			a.ctx.Logger.Error("Error during Lower Kurast Chests gold farm: %v", err)
+			a.ctx.Logger.Error(fmt.Sprintf("Error during Lower Kurast Chests gold farm: %v", err))
 			return err
 		}
 		a.ctx.Logger.Info("Lower Kurast Chests gold farming completed. Quitting current run to re-evaluate in next game.")
