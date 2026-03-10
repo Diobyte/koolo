@@ -407,5 +407,10 @@ func LoadArmoryData(characterName string) (*ArmoryCharacter, error) {
 		return nil, fmt.Errorf("failed to unmarshal armory data: %w", err)
 	}
 
+	// Infer IsDLC for armory files saved before the field was added
+	if !armory.IsDLC && (len(armory.GemsTab) > 0 || len(armory.MaterialsTab) > 0 || len(armory.RunesTab) > 0) {
+		armory.IsDLC = true
+	}
+
 	return &armory, nil
 }
