@@ -1,6 +1,7 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -41,13 +42,16 @@ func (a *FireEye) CheckConditions(parameters *RunParameters) SequencerResult {
 
 func (f *FireEye) Run(parameters *RunParameters) error {
 
-	fmt.Println("Fire Eye: Traveling to Arcane Sanctuary...")
+	f.ctx.Logger.Info("Fire Eye: Traveling to Arcane Sanctuary")
 	err := action.WayPoint(area.ArcaneSanctuary)
 	if err != nil {
 		return fmt.Errorf("could not travel to Arcane Sanctuary: %w", err)
 	}
 
-	obj, _ := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+	obj, found := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+	if !found {
+		return errors.New("ArcaneSanctuaryPortal not found in Arcane Sanctuary")
+	}
 
 	err = action.InteractObject(obj, func() bool {
 		updatedObj, found := f.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
@@ -78,18 +82,21 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 	monster, found := areaData.NPCs.FindOne(750)
 
 	if !found || len(monster.Positions) == 0 {
-		f.ctx.Logger.Error("fireEye not found]")
-		return err
+		f.ctx.Logger.Error("fireEye not found")
+		return errors.New("fireEye not found in Palace Cellar")
 	}
 
-	action.MoveTo(func() (data.Position, bool) {
+	err = action.MoveTo(func() (data.Position, bool) {
 		return monster.Positions[0], true
 	})
+	if err != nil {
+		return err
+	}
 
 	fireEyeWasFound := false
 	isKillable := true
 
-	f.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+	err = f.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 		fireEye, found := d.Monsters.FindOne(750, data.MonsterTypeSuperUnique)
 
 		if !found {
@@ -107,15 +114,15 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 		}
 
 		if found && fireEye.IsImmune(stat.FireImmune) && fireEye.IsImmune(stat.ColdImmune) && fireEye.Stats[stat.Life] > 0 {
-			if !isKillable {
-				isKillable = false
-			}
-
+			isKillable = false
 			return 0, false
 		}
 
 		return fireEye.UnitID, true
 	}, nil)
+	if err != nil {
+		return err
+	}
 
 	if !fireEyeWasFound {
 		f.ctx.Logger.Error("Fire Eye not found, skipping")

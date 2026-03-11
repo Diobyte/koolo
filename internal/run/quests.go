@@ -482,7 +482,11 @@ func (a Quests) killRadamentQuest() error {
 
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-		itm, _ := a.ctx.Data.Inventory.Find("BookofSkill")
+		itm, found := a.ctx.Data.Inventory.Find("BookofSkill")
+		if !found {
+			step.CloseAllMenus()
+			return errors.New("BookofSkill not found in inventory after Radament kill")
+		}
 		screenPos := ui.GetScreenCoordsForItem(itm)
 		utils.Sleep(200)
 		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
@@ -529,7 +533,7 @@ func (a Quests) getHoradricCube() error {
 
 	obj, found := a.ctx.Data.Objects.FindOne(object.HoradricCubeChest)
 	if !found {
-		return err
+		return errors.New("Horadric Cube chest not found")
 	}
 
 	err = action.InteractObject(obj, func() bool {

@@ -1,6 +1,8 @@
 package run
 
 import (
+	"errors"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
@@ -89,7 +91,11 @@ func (r Radament) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter())
+	if err = action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter()); err != nil {
+		return err
+	}
+
+	action.ItemPickup(30)
 
 	if IsQuestRun(parameters) {
 		// Sometimes it moves too far away from the book to pick it up, making sure it moves back to the chest
@@ -138,7 +144,11 @@ func (r Radament) finishQuest() error {
 
 	step.CloseAllMenus()
 	r.ctx.HID.PressKeyBinding(r.ctx.Data.KeyBindings.Inventory)
-	itm, _ := r.ctx.Data.Inventory.Find("BookofSkill")
+	itm, found := r.ctx.Data.Inventory.Find("BookofSkill")
+	if !found {
+		step.CloseAllMenus()
+		return errors.New("BookofSkill not found in inventory")
+	}
 	screenPos := ui.GetScreenCoordsForItem(itm)
 	utils.Sleep(200)
 	r.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)

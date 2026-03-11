@@ -80,11 +80,11 @@ func (s Summoner) runTerrorZone() error {
 
 	// Clear all 4 lanes
 	for lane := 0; lane < 4; lane++ {
-		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ - Lane %d/4", lane+1)
+		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ lane", "lane", lane+1, "total", 4)
 
 		// Clear this lane properly (handles Summoner only if encountered at lane end)
 		if err := lanes.ClearLane(s.clearMonsterFilter, summonerNPC, summonerFound); err != nil {
-			s.ctx.Logger.Warn("Lane %d clearing issue: %v", lane+1, err)
+			s.ctx.Logger.Warn("Lane clearing issue", "lane", lane+1, "error", err)
 		}
 
 		// Open chests at end of lane
@@ -108,9 +108,14 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 
 	// Use the waypoint / Fire Eye portal to get to Arcane Sanctuary
 	if s.ctx.CharacterCfg.Game.Summoner.KillFireEye && !isQuestRun {
-		NewFireEye().Run(parameters) // same pattern as other quest runs
+		if err := NewFireEye().Run(parameters); err != nil {
+			return err
+		}
 
-		obj, _ := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		obj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
+		if !found {
+			return errors.New("ArcaneSanctuaryPortal not found after FireEye")
+		}
 
 		err := action.InteractObject(obj, func() bool {
 			updatedObj, found := s.ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
@@ -212,7 +217,7 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			al.clearRange,
 			filter,
 		); err != nil {
-			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint %d: %v", idx, err)
+			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint", "checkpoint", idx, "error", err)
 			// Continue even on error
 		}
 
@@ -224,9 +229,9 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			)
 
 			if summonerDistance < 20 {
-				al.ctx.Logger.Info("Summoner detected on this lane (distance: %d) - killing...", summonerDistance)
+				al.ctx.Logger.Info("Summoner detected on this lane, killing", "distance", summonerDistance)
 				if err := al.ctx.Char.KillSummoner(); err != nil {
-					al.ctx.Logger.Warn("Failed to kill Summoner: %v", err)
+					al.ctx.Logger.Warn("Failed to kill Summoner", "error", err)
 				} else {
 					al.ctx.Logger.Info("Summoner killed successfully")
 					action.ItemPickup(30)
@@ -272,7 +277,7 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 		}
 
 		if err := action.MoveToCoords(obj.Position); err != nil {
-			al.ctx.Logger.Debug("Failed to move to chest: %v", err)
+			al.ctx.Logger.Debug("Failed to move to chest", "error", err)
 			continue
 		}
 
@@ -280,14 +285,14 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 			chest, found := al.ctx.Data.Objects.FindByID(obj.ID)
 			return found && !chest.Selectable
 		}); err != nil {
-			al.ctx.Logger.Debug("Failed to open chest: %v", err)
+			al.ctx.Logger.Debug("Failed to open chest", "error", err)
 		} else {
 			chestsOpened++
 		}
 	}
 
 	if chestsOpened > 0 {
-		al.ctx.Logger.Debug("Opened %d chests at lane end", chestsOpened)
+		al.ctx.Logger.Debug("Opened chests at lane end", "count", chestsOpened)
 	}
 }
 
@@ -312,7 +317,7 @@ func rotatePoint(x, y, centerX, centerY, angle float64) data.Position {
 }
 
 func (s Summoner) goToCanyon() error {
-	// Interact with journal to open poratl
+	// Interact with journal to open portal
 	tome, found := s.ctx.Data.Objects.FindOne(object.YetAnotherTome)
 	if !found {
 		s.ctx.Logger.Error("YetAnotherTome (journal) not found after Summoner kill. This is unexpected.")
@@ -328,7 +333,10 @@ func (s Summoner) goToCanyon() error {
 	}
 
 	//go through portal
-	portal, _ := s.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	portal, found := s.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	if !found {
+		return errors.New("Canyon of the Magi portal not found after journal interaction")
+	}
 	err = action.InteractObject(portal, func() bool {
 		return s.ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi && s.ctx.Data.AreaData.IsInside(s.ctx.Data.PlayerUnit.Position)
 	})

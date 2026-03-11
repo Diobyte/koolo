@@ -2,7 +2,6 @@ package run
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"time"
 
@@ -300,13 +299,17 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	}
 
 	duriellair, found := d.ctx.Data.Objects.FindOne(object.DurielsLairPortal)
-	if found {
-		// Now enter Duriel's lair with thawing potions active
-		action.InteractObject(duriellair, func() bool {
-			return d.ctx.Data.PlayerUnit.Area == area.DurielsLair && d.ctx.Data.AreaData.IsInside(d.ctx.Data.PlayerUnit.Position)
-		})
+	if !found {
+		return errors.New("Duriel's lair portal not found")
 	}
-	d.ctx.Logger.Debug(fmt.Sprintf("Quest Status %v", d.ctx.Data.Quests[quest.Act2TheSevenTombs]))
+
+	// Now enter Duriel's lair with thawing potions active
+	if err = action.InteractObject(duriellair, func() bool {
+		return d.ctx.Data.PlayerUnit.Area == area.DurielsLair && d.ctx.Data.AreaData.IsInside(d.ctx.Data.PlayerUnit.Position)
+	}); err != nil {
+		return err
+	}
+	d.ctx.Logger.Debug("Quest status", "status", d.ctx.Data.Quests[quest.Act2TheSevenTombs])
 
 	d.ctx.Logger.Info("Killing Duriel")
 	// Final refresh before fight
@@ -566,7 +569,7 @@ func (d Duriel) prepareStaff() error {
 
 			bank, found := d.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				d.ctx.Logger.Info("bank object not found")
+				return errors.New("bank object not found")
 			}
 
 			err := action.InteractObject(bank, func() bool {
@@ -660,7 +663,7 @@ func (d Duriel) tryTalkToMeshif() bool {
 		utils.Sleep(500)
 		d.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 		utils.Sleep(1000)
-		action.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		action.HoldKey(win.VK_SPACE, 2000) // Hold the Space key for 2000 milliseconds (2 seconds) to skip dialogue
 		utils.Sleep(1000)
 		return true
 	}
