@@ -262,6 +262,22 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 		}
 	}
 
+	// Quest items (except whitelisted ones like essences/keys) cannot be
+	// placed in shared stash pages in D2R — force them to personal stash.
+	if requiresPersonalStash(i) {
+		ctx.Logger.Debug(fmt.Sprintf("Item %s is a quest item, forcing personal stash (tab 1)", displayName))
+		SwitchStashTab(1)
+		if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+			ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) — quest item", displayName, i.Quality.ToString()))
+			return true
+		}
+		// Personal stash full with a quest item stuck in inventory — flag it
+		// so that StashFull() returns true and auto-mule can trigger.
+		ctx.CurrentGame.StashFull = true
+		ctx.Logger.Warn(fmt.Sprintf("Failed to stash quest item %s to personal stash (tab 1) — tab may be full, flagging for mule", displayName))
+		return false
+	}
+
 	startTab := 1
 	if ctx.CharacterCfg.Character.StashToShared {
 		startTab = 2
