@@ -73,16 +73,39 @@ func (s BlizzardSorceress) KillMonsterSequence(
 ) error {
 	completedAttackLoops := 0
 	previousUnitID := 0
-	lastReposition := time.Time{}
-	ctx := context.Get()
+	lastReposition := time.Now()
+
+	attackOpts := step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance)
 
 	for {
-		ctx.PauseIfNotPriority()
+		context.Get().PauseIfNotPriority()
 
 		if s.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
 			return health.ErrDied
+		}
+
+		// Reposition when enemies are dangerously close (do this before target selection
+		// so we move first, then pick the best target from the new position)
+		tooClose, _ := s.needsRepositioning()
+		if tooClose && time.Since(lastReposition) > time.Second*1 {
+			lastReposition = time.Now()
+
+			targetID, found := monsterSelector(*s.Data)
+			if !found {
+				return nil
+			}
+			targetMonster, found := s.Data.Monsters.FindByID(targetID)
+			if !found {
+				return nil
+			}
+
+			safePos, posFound := s.findSafePosition(targetMonster)
+			if posFound {
+				step.MoveTo(safePos, step.WithIgnoreMonsters())
+			}
+			// Fall through to attack — never skip the attack phase
 		}
 
 		id, found := monsterSelector(*s.Data)
@@ -95,10 +118,6 @@ func (s BlizzardSorceress) KillMonsterSequence(
 		}
 
 		if !s.preBattleChecks(id, skipOnImmunities) {
-			return nil
-		}
-
-		if completedAttackLoops >= sorceressMaxAttacksLoop {
 			return nil
 		}
 
@@ -117,33 +136,15 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		// Evaluate current positioning relative to target and nearby threats
-		distToTarget := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
-		hasLoS := ctx.PathFinder.LineOfSight(s.Data.PlayerUnit.Position, monster.Position)
-		tooClose, _ := s.needsRepositioning()
-		outOfRange := distToTarget > maxBlizzSorceressAttackDistance || distToTarget < minBlizzSorceressAttackDistance
-
-		// Reposition if: enemies too close, out of attack range, or no line of sight
-		if (tooClose || outOfRange || !hasLoS) && time.Since(lastReposition) > 500*time.Millisecond {
-			safePos, posFound := s.findSafePosition(monster)
-			if posFound {
-				lastReposition = time.Now()
-				step.MoveTo(safePos, step.WithIgnoreMonsters())
-				continue // Re-evaluate after moving
-			}
-			// No safe position found but out of range — fall through to attack step
-			// which will use its built-in ensureEnemyIsInRange as a last resort
-		}
-
 		// Attack from current position
 		if isColdImmune {
-			// Primary only on cold immunes — save mana, let merc deal damage
-			step.PrimaryAttack(id, 1, true, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+			// Let merc handle cold immunes — just primary attack
+			step.PrimaryAttack(id, 1, true, attackOpts)
 		} else {
 			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-				step.PrimaryAttack(id, 1, true, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+				step.PrimaryAttack(id, 2, true, attackOpts)
 			}
-			step.SecondaryAttack(skill.Blizzard, id, 1, step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance))
+			step.SecondaryAttack(skill.Blizzard, id, 1, attackOpts)
 		}
 
 		completedAttackLoops++
