@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -14,6 +15,8 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -75,6 +78,12 @@ func (a Cows) Run(parameters *RunParameters) error {
 		}
 		// If we dont have Wirstleg and Book in cube
 	} else {
+		// Drop any WirtsLegs lingering in the personal stash from a
+		// previous difficulty or run before we go get a fresh one.
+		if err := a.dropStashedWirtsLegs(); err != nil {
+			return fmt.Errorf("failed to drop stashed WirtsLegs: %w", err)
+		}
+
 		// First clean up any extra tomes if needed
 		err := a.cleanupExtraPortalTomes()
 		if err != nil {
@@ -290,4 +299,64 @@ func (a Cows) hasWirtsLeg() bool {
 		item.LocationInventory,
 		item.LocationCube)
 	return found
+}
+
+// dropStashedWirtsLegs moves any WirtsLegs sitting in the personal stash into
+// the inventory and then drops them on the ground.  This prevents a stale leg
+// from a different difficulty being selected over the freshly obtained one.
+func (a Cows) dropStashedWirtsLegs() error {
+	var stashedLegs []data.Item
+	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationStash) {
+		if strings.EqualFold(string(itm.Name), "WirtsLeg") {
+			stashedLegs = append(stashedLegs, itm)
+		}
+	}
+	if len(stashedLegs) == 0 {
+		return nil
+	}
+
+	a.ctx.Logger.Info("Found WirtsLeg(s) in stash, dropping to avoid using a stale leg",
+		"count", len(stashedLegs))
+
+	// Open the stash (tracks HasOpenedStash / CurrentStashTab correctly).
+	if err := action.OpenStash(); err != nil {
+		return fmt.Errorf("cannot drop stashed WirtsLegs: %w", err)
+	}
+
+	// Personal stash is always tab 1.
+	action.SwitchStashTab(1)
+
+	// Ctrl+click each leg from stash into inventory.
+	for _, leg := range stashedLegs {
+		screenPos := ui.GetScreenCoordsForItem(leg)
+		a.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
+		utils.Sleep(300)
+	}
+
+	// Refresh and verify the legs actually moved out of the stash.  If
+	// inventory was full the Ctrl+click is silently ignored by D2R.
+	a.ctx.RefreshGameData()
+	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationStash) {
+		if strings.EqualFold(string(itm.Name), "WirtsLeg") {
+			// Leg still in stash — transfer failed (likely inventory full).
+			if err := step.CloseAllMenus(); err != nil {
+				return err
+			}
+			return errors.New("WirtsLeg stuck in stash after transfer attempt (inventory may be full)")
+		}
+	}
+
+	// Close the stash so DropItem can work with the inventory alone.
+	if err := step.CloseAllMenus(); err != nil {
+		return err
+	}
+
+	// Now drop each leg from inventory.
+	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if strings.EqualFold(string(itm.Name), "WirtsLeg") {
+			action.DropItem(itm)
+		}
+	}
+
+	return nil
 }

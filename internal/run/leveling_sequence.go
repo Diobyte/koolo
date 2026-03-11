@@ -599,12 +599,14 @@ func (ls LevelingSequence) CheckDifficultyConditions(conditions *DifficultyCondi
 
 	//Level check
 	if conditions.Level != nil {
+		// Refresh data in case the player unit stats are stale.
+		*ls.ctx.Data = ls.ctx.GameReader.GetData()
 		if lvl, found := ls.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
 			if lvl.Value < *conditions.Level {
 				return false
 			}
 		} else {
-			ls.ctx.Logger.Error("leveling difficulty check : couldn't find player level")
+			ls.ctx.Logger.Error("leveling difficulty check: could not find player level stat, treating as not met")
 			return false
 		}
 	}

@@ -236,8 +236,10 @@ func EnsureStatPoints() error {
 			if spent <= 0 {
 				failures++
 				if failures >= 3 {
+					ctx.Logger.Warn(fmt.Sprintf("Giving up spending points in %v after %d consecutive failures", allocation.Stat, failures))
 					break
 				}
+				utils.Sleep(200)
 				continue
 			}
 

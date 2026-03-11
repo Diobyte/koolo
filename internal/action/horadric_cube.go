@@ -274,14 +274,18 @@ func ensureCubeIsOpen() error {
 
 	screenPos := ui.GetScreenCoordsForItem(cube)
 
-	utils.Sleep(300)
-	ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-	utils.Sleep(500)
+	for attempt := 0; attempt < 5; attempt++ {
+		utils.Sleep(300)
+		ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+		utils.Sleep(500 + attempt*200)
 
-	if ctx.Data.OpenMenus.Cube {
-		ctx.Logger.Debug("Horadric Cube window detected")
-		return nil
+		*ctx.Data = ctx.GameReader.GetData()
+		if ctx.Data.OpenMenus.Cube {
+			ctx.Logger.Debug("Horadric Cube window detected")
+			return nil
+		}
+		ctx.Logger.Debug(fmt.Sprintf("Horadric Cube not detected, retrying (%d/5)", attempt+1))
 	}
 
-	return errors.New("horadric Cube window not detected")
+	return errors.New("horadric Cube window not detected after 5 attempts")
 }

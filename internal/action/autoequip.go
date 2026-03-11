@@ -685,11 +685,17 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			}
 		}
 
+		// Resolve a display name for logging: prefer IdentifiedName, fall back to Name.
+		displayName := bestCandidate.IdentifiedName
+		if displayName == "" {
+			displayName = string(bestCandidate.Name)
+		}
+
 		// Attempting to equip the best item
-		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", bestCandidate.IdentifiedName, loc))
+		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", displayName, loc))
 		err := equip(bestCandidate, loc, target)
 		if err == nil {
-			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", bestCandidate.IdentifiedName, loc))
+			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", displayName, loc))
 			equippedSomething = true
 			*ctx.Data = ctx.GameReader.GetData() // Refresh data after a successful equip
 			continue                             // Move to the next location
@@ -730,7 +736,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		// For other errors, log it and continue to the next item slot
-		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", bestCandidate.IdentifiedName, loc, err))
+		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", displayName, loc, err))
 	}
 
 	return equippedSomething, nil
