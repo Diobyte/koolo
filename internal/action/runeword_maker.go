@@ -184,7 +184,8 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 		ctx.Logger.Debug("Base in stash - checking it fits")
 		if !itemFitsInventory(base) {
 			ctx.Logger.Error("Base item does not fit in inventory", "item", base.Name)
-			return step.CloseAllMenus()
+			step.CloseAllMenus()
+			return fmt.Errorf("base item %s does not fit in inventory", base.Name)
 		}
 
 		if base.Location.LocationType == item.LocationSharedStash {
