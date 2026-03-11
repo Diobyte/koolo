@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/billgraziano/dpapi v0.5.0
-	github.com/bwmarrin/discordgo v0.28.1
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/hectorgimenez/d2go v0.0.0-20250314185000-169a76515285

@@ -105,7 +105,13 @@ func MakeRunewords() error {
 				if inserts, hasInserts := hasItemsForRunewordRecipe(insertItems, recipe); hasInserts {
 					err := SocketItems(ctx, recipe, baseItem, inserts...)
 					if err != nil {
-						return err
+						ctx.Logger.Error("Runeword maker: failed to create runeword, skipping base",
+							"runeword", recipe.Name,
+							"base", baseItem.Name,
+							"error", err,
+						)
+						skippedBases[baseItem.UnitID] = struct{}{}
+						continue
 					}
 
 					// Log successful creation of the runeword for easier auditing
@@ -206,7 +212,8 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 		}
 		if !moveSucceeded {
 			ctx.Logger.Error("Failed to move base item from stash to inventory", "item", base.Name)
-			return step.CloseAllMenus()
+			step.CloseAllMenus()
+			return fmt.Errorf("failed to move base item %s from stash to inventory", base.Name)
 		}
 	}
 

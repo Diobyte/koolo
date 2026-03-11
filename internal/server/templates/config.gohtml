@@ -501,31 +501,31 @@
                 </div>
                 <fieldset class="grid">
                     <label>
-                        <input type="checkbox" name="enable_game_created_messages" value="{{ .Discord.EnableGameCreatedMessages }}" {{ if .Discord.EnableGameCreatedMessages }} checked="checked" {{ end }} />
+                        <input type="checkbox" name="enable_game_created_messages" value="true" {{ if .Discord.EnableGameCreatedMessages }} checked="checked" {{ end }} />
                         Enable Game Create Messages
                     </label>
                     <label>
-                        <input type="checkbox" name="enable_new_run_messages" value="{{ .Discord.EnableNewRunMessages }}" {{ if .Discord.EnableNewRunMessages }} checked="checked" {{ end }} />
+                        <input type="checkbox" name="enable_new_run_messages" value="true" {{ if .Discord.EnableNewRunMessages }} checked="checked" {{ end }} />
                         Enable New Run Messages
                     </label>
                     <label>
-                        <input type="checkbox" name="enable_run_finish_messages" value="{{ .Discord.EnableRunFinishMessages }}" {{ if .Discord.EnableRunFinishMessages }} checked="checked" {{ end }} />
+                        <input type="checkbox" name="enable_run_finish_messages" value="true" {{ if .Discord.EnableRunFinishMessages }} checked="checked" {{ end }} />
                         Enable Run Finish Messages
                     </label>
                     <label>
-                        <input type="checkbox" name="enable_discord_chicken_messages" value="{{ .Discord.EnableDiscordChickenMessages }}" {{ if .Discord.EnableDiscordChickenMessages }} checked="checked" {{ end }} />
+                        <input type="checkbox" name="enable_discord_chicken_messages" value="true" {{ if .Discord.EnableDiscordChickenMessages }} checked="checked" {{ end }} />
                         Enable Chicken/Death Messages
                     </label>
                     <label>
-                        <input type="checkbox" name="enable_discord_error_messages" value="{{ .Discord.EnableDiscordErrorMessages }}" {{ if .Discord.EnableDiscordErrorMessages }} checked="checked" {{ end }} />
+                        <input type="checkbox" name="enable_discord_error_messages" value="true" {{ if .Discord.EnableDiscordErrorMessages }} checked="checked" {{ end }} />
                         Enable Error Messages
                     </label>
                     <label>
-                        <input type="checkbox" id="discord-disable-item-stash-screenshots" name="discord_disable_item_stash_screenshots" value="{{ .Discord.DisableItemStashScreenshots }}" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
+                        <input type="checkbox" id="discord-disable-item-stash-screenshots" name="discord_disable_item_stash_screenshots" value="true" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
                         Disable Item Stash Screenshots (send text only)
                     </label>
                     <label>
-                        <input type="checkbox" id="discord-include-pickit-info" name="discord_include_pickit_info_in_item_text" value="{{ .Discord.IncludePickitInfoInItemText }}" {{ if .Discord.IncludePickitInfoInItemText }} checked="checked" {{ end }} {{ if not .Discord.DisableItemStashScreenshots }} disabled="disabled" {{ end }} />
+                        <input type="checkbox" id="discord-include-pickit-info" name="discord_include_pickit_info_in_item_text" value="true" {{ if .Discord.IncludePickitInfoInItemText }} checked="checked" {{ end }} {{ if not .Discord.DisableItemStashScreenshots }} disabled="disabled" {{ end }} />
                         Show NIP rule (send text only)
                     </label>
                 </fieldset>

@@ -133,9 +133,20 @@ func (b *Bot) itemWebhookClient() *webhookClient {
 func buildItemStashEmbed(evt event.ItemStashedEvent) *discordgo.MessageEmbed {
 	item := evt.Item.Item
 	quality := item.Quality.ToString()
+
+	itemName := string(item.Name)
+	if item.IdentifiedName != "" {
+		itemName = item.IdentifiedName
+	}
+
 	return &discordgo.MessageEmbed{
+		Title:       itemName,
 		Description: buildItemStashDescription(evt),
 		Color:       getCategoryColor(quality),
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: evt.Supervisor(),
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 }
 
@@ -147,13 +158,7 @@ func buildItemStashDescription(evt event.ItemStashedEvent) string {
 	socketCount := len(item.Sockets)
 	hasSocketStat := false
 
-	itemName := string(item.Name)
-	if item.IdentifiedName != "" {
-		itemName = item.IdentifiedName
-	}
-
 	var description strings.Builder
-	description.WriteString(fmt.Sprintf("## **%s**\n", itemName))
 	switch {
 	case itemType != "" && quality != "":
 		description.WriteString(fmt.Sprintf("▪️ %s [%s]\n", itemType, quality))
@@ -306,7 +311,6 @@ func buildItemStashDescription(evt event.ItemStashedEvent) string {
 		}
 	}
 
-	description.WriteString(fmt.Sprintf("\n`%s | %s`", evt.Supervisor(), time.Now().Format("2006-01-02 15:04:05")))
 	return strings.TrimSpace(description.String())
 }
 
@@ -474,6 +478,8 @@ func (b *Bot) shouldPublish(e event.Event) bool {
 		return config.Koolo.Discord.EnableNewRunMessages
 	case event.RunFinishedEvent:
 		return config.Koolo.Discord.EnableRunFinishMessages
+	case event.ItemStashedEvent:
+		return true
 	case event.NgrokTunnelEvent:
 		return true
 	default:
