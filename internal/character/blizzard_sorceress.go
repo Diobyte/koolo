@@ -74,38 +74,22 @@ func (s BlizzardSorceress) KillMonsterSequence(
 	completedAttackLoops := 0
 	previousUnitID := 0
 	lastReposition := time.Now()
+	ctx := context.Get()
 
 	attackOpts := step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance)
 
+	// Determine best available cooldown filler: GlacialSpike freezes enemies
+	// and deals cold damage, far better than a basic primary attack
+	_, glacialSpikeBound := s.Data.KeyBindings.KeyBindingForSkill(skill.GlacialSpike)
+	hasGlacialSpike := glacialSpikeBound && s.Data.PlayerUnit.Skills[skill.GlacialSpike].Level > 0
+
 	for {
-		context.Get().PauseIfNotPriority()
+		ctx.PauseIfNotPriority()
 
 		if s.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
 			return health.ErrDied
-		}
-
-		// Reposition when enemies are dangerously close (do this before target selection
-		// so we move first, then pick the best target from the new position)
-		tooClose, _ := s.needsRepositioning()
-		if tooClose && time.Since(lastReposition) > time.Second*1 {
-			lastReposition = time.Now()
-
-			targetID, found := monsterSelector(*s.Data)
-			if !found {
-				return nil
-			}
-			targetMonster, found := s.Data.Monsters.FindByID(targetID)
-			if !found {
-				return nil
-			}
-
-			safePos, posFound := s.findSafePosition(targetMonster)
-			if posFound {
-				step.MoveTo(safePos, step.WithIgnoreMonsters())
-			}
-			// Fall through to attack — never skip the attack phase
 		}
 
 		id, found := monsterSelector(*s.Data)
@@ -123,7 +107,6 @@ func (s BlizzardSorceress) KillMonsterSequence(
 
 		monster, found := s.Data.Monsters.FindByID(id)
 		if !found {
-			s.Logger.Info("Monster not found", slog.String("monster", fmt.Sprintf("%v", monster)))
 			return nil
 		}
 
@@ -136,15 +119,36 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		// Attack from current position
-		if isColdImmune {
-			// Let merc handle cold immunes — just primary attack
-			step.PrimaryAttack(id, 1, true, attackOpts)
-		} else {
-			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-				step.PrimaryAttack(id, 2, true, attackOpts)
+		// Evaluate positioning: reposition if enemies are dangerously close,
+		// target is out of attack range, or we have no line of sight
+		tooClose, _ := s.needsRepositioning()
+		hasLoS := ctx.PathFinder.LineOfSight(s.Data.PlayerUnit.Position, monster.Position)
+		distToTarget := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
+		outOfRange := distToTarget > maxBlizzSorceressAttackDistance || distToTarget < minBlizzSorceressAttackDistance
+
+		if (tooClose || !hasLoS || outOfRange) && time.Since(lastReposition) > time.Second {
+			safePos, posFound := s.findSafePosition(monster)
+			if posFound {
+				lastReposition = time.Now()
+				step.MoveTo(safePos, step.WithIgnoreMonsters())
 			}
+			// Always fall through to attack — never skip the attack phase
+		}
+
+		// Attack priority: Blizzard (when ready) > GlacialSpike filler > primary attack
+		// Each branch fires exactly one action per loop iteration for tight control
+		if isColdImmune {
+			// Cold immunes: conserve mana, let merc deal damage
+			step.PrimaryAttack(id, 1, true, attackOpts)
+		} else if !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+			// Blizzard off cooldown: cast immediately
 			step.SecondaryAttack(skill.Blizzard, id, 1, attackOpts)
+		} else if hasGlacialSpike {
+			// Blizzard on cooldown: GlacialSpike freezes enemies and deals cold damage
+			step.SecondaryAttack(skill.GlacialSpike, id, 1, attackOpts)
+		} else {
+			// Fallback filler: primary attack
+			step.PrimaryAttack(id, 1, true, attackOpts)
 		}
 
 		completedAttackLoops++
@@ -413,17 +417,16 @@ func (s BlizzardSorceress) KillMephisto() error {
 
 			monster, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
 
-			if !found {
+			if !found || monster.Stats[stat.Life] <= 0 {
 				return nil
 			}
 
-			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-				step.PrimaryAttack(monster.UnitID, 2, true, opts)
-				utils.Sleep(50)
+			if !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+				step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
+			} else {
+				step.PrimaryAttack(monster.UnitID, 1, true, opts)
 			}
 
-			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
-			utils.Sleep(100)
 			attackCount++
 		}
 		return nil
