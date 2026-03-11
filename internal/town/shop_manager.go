@@ -9,6 +9,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/nip"
+	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
@@ -330,9 +331,55 @@ func SellJunk(lockConfig ...[][]int) {
 	}
 	// --- END OPTIMIZED LOGIC ---
 
+	// --- SELL EXCESS TOMES ---
+	sellExcessTomes(ctx)
+
 	// Existing logic to sell other junk items, now with lockConfig support
 	for _, i := range ItemsToBeSold(lockConfig...) {
 		SellItem(i)
+	}
+}
+
+// sellExcessTomes sells duplicate Town Portal and Identify tomes, keeping only
+// one of each. When cows is in the configured run list, two TP tomes are kept.
+func sellExcessTomes(ctx *context.Status) {
+	ctx.RefreshGameData()
+
+	// Determine how many TP tomes to keep: 2 if cows run is configured, 1 otherwise.
+	maxTPTomes := 1
+	for _, r := range ctx.CharacterCfg.Game.Runs {
+		if r == config.CowsRun {
+			maxTPTomes = 2
+			break
+		}
+	}
+
+	var tpTomes []data.Item
+	var idTomes []data.Item
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if itm.Name == item.TomeOfTownPortal {
+			tpTomes = append(tpTomes, itm)
+		} else if itm.Name == item.TomeOfIdentify {
+			idTomes = append(idTomes, itm)
+		}
+	}
+
+	if len(tpTomes) > maxTPTomes {
+		ctx.Logger.Info(fmt.Sprintf("Found %d TP tomes, keeping %d. Selling extras.", len(tpTomes), maxTPTomes))
+		for i := maxTPTomes; i < len(tpTomes); i++ {
+			SellItem(tpTomes[i])
+			ctx.RefreshGameData()
+			utils.PingSleep(utils.Light, 200)
+		}
+	}
+
+	if len(idTomes) > 1 {
+		ctx.Logger.Info(fmt.Sprintf("Found %d ID tomes, keeping 1. Selling extras.", len(idTomes)))
+		for i := 1; i < len(idTomes); i++ {
+			SellItem(idTomes[i])
+			ctx.RefreshGameData()
+			utils.PingSleep(utils.Light, 200)
+		}
 	}
 }
 
