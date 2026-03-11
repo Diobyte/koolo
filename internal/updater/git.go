@@ -141,6 +141,20 @@ func comparisonBaseRef(repoDir string, current *VersionInfo) string {
 		return "HEAD"
 	}
 	if err := gitCmd(repoDir, "cat-file", "-e", fmt.Sprintf("%s^{commit}", fullHash)).Run(); err != nil {
+		// Embedded commit not found in local repo (e.g., binary was built from a
+		// fork whose hashes differ from upstream). Fall back to the closest
+		// upstream/main commit at or before the build time so the behind-count
+		// is still meaningful instead of comparing HEAD (which may already be
+		// at upstream/main, falsely reporting "up to date").
+		if !current.CommitDate.IsZero() {
+			dateStr := current.CommitDate.Format(time.RFC3339)
+			cmd := gitCmd(repoDir, "log", "--before="+dateStr, "-1", "--format=%H", "upstream/main")
+			if out, err := cmd.Output(); err == nil {
+				if h := strings.TrimSpace(string(out)); h != "" {
+					return h
+				}
+			}
+		}
 		return "HEAD"
 	}
 	return fullHash
