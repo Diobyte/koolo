@@ -49,7 +49,7 @@ func (tz TerrorZone) Run(parameters *RunParameters) error {
 	case area.MooMooFarm:
 		return NewCows().Run(parameters)
 	case area.TalRashasTomb1:
-		return NewTalRashaTombs().Run(parameters)
+		return NewTalRashaTombsTZ(tz.customTZEnemyFilter()).Run(parameters)
 	case area.AncientTunnels:
 		return NewAncientTunnels().Run(parameters)
 	case area.ArcaneSanctuary:

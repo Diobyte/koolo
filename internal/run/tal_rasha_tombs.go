@@ -12,12 +12,20 @@ import (
 )
 
 type TalRashaTombs struct {
-	ctx *context.Status
+	ctx                *context.Status
+	clearMonsterFilter data.MonsterFilter // nil = normal run, non-nil = TZ lane clear
 }
 
 func NewTalRashaTombs() *TalRashaTombs {
 	return &TalRashaTombs{
 		ctx: context.Get(),
+	}
+}
+
+func NewTalRashaTombsTZ(filter data.MonsterFilter) *TalRashaTombs {
+	return &TalRashaTombs{
+		ctx:                context.Get(),
+		clearMonsterFilter: filter,
 	}
 }
 
@@ -76,16 +84,22 @@ func (a TalRashaTombs) Run(parameters *RunParameters) error {
 		}
 		targetObject := findSpecialRoom()
 
+		// Use TZ filter when available (called from TerrorZone run), otherwise target all.
+		monsterFilter := data.MonsterAnyFilter()
+		if a.clearMonsterFilter != nil {
+			monsterFilter = a.clearMonsterFilter
+		}
+
 		// If we can teleport, clear the full level first to maximize coverage.
 		if a.ctx.Data.CanTeleport() {
-			if err = action.ClearCurrentLevel(true, data.MonsterAnyFilter()); err != nil {
+			if err = action.ClearCurrentLevel(true, monsterFilter); err != nil {
 				return err
 			}
 		} else {
 			if targetObject.Name == 0 {
 				// Clear the tomb until finding the special room.
 				a.ctx.Logger.Warn("Tal Rasha Tombs run: special room not found, exploring tomb")
-				if err = action.ClearCurrentLevelEx(true, data.MonsterAnyFilter(), func() bool {
+				if err = action.ClearCurrentLevelEx(true, monsterFilter, func() bool {
 					targetObject = findSpecialRoom()
 					if targetObject.Name != 0 {
 						a.ctx.Logger.Warn("Tal Rasha Tombs run: special room found during exploration")
@@ -105,7 +119,7 @@ func (a TalRashaTombs) Run(parameters *RunParameters) error {
 				if err := action.MoveToCoords(targetObject.Position); err != nil {
 					return err
 				}
-				if err := action.ClearAreaAroundPosition(targetObject.Position, 20, data.MonsterAnyFilter()); err != nil {
+				if err := action.ClearAreaAroundPosition(targetObject.Position, 20, monsterFilter); err != nil {
 					return err
 				}
 				if targetObject.Name == object.SparklyChest && targetObject.Selectable {
