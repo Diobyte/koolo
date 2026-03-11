@@ -45,13 +45,17 @@ if errorlevel 1 (
     exit /b
 )
 
+echo Cleaning untracked/generated files before merge...
+git clean -fd
+
 echo Merging upstream/main...
 git merge upstream/main --no-edit
 
 if errorlevel 1 (
     echo.
-    echo WARNING: Merge conflict detected. Resetting to upstream/main...
-    git merge --abort
+    echo WARNING: Merge failed. Resetting to upstream/main...
+    git merge --abort 2>nul
+    git clean -fd
     git reset --hard upstream/main
     git clean -fd
 )

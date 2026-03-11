@@ -25,13 +25,9 @@ import (
 )
 
 func (a Leveling) act2() error {
-	running := false
-
-	if running || a.ctx.Data.PlayerUnit.Area != area.LutGholein {
+	if a.ctx.Data.PlayerUnit.Area != area.LutGholein {
 		return nil
 	}
-
-	running = true
 
 	// Buy a 12 slot belt if we don't have one
 	if err := buyAct2Belt(a.ctx); err != nil {
@@ -57,7 +53,7 @@ func (a Leveling) act2() error {
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 		utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold Space to skip dialogue
 		utils.Sleep(1000)
 
 		return nil
@@ -68,12 +64,17 @@ func (a Leveling) act2() error {
 		switch a.ctx.CharacterCfg.Game.Difficulty {
 		case difficulty.Normal:
 			return NewQuests().killRadamentQuest()
+		case difficulty.Nightmare:
+			a.ctx.Logger.Info("Low gold in Nightmare, farming Radament for gold.")
+			return NewQuests().killRadamentQuest()
 		case difficulty.Hell:
-			NewMausoleum().Run(nil)
-			err := action.WayPoint(area.LutGholein)
-			if err != nil {
-				a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+			if err := NewMausoleum().Run(nil); err != nil {
+				a.ctx.Logger.Error(fmt.Sprintf("Mausoleum farming failed: %s", err.Error()))
 			}
+			if err := action.WayPoint(area.LutGholein); err != nil {
+				a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s", err.Error()))
+			}
+			return nil
 		}
 	}
 
@@ -86,7 +87,7 @@ func (a Leveling) act2() error {
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 		utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold Space to skip dialogue
 		utils.Sleep(1000)
 		return nil
 	}
@@ -160,7 +161,7 @@ func (a Leveling) act2() error {
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 		utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold Space to skip dialogue
 		utils.Sleep(1000)
 		return nil
 
@@ -196,7 +197,9 @@ func (a Leveling) act2() error {
 			}
 		}
 
-		a.prepareStaff() // Make sure staff is prepared before Duriel
+		if err := a.prepareStaff(); err != nil {
+			return err
+		}
 		return a.duriel()
 	}
 
@@ -267,12 +270,11 @@ func (a Leveling) act2() error {
 		// This block can be removed when https://github.com/hectorgimenez/koolo/pull/642 gets merged
 		tome, found := a.ctx.Data.Objects.FindOne(object.YetAnotherTome)
 		if !found {
-			a.ctx.Logger.Error("YetAnotherTome (journal) not found after Summoner kill. This is unexpected.")
-			return err // Or a more specific error/recovery
+			a.ctx.Logger.Error("YetAnotherTome (journal) not found after Summoner kill")
+			return fmt.Errorf("YetAnotherTome (journal) not found after Summoner kill")
 		}
 
 		a.ctx.Logger.Debug("Interacting with the journal to open the portal.")
-		// Try to use the portal and discover the waypoint
 		err = action.InteractObject(tome, func() bool {
 			_, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 			return found
@@ -281,7 +283,10 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Debug("Moving to red portal")
-		portal, _ := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		portal, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			return fmt.Errorf("PermanentTownPortal not found after interacting with journal")
+		}
 
 		err = action.InteractObject(portal, func() bool {
 			return a.ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi && a.ctx.Data.AreaData.IsInside(a.ctx.Data.PlayerUnit.Position)
@@ -296,25 +301,26 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		return nil // Return to re-evaluate after completing this chain.
+		return nil
 	}
 
 	if a.ctx.Data.Quests[quest.Act2TheSummoner].Completed() && a.ctx.Data.Quests[quest.Act2TheSevenTombs].NotStarted() {
-		err := NewTalRashaTombs().Run(nil)
-		if err != nil {
+		// Summoner is done but Canyon of the Magi waypoint may be missing. Discover it.
+		a.ctx.Logger.Info("Summoner completed, discovering Canyon of the Magi waypoint.")
+		if err := action.WayPoint(area.ArcaneSanctuary); err != nil {
+			a.ctx.Logger.Error(fmt.Sprintf("Failed to waypoint to Arcane Sanctuary: %s", err.Error()))
 			return err
 		}
 
 		// This block can be removed when https://github.com/hectorgimenez/koolo/pull/642 gets merged
 		tome, found := a.ctx.Data.Objects.FindOne(object.YetAnotherTome)
 		if !found {
-			a.ctx.Logger.Error("YetAnotherTome (journal) not found after Summoner kill. This is unexpected.")
-			return err // Or a more specific error/recovery
+			a.ctx.Logger.Error("YetAnotherTome (journal) not found in Arcane Sanctuary")
+			return fmt.Errorf("YetAnotherTome (journal) not found in Arcane Sanctuary")
 		}
 
 		a.ctx.Logger.Debug("Interacting with the journal to open the portal.")
-		// Try to use the portal and discover the waypoint
-		err = action.InteractObject(tome, func() bool {
+		err := action.InteractObject(tome, func() bool {
 			_, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 			return found
 		})
@@ -322,7 +328,10 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Debug("Moving to red portal")
-		portal, _ := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		portal, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			return fmt.Errorf("PermanentTownPortal not found after interacting with journal")
+		}
 
 		err = action.InteractObject(portal, func() bool {
 			return a.ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi && a.ctx.Data.AreaData.IsInside(a.ctx.Data.PlayerUnit.Position)
@@ -336,8 +345,8 @@ func (a Leveling) act2() error {
 		if err != nil {
 			return err
 		}
-		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		return nil // Return to re-evaluate after completing this chain.
+		a.ctx.Logger.Info("Canyon of the Magi waypoint discovered.")
+		return nil
 	}
 
 	if !a.ctx.Data.Quests[quest.Act2TheSevenTombs].NotStarted() {
@@ -364,7 +373,9 @@ func (a Leveling) act2() error {
 			}
 		}
 
-		a.prepareStaff()
+		if err := a.prepareStaff(); err != nil {
+			return err
+		}
 
 		return a.duriel()
 	}
@@ -415,7 +426,7 @@ func (a Leveling) findStaff() error {
 
 	obj, found := a.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)
 	if !found {
-		return err
+		return fmt.Errorf("StaffOfKingsChest not found after navigating to Maggot Lair Level 3")
 	}
 
 	err = action.InteractObject(obj, func() bool {
@@ -473,7 +484,7 @@ func (a Leveling) findAmulet() error {
 
 	obj, found := a.ctx.Data.Objects.FindOne(object.TaintedSunAltar)
 	if !found {
-		return err
+		return fmt.Errorf("TaintedSunAltar not found in Claw Viper Temple Level 2")
 	}
 
 	err = action.InteractObject(obj, func() bool {
@@ -489,6 +500,9 @@ func (a Leveling) findAmulet() error {
 	if err != nil {
 		return err
 	}
+
+	utils.Sleep(200)
+	action.ItemPickup(-1)
 
 	action.ReturnTown()
 
@@ -507,7 +521,7 @@ func (a Leveling) prepareStaff() error {
 
 			bank, found := a.ctx.Data.Objects.FindOne(object.Bank)
 			if !found {
-				a.ctx.Logger.Info("bank object not found")
+				return fmt.Errorf("bank (stash) object not found in town")
 			}
 
 			err := action.InteractObject(bank, func() bool {
@@ -656,7 +670,7 @@ func (a Leveling) RockyWaste() error {
 	// Use action.MoveToArea to navigate to Rocky Waste, similar to the Izual quest.
 	err := action.MoveToArea(area.RockyWaste)
 	if err != nil {
-		a.ctx.Logger.Error("Failed to move to Rocky Waste area: %v", err)
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to move to Rocky Waste area: %v", err))
 		return err // Return the error if navigation fails
 	}
 	a.ctx.Logger.Info("Successfully reached Rocky Waste.")
@@ -664,7 +678,7 @@ func (a Leveling) RockyWaste() error {
 	// Attempt to clear the current level (Rocky Waste).
 	err = action.ClearCurrentLevel(false, data.MonsterAnyFilter())
 	if err != nil {
-		a.ctx.Logger.Error("Failed to clear Rocky Waste area: %v", err)
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to clear Rocky Waste area: %v", err))
 		return err // Return the error if clearing fails
 	}
 	a.ctx.Logger.Info("Successfully cleared Rocky Waste area.")
@@ -679,7 +693,7 @@ func (a Leveling) FarOasis() error {
 	// Attempt to clear the current level (Far Oasis).
 	err := action.ClearCurrentLevel(false, data.MonsterEliteFilter())
 	if err != nil {
-		a.ctx.Logger.Error("Failed to clear Far Oasis area: %v", err)
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to clear Far Oasis area: %v", err))
 		return err // Return the error if clearing fails
 	}
 

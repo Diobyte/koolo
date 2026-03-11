@@ -64,7 +64,9 @@ func CheckForUpdates() (*UpdateCheckResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to compare with upstream: %w", err)
 	}
-	fmt.Sscanf(string(countOut), "%d %d", &result.CommitsAhead, &result.CommitsBehind)
+	if n, err := fmt.Sscanf(string(countOut), "%d %d", &result.CommitsAhead, &result.CommitsBehind); n < 2 || err != nil {
+		return nil, fmt.Errorf("failed to parse rev-list output %q: %w", strings.TrimSpace(string(countOut)), err)
+	}
 
 	result.HasUpdates = result.CommitsBehind > 0
 
@@ -254,8 +256,14 @@ func PerformUpdate(ctx repoContext, progressCallback func(step, message string))
 	mergeOutput, mergeErr := mergeCmd.CombinedOutput()
 	if mergeErr != nil {
 		outputStr := string(mergeOutput)
+
+		// Detect untracked files blocking the merge (e.g. upstream added a file
+		// that already exists locally as an untracked/generated file).
+		untrackedBlock := strings.Contains(outputStr, "untracked working tree files would be overwritten") ||
+			strings.Contains(outputStr, "would be overwritten by merge")
+
 		conflict := strings.Contains(outputStr, "CONFLICT") || strings.Contains(outputStr, "Automatic merge failed")
-		if !conflict {
+		if !conflict && !untrackedBlock {
 			if lsOut, lsErr := gitCmd(ctx.RepoDir, "ls-files", "-u").Output(); lsErr == nil {
 				if strings.TrimSpace(string(lsOut)) != "" {
 					conflict = true
@@ -263,18 +271,23 @@ func PerformUpdate(ctx repoContext, progressCallback func(step, message string))
 			}
 		}
 
-		if conflict {
-			progressCallback("conflict", "Merge conflict detected; discarding local changes and keeping upstream updates...")
+		if conflict || untrackedBlock {
+			if untrackedBlock {
+				progressCallback("conflict", "Untracked files blocking merge; cleaning and resetting to upstream...")
+			} else {
+				progressCallback("conflict", "Merge conflict detected; discarding local changes and keeping upstream updates...")
+			}
 			_ = gitCmd(ctx.RepoDir, "merge", "--abort").Run()
+
+			// Remove untracked files first so reset doesn't fail
+			cleanCmd := gitCmd(ctx.RepoDir, "clean", "-fd")
+			if output, err := cleanCmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git clean -fd failed: %w\n%s", err, output)
+			}
 
 			resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", "upstream/main")
 			if output, err := resetCmd.CombinedOutput(); err != nil {
 				return fmt.Errorf("git reset --hard failed after conflict: %w\n%s", err, output)
-			}
-
-			cleanCmd := gitCmd(ctx.RepoDir, "clean", "-fd")
-			if output, err := cleanCmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git clean -fd failed after conflict: %w\n%s", err, output)
 			}
 
 			if stashCreated {

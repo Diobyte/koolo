@@ -4266,6 +4266,8 @@ func (s *HttpServer) getVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) checkUpdates(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+
 	result, err := updater.CheckForUpdates()
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")

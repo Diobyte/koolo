@@ -1067,8 +1067,11 @@ document.addEventListener("DOMContentLoaded", function () {
         updatesTab.textContent = 'Checking...';
 
         try {
-            const response = await fetch('/api/updater/check');
+            const response = await fetch('/api/updater/check', { cache: 'no-store' });
             const data = await response.json();
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Server returned ${response.status}`);
+            }
             const ahead = Number(data.commitsAhead) || 0;
             const behind = Number(data.commitsBehind) || 0;
             const aheadCommits = Array.isArray(data.aheadCommits) ? data.aheadCommits : [];
@@ -1076,7 +1079,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateCurrentVersionUI(data.currentVersion);
             }
 
-            const statusSuffix = ` of and ${behind} commit(s) behind Diobyte/koolo:main.`;
+            const statusSuffix = ` and ${behind} commit(s) behind Diobyte/koolo:main.`;
             if (ahead > 0) {
                 statusDiv.innerHTML = `Current version is <button type="button" id="ahead-commits-toggle" aria-expanded="false" style="background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 2px 8px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">${ahead} commit(s) ahead</button>${statusSuffix}`;
             } else {
