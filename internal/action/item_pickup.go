@@ -83,6 +83,8 @@ func ItemPickup(maxDistance int) error {
 	const maxRetries = 5                                        // Base retries for various issues
 	const maxItemTooFarAttempts = 5                             // Additional retries specifically for "item too far"
 	const totalMaxAttempts = maxRetries + maxItemTooFarAttempts // Combined total attempts
+	const maxCombatRetries = 15                                 // Budget for transient combat errors (monsters nearby / casting)
+	const pickupWallTimeout = 30 * time.Second                  // Safety timeout for the entire pickup attempt per item
 	const debugPickit = false
 
 	// If we're already picking items, skip it
@@ -163,14 +165,23 @@ outer:
 		var lastError error
 		attempt := 1
 		itemTooFarRetryCount := 0     // Tracks retries specifically for "item too far"
-		totalAttemptCounter := 0      // Overall attempts
+		totalAttemptCounter := 0      // Real pickup attempts (excludes transient combat errors)
 		var consecutiveMoveErrors int // Track consecutive ErrCastingMoving errors
+		combatRetryCount := 0         // Tracks transient combat retries (monsters near item)
+		pickupWallStart := time.Now() // Wall-clock safety for the entire pickup attempt
 		pickedUp := false
 
 		for totalAttemptCounter < totalMaxAttempts {
-			totalAttemptCounter++
+			// Wall-clock safety: prevent spending too long on a single item
+			if time.Since(pickupWallStart) > pickupWallTimeout {
+				ctx.Logger.Warn("Pickup wall-clock timeout reached, skipping item",
+					slog.String("itemName", string(itemToPickup.Desc().Name)),
+					slog.Int("unitID", int(itemToPickup.UnitID)),
+				)
+				break
+			}
 			if debugPickit {
-				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Starting attempt %d (total: %d)", attempt, totalAttemptCounter))
+				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Starting attempt %d (total: %d, combat: %d)", attempt, totalAttemptCounter, combatRetryCount))
 			}
 
 			// If inventory changed and item no longer fits, do NOT grind attempts and then blacklist.
@@ -300,6 +311,14 @@ outer:
 			}
 
 			if errors.Is(err, step.ErrMonsterAroundItem) {
+				combatRetryCount++
+				if combatRetryCount > maxCombatRetries {
+					ctx.Logger.Debug("Persistent combat interference, skipping item for now",
+						slog.String("itemName", string(itemToPickup.Desc().Name)),
+						slog.Int("unitID", int(itemToPickup.UnitID)),
+					)
+					break
+				}
 				continue
 			}
 
@@ -337,6 +356,7 @@ outer:
 				}
 			}
 
+			totalAttemptCounter++
 			attempt++
 		}
 
