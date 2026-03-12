@@ -37,7 +37,9 @@ type BlizzardSorceress struct {
 }
 
 func (s BlizzardSorceress) ShouldIgnoreMonster(m data.Monster) bool {
-	return false
+	// Skip cold immunes during area clearing — Blizzard deals no damage to them.
+	// Boss-specific kill methods use direct selectors and bypass this check.
+	return m.IsImmune(stat.ColdImmune)
 }
 
 func (s BlizzardSorceress) CheckKeyBindings() []skill.ID {
@@ -175,13 +177,16 @@ func (s BlizzardSorceress) killMonsterByName(id npc.ID, monsterType data.Monster
 				break
 			}
 
-			s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+			err := s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 				if m, found := d.Monsters.FindOne(id, monsterType); found {
 					return m.UnitID, true
 				}
 
 				return 0, false
 			}, skipOnImmunities)
+			if err != nil {
+				return err
+			}
 		} else {
 			break
 		}
@@ -227,10 +232,13 @@ func (s BlizzardSorceress) KillDuriel() error {
 }
 
 func (s BlizzardSorceress) KillCouncil() error {
+	// Pre-allocate outside closure to reuse across selector calls.
+	councilMembers := make([]data.Monster, 0, 12)
+	coldImmunes := make([]data.Monster, 0, 12)
+
 	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		// Exclude monsters that are not council members
-		var councilMembers []data.Monster
-		var coldImmunes []data.Monster
+		councilMembers = councilMembers[:0]
+		coldImmunes = coldImmunes[:0]
 		for _, m := range d.Monsters.Enemies() {
 			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
 				if m.IsImmune(stat.ColdImmune) {
@@ -312,6 +320,10 @@ func (s BlizzardSorceress) KillMephisto() error {
 			staticAttackCount := 0
 
 			for staticAttackCount < maxStaticAttacks {
+				if s.Data.PlayerUnit.IsDead() {
+					return health.ErrDied
+				}
+
 				monster, found = s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
 				if !found || monster.Stats[stat.Life] <= 0 {
 					s.Logger.Info("Mephisto died or vanished during Static Phase.")
@@ -414,6 +426,10 @@ func (s BlizzardSorceress) KillMephisto() error {
 
 		for attackCount < maxAttack {
 			ctx.PauseIfNotPriority()
+
+			if s.Data.PlayerUnit.IsDead() {
+				return health.ErrDied
+			}
 
 			monster, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
 
@@ -523,11 +539,13 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 		score float64
 	}
 
-	var scoredPositions []scoredPosition
+	// Pre-allocate with estimated capacity: 24 angles × 3 distances = 72 ring candidates
+	scoredPositions := make([]scoredPosition, 0, 72)
 
 	// Collect alive enemies once for scoring
-	aliveEnemies := make([]data.Monster, 0)
-	for _, m := range s.Data.Monsters.Enemies() {
+	enemies := s.Data.Monsters.Enemies()
+	aliveEnemies := make([]data.Monster, 0, len(enemies))
+	for _, m := range enemies {
 		if m.Stats[stat.Life] > 0 {
 			aliveEnemies = append(aliveEnemies, m)
 		}

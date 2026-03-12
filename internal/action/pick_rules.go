@@ -49,9 +49,7 @@ func shouldMatchRulesOnly(i data.Item) bool {
 
 	// Blacklist the item if it exceeds quantity limits and do not pick it up.
 	if doesExceedQuantity(matchedRule) {
-		if !IsBlacklisted(i) {
-			ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, i)
-		}
+		ctx.CurrentGame.BlacklistedItems[i.UnitID] = struct{}{}
 		return false
 	}
 

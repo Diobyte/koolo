@@ -212,14 +212,38 @@ outer:
 
 			pickupStartTime := time.Now()
 
-			// Clear monsters on each attempt
-			if debugPickit {
-				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Clearing area around item. Attempt %d", attempt))
+			// Clear monsters on each attempt only if enemies are actually nearby
+			hasNearbyEnemies := false
+			for _, m := range ctx.Data.Monsters.Enemies() {
+				if m.Stats[stat.Life] > 0 {
+					if ctx.PathFinder.DistanceFromMe(m.Position) <= 6 {
+						hasNearbyEnemies = true
+						break
+					}
+					// Also check distance from monster to the item itself
+					dx := m.Position.X - itemToPickup.Position.X
+					dy := m.Position.Y - itemToPickup.Position.Y
+					if dx < 0 {
+						dx = -dx
+					}
+					if dy < 0 {
+						dy = -dy
+					}
+					if max(dx, dy) <= 6 {
+						hasNearbyEnemies = true
+						break
+					}
+				}
 			}
-			ClearAreaAroundPlayer(4, data.MonsterAnyFilter())
-			ClearAreaAroundPosition(itemToPickup.Position, 4, data.MonsterAnyFilter())
-			if debugPickit {
-				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Area cleared in %v. Attempt %d", time.Since(pickupStartTime), attempt))
+			if hasNearbyEnemies {
+				if debugPickit {
+					ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Clearing area around item. Attempt %d", attempt))
+				}
+				ClearAreaAroundPlayer(4, data.MonsterAnyFilter())
+				ClearAreaAroundPosition(itemToPickup.Position, 4, data.MonsterAnyFilter())
+				if debugPickit {
+					ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Area cleared in %v. Attempt %d", time.Since(pickupStartTime), attempt))
+				}
 			}
 
 			// Calculate position to move to based on attempt number
@@ -385,9 +409,7 @@ outer:
 
 		// If all attempts failed, blacklist *this specific ground instance* (UnitID), not the whole base item ID.
 		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
-			if !IsBlacklisted(itemToPickup) {
-				ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
-			}
+			ctx.CurrentGame.BlacklistedItems[itemToPickup.UnitID] = struct{}{}
 
 			// Screenshot with show items on
 			ctx.HID.KeyDown(ctx.Data.KeyBindings.ShowItems)
@@ -673,11 +695,6 @@ func shouldBePickedUp(i data.Item) bool {
 }
 
 func IsBlacklisted(itm data.Item) bool {
-	for _, blacklisted := range context.Get().CurrentGame.BlacklistedItems {
-		// Blacklist is per-game. UnitID is the safest key: it targets only the problematic ground instance.
-		if itm.UnitID == blacklisted.UnitID {
-			return true
-		}
-	}
-	return false
+	_, blacklisted := context.Get().CurrentGame.BlacklistedItems[itm.UnitID]
+	return blacklisted
 }

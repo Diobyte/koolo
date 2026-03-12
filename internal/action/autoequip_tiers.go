@@ -106,7 +106,7 @@ var (
 			stat.ReplenishQuantity:    50.0,
 		},
 		data.Sorceress: {
-			stat.FasterCastRate:    5.0,
+			stat.FasterCastRate:    8.0,
 			stat.Defense:           0.1,
 			stat.FireResist:        1.0,
 			stat.ColdResist:        1.0,
@@ -459,7 +459,7 @@ func calculateResistScore(itm data.Item, bodyloc item.LocationType) float64 {
 	effectiveResists := calculateEffectiveResists(newResists, baseResists)
 	//ctx.Logger.Debug(fmt.Sprintf("(%s) Effective resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.IdentifiedName, effectiveResists.Fire, effectiveResists.Cold, effectiveResists.Lightning, effectiveResists.Poison))
 
-	mainScore = calculateMainResistScore(effectiveResists)
+	mainScore = calculateMainResistScore(effectiveResists, baseResists)
 
 	otherScore := calculateOtherResistScore(itm)
 
@@ -543,11 +543,26 @@ func calculateEffectiveResists(new, base ResistStats) ResistStats {
 	return effectiveRes
 }
 
-func calculateMainResistScore(resists ResistStats) float64 {
-	fireScore := float64(resists.Fire) * resistWeightsMain[stat.FireResist]
-	coldScore := float64(resists.Cold) * resistWeightsMain[stat.ColdResist]
-	lightScore := float64(resists.Lightning) * resistWeightsMain[stat.LightningResist]
-	poisonScore := float64(resists.Poison) * resistWeightsMain[stat.PoisonResist]
+// resistGapMultiplier returns a multiplier [1.0, 3.0] that increases as the
+// player's base resist gets closer to the cap. Closing the last 10 points to
+// 75 is worth ~3× more than the first 10 points from 0.
+func resistGapMultiplier(baseRes int) float64 {
+	const maxRes = 75
+	// Clamp negative bases (Hell penalty) to zero so the multiplier stays ≥ 1.0.
+	clamped := max(baseRes, 0)
+	gap := float64(maxRes - clamped)
+	if gap <= 0 {
+		return 1.0
+	}
+	// Linear scale: at base=0 gap=75 → mult=1.0, at base=65 gap=10 → mult~2.73
+	return 1.0 + 2.0*(1.0-gap/float64(maxRes))
+}
+
+func calculateMainResistScore(resists ResistStats, base ResistStats) float64 {
+	fireScore := float64(resists.Fire) * resistWeightsMain[stat.FireResist] * resistGapMultiplier(base.Fire)
+	coldScore := float64(resists.Cold) * resistWeightsMain[stat.ColdResist] * resistGapMultiplier(base.Cold)
+	lightScore := float64(resists.Lightning) * resistWeightsMain[stat.LightningResist] * resistGapMultiplier(base.Lightning)
+	poisonScore := float64(resists.Poison) * resistWeightsMain[stat.PoisonResist] * resistGapMultiplier(base.Poison)
 
 	totalScore := fireScore + coldScore + lightScore + poisonScore
 

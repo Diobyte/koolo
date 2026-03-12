@@ -79,7 +79,7 @@ type Debug struct {
 }
 
 type CurrentGameHelper struct {
-	BlacklistedItems  []data.Item
+	BlacklistedItems  map[data.UnitID]struct{}
 	PickedUpItems     map[int]int
 	AbandonedMonsters map[data.UnitID]struct{}
 	CurrentStashTab   int  // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
@@ -148,7 +148,7 @@ func NewGameHelper() *CurrentGameHelper {
 		PickupItems:                true,
 		PickedUpItems:              make(map[int]int),
 		AbandonedMonsters:          make(map[data.UnitID]struct{}),
-		BlacklistedItems:           []data.Item{},
+		BlacklistedItems:           make(map[data.UnitID]struct{}),
 		FailedToCreateGameAttempts: 0,
 	}
 }
@@ -247,7 +247,7 @@ func (ctx *Context) Cleanup() {
 	ctx.Logger.Debug("Resetting blacklisted items")
 
 	// Remove all items from the blacklisted items list
-	ctx.CurrentGame.BlacklistedItems = []data.Item{}
+	ctx.CurrentGame.BlacklistedItems = make(map[data.UnitID]struct{})
 
 	// flag reset in case something goes wrong (barb leveling)
 	ctx.IsBossEquipmentActive = false
