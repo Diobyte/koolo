@@ -37,9 +37,7 @@ type BlizzardSorceress struct {
 }
 
 func (s BlizzardSorceress) ShouldIgnoreMonster(m data.Monster) bool {
-	// Skip cold immunes during area clearing — Blizzard deals no damage to them.
-	// Boss-specific kill methods use direct selectors and bypass this check.
-	return m.IsImmune(stat.ColdImmune)
+	return false
 }
 
 func (s BlizzardSorceress) CheckKeyBindings() []skill.ID {
