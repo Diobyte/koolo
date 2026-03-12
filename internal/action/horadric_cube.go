@@ -20,20 +20,36 @@ func CubeAddItems(items ...data.Item) error {
 	ctx := context.Get()
 	ctx.SetLastAction("CubeAddItems")
 
-	// Ensure stash is open
-	if !ctx.Data.OpenMenus.Stash {
-		bank, _ := ctx.Data.Objects.FindOne(object.Bank)
-		err := InteractObject(bank, func() bool {
-			return ctx.Data.OpenMenus.Stash
-		})
-		if err != nil {
-			return err
+	// Check if any items need to be retrieved from a stash location.
+	needsStash := false
+	for _, itm := range items {
+		switch itm.Location.LocationType {
+		case item.LocationStash, item.LocationSharedStash,
+			item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
+			needsStash = true
 		}
-		// The first stash open each game lands on personal; subsequent opens
-		// remember the last tab/page.
-		if !ctx.CurrentGame.HasOpenedStash {
-			ctx.CurrentGame.CurrentStashTab = 1
-			ctx.CurrentGame.HasOpenedStash = true
+		if needsStash {
+			break
+		}
+	}
+
+	// Only open the stash when items actually need to be pulled from it.
+	// When all items are already in inventory we skip straight to the cube.
+	if needsStash {
+		if !ctx.Data.OpenMenus.Stash {
+			bank, _ := ctx.Data.Objects.FindOne(object.Bank)
+			err := InteractObject(bank, func() bool {
+				return ctx.Data.OpenMenus.Stash
+			})
+			if err != nil {
+				return err
+			}
+			// The first stash open each game lands on personal; subsequent opens
+			// remember the last tab/page.
+			if !ctx.CurrentGame.HasOpenedStash {
+				ctx.CurrentGame.CurrentStashTab = 1
+				ctx.CurrentGame.HasOpenedStash = true
+			}
 		}
 	}
 	// Clear messages like TZ change or public game spam.  Prevent bot from clicking on messages
@@ -273,6 +289,7 @@ func ensureCubeIsOpen() error {
 	}
 
 	screenPos := ui.GetScreenCoordsForItem(cube)
+	cubeInInventory := cube.Location.LocationType == item.LocationInventory
 
 	for attempt := 0; attempt < 8; attempt++ {
 		if attempt > 0 {
@@ -280,6 +297,16 @@ func ensureCubeIsOpen() error {
 			step.CloseAllMenus()
 			utils.PingSleep(utils.Light, 200) // Light operation: Wait for menu close
 		}
+
+		// The inventory panel must be visible so the cube can be right-clicked.
+		// When the cube is in inventory and no panel is showing it, open
+		// the inventory explicitly.  Without this the right-click lands on
+		// the game world and D2R responds with "not in town".
+		if cubeInInventory && !ctx.Data.OpenMenus.Inventory && !ctx.Data.OpenMenus.Stash && !ctx.Data.OpenMenus.Cube {
+			step.OpenInventory()
+			utils.PingSleep(utils.Light, 200) // Light operation: Wait for inventory to open
+		}
+
 		utils.PingSleep(utils.Light, 200) // Light operation: Pre-click delay
 		ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 		utils.Sleep(utils.RetryDelay(attempt+1, 2.0, 300)) // Escalating delay: base 300ms + 2×ping per attempt
