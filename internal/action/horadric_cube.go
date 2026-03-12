@@ -20,6 +20,16 @@ func CubeAddItems(items ...data.Item) error {
 	ctx := context.Get()
 	ctx.SetLastAction("CubeAddItems")
 
+	// Ensure cube is open and empty BEFORE picking recipe items from stash.
+	// This prevents ensureCubeIsEmpty's stashInventory call from stashing
+	// recipe items that were already moved to inventory.
+	if err := ensureCubeIsOpen(); err != nil {
+		return err
+	}
+	if err := ensureCubeIsEmpty(); err != nil {
+		return err
+	}
+
 	// Check if any items need to be retrieved from a stash location.
 	needsStash := false
 	for _, itm := range items {
@@ -36,20 +46,25 @@ func CubeAddItems(items ...data.Item) error {
 	// Only open the stash when items actually need to be pulled from it.
 	// When all items are already in inventory we skip straight to the cube.
 	if needsStash {
-		if !ctx.Data.OpenMenus.Stash {
-			bank, _ := ctx.Data.Objects.FindOne(object.Bank)
-			err := InteractObject(bank, func() bool {
-				return ctx.Data.OpenMenus.Stash
-			})
-			if err != nil {
-				return err
-			}
-			// The first stash open each game lands on personal; subsequent opens
-			// remember the last tab/page.
-			if !ctx.CurrentGame.HasOpenedStash {
-				ctx.CurrentGame.CurrentStashTab = 1
-				ctx.CurrentGame.HasOpenedStash = true
-			}
+		// Close cube before opening stash — only one left-panel at a time.
+		step.CloseAllMenus()
+		utils.PingSleep(utils.Light, 200)
+
+		bank, found := ctx.Data.Objects.FindOne(object.Bank)
+		if !found {
+			return errors.New("stash object not found nearby")
+		}
+		err := InteractObject(bank, func() bool {
+			return ctx.Data.OpenMenus.Stash
+		})
+		if err != nil {
+			return err
+		}
+		// The first stash open each game lands on personal; subsequent opens
+		// remember the last tab/page.
+		if !ctx.CurrentGame.HasOpenedStash {
+			ctx.CurrentGame.CurrentStashTab = 1
+			ctx.CurrentGame.HasOpenedStash = true
 		}
 	}
 	// Clear messages like TZ change or public game spam.  Prevent bot from clicking on messages
@@ -106,13 +121,8 @@ func CubeAddItems(items ...data.Item) error {
 		utils.PingSleep(utils.Medium, 200) // Medium operation: Wait for stash→inventory item transfer
 	}
 
-	err := ensureCubeIsOpen()
-	if err != nil {
-		return err
-	}
-
-	err = ensureCubeIsEmpty()
-	if err != nil {
+	// Reopen cube — already empty from the check above.
+	if err := ensureCubeIsOpen(); err != nil {
 		return err
 	}
 
@@ -195,6 +205,9 @@ func CubeTransmute() error {
 
 	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for transmute to complete
 
+	// Refresh data to see transmute results instead of stale pre-transmute items.
+	ctx.RefreshGameData()
+
 	// Take the items out of the cube
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationCube) {
 		ctx.Logger.Debug("Moving Item to the inventory", slog.String("Item", string(itm.Name)))
@@ -242,8 +255,9 @@ func ensureCubeIsEmpty() error {
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
 		utils.PingSleep(utils.Medium, 400) // Medium operation: Wait for item removal from cube
 
-		itm, _ = ctx.Data.Inventory.FindByID(itm.UnitID)
-		if itm.Location.LocationType == item.LocationCube {
+		ctx.RefreshGameData()
+		updated, found := ctx.Data.Inventory.FindByID(itm.UnitID)
+		if found && updated.Location.LocationType == item.LocationCube {
 			return fmt.Errorf("item %s could not be removed from the cube", itm.Name)
 		}
 	}
@@ -272,11 +286,12 @@ func ensureCubeIsOpen() error {
 
 	// If cube is in stash, switch to the correct tab
 	if cube.Location.LocationType == item.LocationStash || cube.Location.LocationType == item.LocationSharedStash {
-		ctx := context.Get()
-
 		// Ensure stash is open
 		if !ctx.Data.OpenMenus.Stash {
-			bank, _ := ctx.Data.Objects.FindOne(object.Bank)
+			bank, found := ctx.Data.Objects.FindOne(object.Bank)
+			if !found {
+				return errors.New("stash object not found nearby")
+			}
 			err := InteractObject(bank, func() bool {
 				return ctx.Data.OpenMenus.Stash
 			})
