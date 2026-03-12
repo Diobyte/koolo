@@ -39,6 +39,10 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 	// We can make this configurable later, but 20 is a good starting radius.
 	const pickupRadius = 20
 
+	// Maximum distance (in tiles) from the player to consider opening a chest.
+	// Matches the radius used by GetClosestChest/GetClosestSuperChest during movement.
+	const maxChestDistance = 25
+
 	rooms := ctx.PathFinder.OptimizeRoomsTraverseOrder()
 	for _, r := range rooms {
 		if errDeath := checkPlayerDeath(ctx); errDeath != nil {
@@ -62,50 +66,78 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 
 		// Iterate through objects in the current room
 		for _, o := range ctx.Data.Objects {
-			if r.IsInside(o.Position) {
-				shouldOpen := false
-				if o.Selectable {
-					// Global settings override per-run openChests.
-					switch {
-					case openSuperOnly:
-						shouldOpen = o.IsSuperChest()
-					case openAllChests:
-						shouldOpen = o.IsChest() || o.IsSuperChest()
-					case openChests:
-						shouldOpen = o.IsChest()
-					}
-				}
+			if !r.IsInside(o.Position) {
+				continue
+			}
 
-				if shouldOpen {
-					ctx.Logger.Debug(fmt.Sprintf(
-						"Found chest. attempting to interact. Name=%s.\nID=%v UnitID=%v Pos=%v,%v Area='%s' InteractType=%v",
-						o.Desc().Name,
-						o.Name,
-						o.ID,
-						o.Position.X,
-						o.Position.Y,
-						ctx.Data.PlayerUnit.Area.Area().Name,
-						o.InteractType,
-					))
-
-					err = MoveToCoords(o.Position)
-					if err != nil {
-						ctx.Logger.Warn("Failed moving to chest", slog.Any("error", err))
-						continue
-					}
-
-					err = InteractObject(o, func() bool {
-						chest, _ := ctx.Data.Objects.FindByID(o.ID)
-						return !chest.Selectable
-					})
-					if err != nil {
-						ctx.Logger.Warn("Failed interacting with chest", slog.Any("error", err))
-					}
-
-					// Add small delay to allow the game to open the chest and drop the content
-					utils.Sleep(500)
+			shouldOpen := false
+			if o.Selectable {
+				// Global settings override per-run openChests.
+				switch {
+				case openSuperOnly:
+					shouldOpen = o.IsSuperChest()
+				case openAllChests:
+					shouldOpen = o.IsChest() || o.IsSuperChest()
+				case openChests:
+					shouldOpen = o.IsChest()
 				}
 			}
+			if !shouldOpen {
+				continue
+			}
+
+			// Skip chests that are too far from the player to avoid backtracking.
+			distToChest := ctx.PathFinder.DistanceFromMe(o.Position)
+			if distToChest > maxChestDistance {
+				ctx.Logger.Debug(fmt.Sprintf(
+					"Skipping chest too far away: Name=%s Dist=%d Max=%d",
+					o.Desc().Name, distToChest, maxChestDistance,
+				))
+				continue
+			}
+
+			// Skip chests without line of sight to avoid costly pathing detours.
+			if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, o.Position) {
+				ctx.Logger.Debug(fmt.Sprintf(
+					"Skipping chest without line of sight: Name=%s Pos=%v,%v",
+					o.Desc().Name, o.Position.X, o.Position.Y,
+				))
+				continue
+			}
+
+			// Respect interrupt signal between chest interactions.
+			if shouldInterrupt != nil && shouldInterrupt() {
+				return nil
+			}
+
+			ctx.Logger.Debug(fmt.Sprintf(
+				"Found chest. attempting to interact. Name=%s.\nID=%v UnitID=%v Pos=%v,%v Dist=%d Area='%s' InteractType=%v",
+				o.Desc().Name,
+				o.Name,
+				o.ID,
+				o.Position.X,
+				o.Position.Y,
+				distToChest,
+				ctx.Data.PlayerUnit.Area.Area().Name,
+				o.InteractType,
+			))
+
+			err = MoveToCoords(o.Position)
+			if err != nil {
+				ctx.Logger.Warn("Failed moving to chest", slog.Any("error", err))
+				continue
+			}
+
+			err = InteractObject(o, func() bool {
+				chest, _ := ctx.Data.Objects.FindByID(o.ID)
+				return !chest.Selectable
+			})
+			if err != nil {
+				ctx.Logger.Warn("Failed interacting with chest", slog.Any("error", err))
+			}
+
+			// Add small delay to allow the game to open the chest and drop the content
+			utils.Sleep(500)
 		}
 	}
 

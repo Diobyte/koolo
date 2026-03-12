@@ -21,6 +21,7 @@ func ClearCurrentLevelCows(openChests bool, filter data.MonsterFilter) error {
 		pickupRadius     = 10 // smaller for cows
 		pickupEveryRooms = 4  // pick up every N rooms + last room
 		moveClearRadius  = 20 // used by ClearThroughPath
+		maxChestDistance = 25 // max tiles from player to consider opening a chest
 	)
 
 	rooms := ctx.PathFinder.OptimizeRoomsTraverseOrder()
@@ -45,16 +46,28 @@ func ClearCurrentLevelCows(openChests bool, filter data.MonsterFilter) error {
 		// Optional chest opening (usually false for speed)
 		if openChests {
 			for _, o := range ctx.Data.Objects {
-				if r.IsInside(o.Position) && o.IsChest() && o.Selectable {
-					if err := MoveToCoords(o.Position); err != nil {
-						continue
-					}
-					_ = InteractObject(o, func() bool {
-						chest, _ := ctx.Data.Objects.FindByID(o.ID)
-						return !chest.Selectable
-					})
-					utils.Sleep(250)
+				if !r.IsInside(o.Position) || !o.IsChest() || !o.Selectable {
+					continue
 				}
+
+				// Skip chests that are too far from the player to avoid backtracking.
+				if ctx.PathFinder.DistanceFromMe(o.Position) > maxChestDistance {
+					continue
+				}
+
+				// Skip chests without line of sight to avoid costly pathing detours.
+				if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, o.Position) {
+					continue
+				}
+
+				if err := MoveToCoords(o.Position); err != nil {
+					continue
+				}
+				_ = InteractObject(o, func() bool {
+					chest, _ := ctx.Data.Objects.FindByID(o.ID)
+					return !chest.Selectable
+				})
+				utils.Sleep(250)
 			}
 		}
 	}
