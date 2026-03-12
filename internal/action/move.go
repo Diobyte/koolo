@@ -487,13 +487,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			}
 
 			//Safety first, handle enemies
-			// Teleporting characters use a reduced radius so they only engage
-			// packs they land on, rather than stopping for distant groups.
-			effectiveClearDist := clearPathDist
-			if ctx.Data.CanTeleport() && !overrideClearPathDist {
-				effectiveClearDist = min(clearPathDist, step.TeleportDangerDistance)
-			}
-			if !opts.IgnoreMonsters() && effectiveClearDist > 0 && time.Since(actionLastMonsterHandlingTime) > monsterHandleCooldown {
+			if !opts.IgnoreMonsters() && (!ctx.Data.CanTeleport() || overrideClearPathDist) && time.Since(actionLastMonsterHandlingTime) > monsterHandleCooldown {
 				actionLastMonsterHandlingTime = time.Now()
 				filters := opts.MonsterFilters()
 				filters = append(filters, func(monsters data.Monsters) (filteredMonsters []data.Monster) {
@@ -504,7 +498,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					}
 					return filteredMonsters
 				})
-				_ = ClearAreaAroundPosition(ctx.Data.PlayerUnit.Position, effectiveClearDist, filters...)
+				_ = ClearAreaAroundPosition(ctx.Data.PlayerUnit.Position, clearPathDist, filters...)
 				if !opts.IgnoreItems() {
 					// After clearing, immediately try to pick up items
 					lootErr := ItemPickup(lootAfterCombatRadius)

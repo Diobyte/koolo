@@ -18,10 +18,6 @@ import (
 const DistanceToFinishMoving = 4
 const stepMonsterCheckInterval = 100 * time.Millisecond
 
-// TeleportDangerDistance is the radius used to detect monsters after a teleport
-// landing. Teleporting characters skip distant packs but react to enemies this close.
-const TeleportDangerDistance = 8
-
 var (
 	ErrMonstersInPath  = errors.New("monsters detected in movement path")
 	ErrPlayerStuck     = errors.New("player is stuck")
@@ -248,13 +244,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		}
 
 		//Handle monsters if needed
-		// Teleporting characters use a reduced detection radius to avoid stopping
-		// for distant packs, but still react when landing on top of enemies.
-		effectiveClearDist := clearPathDist
-		if ctx.Data.CanTeleport() && !overrideClearPathDist {
-			effectiveClearDist = min(clearPathDist, TeleportDangerDistance)
-		}
-		if !opts.ignoreMonsters && !ctx.Data.AreaData.Area.IsTown() && effectiveClearDist > 0 && time.Since(stepLastMonsterCheck) > stepMonsterCheckInterval {
+		if !opts.ignoreMonsters && !ctx.Data.AreaData.Area.IsTown() && (!ctx.Data.CanTeleport() || overrideClearPathDist) && clearPathDist > 0 && time.Since(stepLastMonsterCheck) > stepMonsterCheckInterval {
 			stepLastMonsterCheck = time.Now()
 			monsterFound := false
 
@@ -264,7 +254,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				}
 				//Check distance first as it is cheaper
 				distanceToMonster := ctx.PathFinder.DistanceFromMe(m.Position)
-				if distanceToMonster <= effectiveClearDist {
+				if distanceToMonster <= clearPathDist {
 					//Line of sight second
 					if ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, m.Position) {
 						//Finally door check as it computes path
