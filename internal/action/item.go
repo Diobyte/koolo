@@ -43,7 +43,7 @@ func doesExceedQuantity(rule nip.Rule) bool {
 			// Warn when a DLC stacked item exceeds MaxQuantity — these can't
 			// be individually dropped from DLC tabs, so the user may need to
 			// consume or cube them manually.
-			if matchedItemsInStash > maxQuantity {
+			if matchedItemsInStash >= maxQuantity {
 				switch stashItem.Location.LocationType {
 				case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 					if qty > 1 {
