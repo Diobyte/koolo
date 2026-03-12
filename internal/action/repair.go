@@ -195,17 +195,20 @@ func Repair() error {
 				logMessage = fmt.Sprintf("Replenishing %s, quantity is %d", i.Name, quantity.Value)
 			}
 		} else {
-			durability, found := i.FindStat(stat.Durability, 0)
-			maxDurability, maxDurabilityFound := i.FindStat(stat.MaxDurability, 0)
-			durabilityPercent := -1
-
-			if maxDurabilityFound && found {
-				durabilityPercent = int((float64(durability.Value) / float64(maxDurability.Value)) * 100)
-			}
-
-			if i.IsBroken || (durabilityPercent != -1 && durabilityPercent <= 20) {
+			if i.IsBroken {
 				triggerRepair = true
-				logMessage = fmt.Sprintf("Repairing %s, item durability is %d percent", i.Name, durabilityPercent)
+				logMessage = fmt.Sprintf("Repairing %s, item is broken", i.Name)
+			} else {
+				durability, found := i.FindStat(stat.Durability, 0)
+				maxDurability, maxDurabilityFound := i.FindStat(stat.MaxDurability, 0)
+
+				if maxDurabilityFound && found {
+					durabilityPercent := int((float64(durability.Value) / float64(maxDurability.Value)) * 100)
+					if durabilityPercent <= 20 {
+						triggerRepair = true
+						logMessage = fmt.Sprintf("Repairing %s, item durability is %d percent", i.Name, durabilityPercent)
+					}
+				}
 			}
 		}
 

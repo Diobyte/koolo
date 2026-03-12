@@ -87,7 +87,7 @@ func CubeAddItems(items ...data.Item) error {
 			slog.Int("ScreenY", screenPos.Y),
 		)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(300)
+		utils.PingSleep(utils.Medium, 200) // Medium operation: Wait for stash→inventory item transfer
 	}
 
 	err := ensureCubeIsOpen()
@@ -154,7 +154,7 @@ func CubeAddItems(items ...data.Item) error {
 
 		screenPos := ui.GetScreenCoordsForItem(*found)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.PingSleep(utils.Medium, 300) // Medium operation: Wait for item to move into cube
 	}
 
 	return nil
@@ -169,7 +169,7 @@ func CubeTransmute() error {
 	}
 
 	ctx.Logger.Debug("Transmuting items in the Horadric Cube")
-	utils.Sleep(150)
+	utils.PingSleep(utils.Light, 100) // Light operation: Pre-transmute click delay
 
 	if ctx.Data.LegacyGraphics {
 		ctx.HID.Click(game.LeftButton, ui.CubeTransmuteBtnXClassic, ui.CubeTransmuteBtnYClassic)
@@ -177,7 +177,7 @@ func CubeTransmute() error {
 		ctx.HID.Click(game.LeftButton, ui.CubeTransmuteBtnX, ui.CubeTransmuteBtnY)
 	}
 
-	utils.Sleep(2000)
+	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for transmute to complete
 
 	// Take the items out of the cube
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationCube) {
@@ -186,7 +186,7 @@ func CubeTransmute() error {
 		screenPos := ui.GetScreenCoordsForItem(itm)
 
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.PingSleep(utils.Medium, 300) // Medium operation: Wait for item to move out of cube
 	}
 
 	return step.CloseAllMenus()
@@ -224,7 +224,7 @@ func ensureCubeIsEmpty() error {
 		screenPos := ui.GetScreenCoordsForItem(itm)
 
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(700)
+		utils.PingSleep(utils.Medium, 400) // Medium operation: Wait for item removal from cube
 
 		itm, _ = ctx.Data.Inventory.FindByID(itm.UnitID)
 		if itm.Location.LocationType == item.LocationCube {
@@ -233,7 +233,7 @@ func ensureCubeIsEmpty() error {
 	}
 
 	ctx.HID.PressKey(win.VK_ESCAPE)
-	utils.Sleep(300)
+	utils.PingSleep(utils.Light, 200) // Light operation: Wait for menu to close
 
 	stashInventory(true)
 
@@ -274,18 +274,23 @@ func ensureCubeIsOpen() error {
 
 	screenPos := ui.GetScreenCoordsForItem(cube)
 
-	for attempt := 0; attempt < 5; attempt++ {
-		utils.Sleep(300)
+	for attempt := 0; attempt < 8; attempt++ {
+		if attempt > 0 {
+			// Close any interfering menu before retrying
+			step.CloseAllMenus()
+			utils.PingSleep(utils.Light, 200) // Light operation: Wait for menu close
+		}
+		utils.PingSleep(utils.Light, 200) // Light operation: Pre-click delay
 		ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-		utils.Sleep(500 + attempt*200)
+		utils.Sleep(utils.RetryDelay(attempt+1, 2.0, 300)) // Escalating delay: base 300ms + 2×ping per attempt
 
 		*ctx.Data = ctx.GameReader.GetData()
 		if ctx.Data.OpenMenus.Cube {
 			ctx.Logger.Debug("Horadric Cube window detected")
 			return nil
 		}
-		ctx.Logger.Debug(fmt.Sprintf("Horadric Cube not detected, retrying (%d/5)", attempt+1))
+		ctx.Logger.Debug(fmt.Sprintf("Horadric Cube not detected, retrying (%d/8)", attempt+1))
 	}
 
-	return errors.New("horadric Cube window not detected after 5 attempts")
+	return errors.New("horadric Cube window not detected after 8 attempts")
 }

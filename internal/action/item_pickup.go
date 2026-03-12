@@ -471,13 +471,16 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 		}
 	}
 
-	// Remove blacklisted items from the list, we don't want to pick them up
+	// Remove blacklisted and already-picked-up items from the list
 	filteredItems := make([]data.Item, 0, len(itemsToPickup))
 	for _, itm := range itemsToPickup {
-		isBlacklisted := IsBlacklisted(itm)
-		if !isBlacklisted {
-			filteredItems = append(filteredItems, itm)
+		if IsBlacklisted(itm) {
+			continue
 		}
+		if _, alreadyPickedUp := ctx.CurrentGame.PickedUpItems[int(itm.UnitID)]; alreadyPickedUp {
+			continue
+		}
+		filteredItems = append(filteredItems, itm)
 	}
 
 	return filteredItems
@@ -524,8 +527,21 @@ func shouldBePickedUp(i data.Item) bool {
 	ctx := context.Get()
 	ctx.SetLastAction("shouldBePickedUp")
 
-	// Always pick up runewords and Wirt's Leg.
-	if i.IsRuneword || i.Name == "WirtsLeg" {
+	// Always pick up runewords.
+	if i.IsRuneword {
+		return true
+	}
+
+	// Pick up Wirt's Leg only if we don't already have one.
+	if i.Name == "WirtsLeg" {
+		if _, found := ctx.Data.Inventory.Find("WirtsLeg",
+			item.LocationInventory,
+			item.LocationStash,
+			item.LocationSharedStash,
+			item.LocationCube,
+		); found {
+			return false
+		}
 		return true
 	}
 

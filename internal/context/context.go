@@ -79,11 +79,12 @@ type Debug struct {
 }
 
 type CurrentGameHelper struct {
-	BlacklistedItems []data.Item
-	PickedUpItems    map[int]int
-	CurrentStashTab  int  // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
-	HasOpenedStash   bool // True after the first stash open this game; the first open always lands on personal tab, subsequent opens remember the last position
-	AreaCorrection   struct {
+	BlacklistedItems  []data.Item
+	PickedUpItems     map[int]int
+	AbandonedMonsters map[data.UnitID]struct{}
+	CurrentStashTab   int  // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
+	HasOpenedStash    bool // True after the first stash open this game; the first open always lands on personal tab, subsequent opens remember the last position
+	AreaCorrection    struct {
 		Enabled      bool
 		ExpectedArea area.ID
 	}
@@ -146,6 +147,7 @@ func NewGameHelper() *CurrentGameHelper {
 	return &CurrentGameHelper{
 		PickupItems:                true,
 		PickedUpItems:              make(map[int]int),
+		AbandonedMonsters:          make(map[data.UnitID]struct{}),
 		BlacklistedItems:           []data.Item{},
 		FailedToCreateGameAttempts: 0,
 	}

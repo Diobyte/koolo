@@ -1,7 +1,6 @@
 package action
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -150,7 +149,11 @@ func clearRoom(room data.Room, filter data.MonsterFilter) error {
 
 	path, _, found := ctx.PathFinder.GetClosestWalkablePath(room.GetCenter())
 	if !found {
-		return errors.New("failed to find a path to the room center")
+		ctx.Logger.Warn("Failed to find a path to the room center, skipping room",
+			slog.Int("roomX", room.GetCenter().X),
+			slog.Int("roomY", room.GetCenter().Y),
+		)
+		return nil
 	}
 
 	to := data.Position{
@@ -224,6 +227,9 @@ func getMonstersInRoom(room data.Room, filter data.MonsterFilter) []data.Monster
 	for _, m := range ctx.Data.Monsters.Enemies(filter) {
 		// Fix operator precedence: alive AND (in room OR close to player).
 		if m.Stats[stat.Life] <= 0 {
+			continue
+		}
+		if _, abandoned := ctx.CurrentGame.AbandonedMonsters[m.UnitID]; abandoned {
 			continue
 		}
 		if !(room.IsInside(m.Position) || ctx.PathFinder.DistanceFromMe(m.Position) < 30) {

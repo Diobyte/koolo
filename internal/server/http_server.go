@@ -315,6 +315,9 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 	// Debug: List all loaded templates
 	logger.Info("Loaded templates:")
 	for _, t := range templates.Templates() {
+		if t.Name() == "" {
+			continue
+		}
 		logger.Info("  - " + t.Name())
 	}
 

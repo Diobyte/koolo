@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -11,6 +12,11 @@ import (
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
+
+// ErrWaypointNotDiscovered is returned when no waypoint in the LinkedFrom chain
+// has been discovered yet. Callers can check for this to skip the run gracefully
+// rather than treating it as a fatal error.
+var ErrWaypointNotDiscovered = errors.New("no available waypoint found to reach destination")
 
 func WayPoint(dest area.ID) error {
 	ctx := context.Get()
@@ -154,9 +160,8 @@ func useWP(dest area.ID) error {
 			}
 
 			if len(currentWP.LinkedFrom) == 0 {
-				return fmt.Errorf("no available waypoint found to reach destination %s", area.Areas[finalDestination].Name)
+				return fmt.Errorf("%w: %s", ErrWaypointNotDiscovered, area.Areas[finalDestination].Name)
 			}
-
 			currentWP = area.WPAddresses[currentWP.LinkedFrom[0]]
 
 			if slices.Contains(ctx.Data.PlayerUnit.AvailableWaypoints, dest) {

@@ -136,6 +136,11 @@ func SecondaryAttack(skill skill.ID, target data.UnitID, numOfAttacks int, opts 
 
 // Helper function to validate if a monster should be targetable
 func isValidEnemy(monster data.Monster, ctx *context.Status) bool {
+	// Skip monsters we've already given up on this game.
+	if _, abandoned := ctx.CurrentGame.AbandonedMonsters[monster.UnitID]; abandoned {
+		return false
+	}
+
 	// Special case: Always allow Vizier seal boss even if off grid
 	isVizier := monster.Type == data.MonsterTypeSuperUnique && monster.Name == npc.StormCaster
 	if isVizier {
@@ -199,6 +204,7 @@ func attack(settings attackSettings) error {
 				statesMutex.Lock()
 				delete(monsterStates, settings.target) // Clean up state for this monster
 				statesMutex.Unlock()
+				ctx.CurrentGame.AbandonedMonsters[settings.target] = struct{}{}
 				return nil // Return nil, allowing the higher-level action to find a new monster or finish.
 			}
 			return err // Propagate other errors from ensureEnemyIsInRange
@@ -240,6 +246,7 @@ func burstAttack(settings attackSettings) error {
 			statesMutex.Lock()
 			delete(monsterStates, monster.UnitID) // Clean up state for this monster
 			statesMutex.Unlock()
+			ctx.CurrentGame.AbandonedMonsters[monster.UnitID] = struct{}{}
 			return nil // Exit burst attack, caller will find next target.
 		}
 		return err // Propagate error from initial range check
@@ -283,6 +290,7 @@ func burstAttack(settings attackSettings) error {
 					statesMutex.Lock()
 					delete(monsterStates, target.UnitID) // Clean up state for this monster
 					statesMutex.Unlock()
+					ctx.CurrentGame.AbandonedMonsters[target.UnitID] = struct{}{}
 					return nil // Exit burst attack, caller will find next target.
 				}
 				return err // Propagate general errors from ensureEnemyIsInRange

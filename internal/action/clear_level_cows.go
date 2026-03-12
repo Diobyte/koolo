@@ -1,8 +1,6 @@
 package action
 
 import (
-	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -81,7 +79,11 @@ func clearRoomCows(room data.Room, filter data.MonsterFilter, moveClearRadius in
 
 	path, _, found := ctx.PathFinder.GetClosestWalkablePath(room.GetCenter())
 	if !found {
-		return errors.New("failed to find a path to the room center")
+		ctx.Logger.Warn("Failed to find a path to the room center, skipping room",
+			slog.Int("roomX", room.GetCenter().X),
+			slog.Int("roomY", room.GetCenter().Y),
+		)
+		return nil
 	}
 
 	to := data.Position{
@@ -91,7 +93,9 @@ func clearRoomCows(room data.Room, filter data.MonsterFilter, moveClearRadius in
 
 	// Clear while moving so we don’t edge-hug around packs
 	if err := ClearThroughPath(to, moveClearRadius, filter); err != nil {
-		return fmt.Errorf("failed moving/clearing to room center: %w", err)
+		ctx.Logger.Warn("Failed moving/clearing to room center, attempting to clear visible monsters",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	for {
@@ -142,7 +146,13 @@ func getMonstersInRoomCows(room data.Room, filter data.MonsterFilter) []data.Mon
 
 	out := make([]data.Monster, 0)
 	for _, m := range ctx.Data.Monsters.Enemies(filter) {
-		if m.Stats[stat.Life] > 0 && (room.IsInside(m.Position) || ctx.PathFinder.DistanceFromMe(m.Position) < 30) {
+		if m.Stats[stat.Life] <= 0 {
+			continue
+		}
+		if _, abandoned := ctx.CurrentGame.AbandonedMonsters[m.UnitID]; abandoned {
+			continue
+		}
+		if room.IsInside(m.Position) || ctx.PathFinder.DistanceFromMe(m.Position) < 30 {
 			out = append(out, m)
 		}
 	}
