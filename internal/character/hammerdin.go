@@ -96,6 +96,7 @@ func (s Hammerdin) KillMonsterSequence(
 			step.SelectLeftSkill(skill.Smite)
 			step.PrimaryAttack(id, 3, false, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
 		} else {
+			step.SelectLeftSkill(skill.BlessedHammer)
 			step.PrimaryAttack(
 				id,
 				3,

@@ -126,6 +126,7 @@ func (s PaladinLeveling) KillMonsterSequence(
 
 		if s.Data.PlayerUnit.Skills[skill.BlessedHammer].Level > 0 && !inNarrowArea {
 			s.Logger.Debug("Using Blessed Hammer")
+			step.SelectLeftSkill(skill.BlessedHammer)
 			if previousUnitID == int(id) {
 				if monster.Stats[stat.Life] > 0 {
 					s.PathFinder.RandomMovement()
