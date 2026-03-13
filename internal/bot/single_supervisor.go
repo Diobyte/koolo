@@ -826,7 +826,7 @@ func (s *SinglePlayerSupervisor) HandleStandardMenuFlow() error {
 		}
 	}
 
-	return fmt.Errorf("[Menu Flow]: Unhandled menu scenario")
+	return errors.New("idle")
 }
 
 func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {

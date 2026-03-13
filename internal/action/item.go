@@ -33,6 +33,7 @@ func doesExceedQuantity(rule nip.Rule) bool {
 	}
 
 	matchedItemsInStash := 0
+	warnedDLC := false
 
 	for _, stashItem := range stashItems {
 		res, _ := rule.Evaluate(stashItem)
@@ -40,15 +41,16 @@ func doesExceedQuantity(rule nip.Rule) bool {
 			qty := GetItemQuantity(stashItem)
 			matchedItemsInStash += qty
 
-			// Warn when a DLC stacked item exceeds MaxQuantity — these can't
+			// Warn once when a DLC stacked item exceeds MaxQuantity — these can't
 			// be individually dropped from DLC tabs, so the user may need to
 			// consume or cube them manually.
-			if matchedItemsInStash >= maxQuantity {
+			if !warnedDLC && matchedItemsInStash >= maxQuantity {
 				switch stashItem.Location.LocationType {
 				case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 					if qty > 1 {
 						ctx.Logger.Warn(fmt.Sprintf("DLC stacked item %s (qty %d) exceeds MaxQuantity %d — excess cannot be auto-dropped from DLC tabs",
 							stashItem.Name, qty, maxQuantity))
+						warnedDLC = true
 					}
 				}
 			}

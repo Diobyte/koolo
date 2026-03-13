@@ -442,7 +442,7 @@ func buyItemOrAbortOnNoGold(i data.Item, quantity int) bool {
 // Centralize "no gold" detection so the log message and abort logic stay consistent.
 func shouldAbortVendorPurchase(ctx *context.Status, i data.Item, goldBefore int) bool {
 	if ctx.Data.PlayerUnit.TotalPlayerGold() >= goldBefore {
-		ctx.Logger.Info("Not enough gold to continue vendor purchases, aborting",
+		ctx.Logger.Info("Vendor purchase had no effect (gold unchanged), aborting",
 			"item", i.Desc().Name,
 			"gold", goldBefore,
 		)

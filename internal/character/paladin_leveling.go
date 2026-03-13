@@ -566,10 +566,12 @@ func (s PaladinLeveling) KillAncients() error {
 }
 
 func (s PaladinLeveling) KillBaal() error {
-
+	ctx := context.Get()
 	s.Logger.Info("Starting Baal kill sequence...")
 	timeout := time.Second * 600
 	startTime := time.Now()
+	abandonRetries := 0
+	const maxAbandonRetries = 3
 
 	for {
 		baal, found := s.Data.Monsters.FindOne(npc.BaalCrab, data.MonsterTypeUnique)
@@ -586,6 +588,19 @@ func (s PaladinLeveling) KillBaal() error {
 		if baal.Stats[stat.Life] <= 0 {
 			s.Logger.Info("Baal is dead.")
 			return nil
+		}
+
+		// If Baal was marked unreachable by the attack system, clear and retry up to a limit.
+		if _, abandoned := ctx.CurrentGame.AbandonedMonsters[baal.UnitID]; abandoned {
+			abandonRetries++
+			if abandonRetries > maxAbandonRetries {
+				s.Logger.Warn("Baal marked unreachable after multiple retries, giving up")
+				return errors.New("Baal unreachable after multiple reposition cycles")
+			}
+			s.Logger.Info(fmt.Sprintf("Baal marked unreachable, clearing and retrying (attempt %d/%d)", abandonRetries, maxAbandonRetries))
+			delete(ctx.CurrentGame.AbandonedMonsters, baal.UnitID)
+			s.PathFinder.RandomMovement()
+			time.Sleep(time.Millisecond * 500)
 		}
 
 		numOfAttacks := 5
