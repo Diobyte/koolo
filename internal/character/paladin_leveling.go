@@ -217,6 +217,10 @@ func (s PaladinLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 	if s.Data.PlayerUnit.Skills[skill.BlessedHammer].Level > 0 && lvl.Value >= 18 {
 		mainSkill = skill.BlessedHammer
+		// Bind Smite as narrow-corridor fallback (e.g. Maggot Lair)
+		if s.Data.PlayerUnit.Skills[skill.Smite].Level > 0 {
+			skillBindings = append(skillBindings, skill.Smite)
+		}
 	} else if lvl.Value < 6 {
 		mainSkill = skill.Sacrifice
 	} else if lvl.Value >= 6 && lvl.Value < 12 {
