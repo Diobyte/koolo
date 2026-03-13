@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -315,12 +316,20 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				// Adaptive delay for obstacle interaction based on ping
 				time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
 			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found {
-				//There's a door really close, try to open it
-				doorToOpen := *door
-				InteractObject(doorToOpen, func() bool {
-					door, found := ctx.Data.Objects.FindByID(door.ID)
-					return found && !door.Selectable
-				})
+				if isDestructibleDoor(door) {
+					// Destructible gate (e.g. Act 5 palisades) — attack to destroy
+					ctx.Logger.Debug("Attacking destructible gate", "object", door.Name)
+					x, y := ui.GameCoordsToScreenCords(door.Position.X, door.Position.Y)
+					ctx.HID.Click(game.LeftButton, x, y)
+					time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 200)))
+				} else {
+					//There's a door really close, try to open it
+					doorToOpen := *door
+					InteractObject(doorToOpen, func() bool {
+						door, found := ctx.Data.Objects.FindByID(door.ID)
+						return found && !door.Selectable
+					})
+				}
 			}
 		}
 
@@ -367,4 +376,14 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		//Perform the movement
 		ctx.PathFinder.MoveThroughPath(path, walkDuration)
 	}
+}
+
+// isDestructibleDoor returns true for doors/gates that must be attacked to
+// destroy rather than interacted with to open (e.g. Act 5 palisade gates).
+func isDestructibleDoor(o *data.Object) bool {
+	switch o.Name {
+	case object.ExpansionTownGate, object.PenBreakableDoor:
+		return true
+	}
+	return false
 }
