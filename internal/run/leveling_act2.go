@@ -393,18 +393,19 @@ func (a Leveling) findStaff() error {
 		return err
 	}
 
-	// Skip monster engagement in Maggot Lair narrow corridors, just beeline to the objective
-	err = action.MoveToArea(area.MaggotLairLevel1, step.WithIgnoreMonsters())
+	// In Maggot Lair narrow corridors, non-teleporting characters must fight through blocking monsters.
+	// Teleporting characters automatically skip combat via CanTeleport() checks in the movement system.
+	err = action.MoveToArea(area.MaggotLairLevel1)
 	if err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.MaggotLairLevel2, step.WithIgnoreMonsters())
+	err = action.MoveToArea(area.MaggotLairLevel2)
 	if err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.MaggotLairLevel3, step.WithIgnoreMonsters())
+	err = action.MoveToArea(area.MaggotLairLevel3)
 	if err != nil {
 		return err
 	}
@@ -416,7 +417,7 @@ func (a Leveling) findStaff() error {
 			return chest.Position, true
 		}
 		return data.Position{}, false
-	}, step.WithIgnoreMonsters())
+	})
 	if err != nil {
 		return err
 	}
