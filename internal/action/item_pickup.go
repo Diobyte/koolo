@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -505,7 +506,25 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 		filteredItems = append(filteredItems, itm)
 	}
 
+	// Prioritize NIP/tier-matched loot items over gold and potions so that
+	// the most valuable items are secured first each pickup cycle.
+	sort.SliceStable(filteredItems, func(i, j int) bool {
+		return pickupPriority(filteredItems[i]) < pickupPriority(filteredItems[j])
+	})
+
 	return filteredItems
+}
+
+// pickupPriority returns a sort key for ground items. Lower values are picked
+// up first. NIP/tier-matched loot gets priority 0, gold 1, potions 2.
+func pickupPriority(i data.Item) int {
+	if i.IsPotion() {
+		return 2
+	}
+	if i.Name == "Gold" {
+		return 1
+	}
+	return 0
 }
 
 func hasVisibleSkillBonuses(i data.Item) bool {
