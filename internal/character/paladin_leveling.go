@@ -139,13 +139,19 @@ func (s PaladinLeveling) KillMonsterSequence(
 			s.PathFinder.RandomMovement()
 			time.Sleep(time.Millisecond * 150)
 		} else if inNarrowArea {
-			s.Logger.Debug("Narrow corridor detected, using Smite instead of Blessed Hammer")
 			aura := skill.Concentration
 			if s.Data.PlayerUnit.Skills[skill.Concentration].Level == 0 {
 				aura = skill.HolyFire
 			}
-			step.SelectLeftSkill(skill.Smite)
-			step.PrimaryAttack(id, 3, false, step.Distance(1, 3), step.EnsureAura(aura))
+			// Zeal hits multiple times per swing and benefits from Concentration, much better than Smite
+			if s.Data.PlayerUnit.Skills[skill.Zeal].Level > 0 {
+				s.Logger.Debug("Narrow corridor detected, using Zeal instead of Blessed Hammer")
+				step.SelectLeftSkill(skill.Zeal)
+			} else {
+				s.Logger.Debug("Narrow corridor detected, using Smite instead of Blessed Hammer (Zeal not available)")
+				step.SelectLeftSkill(skill.Smite)
+			}
+			step.PrimaryAttack(id, 5, false, step.Distance(1, 3), step.EnsureAura(aura))
 		} else if lvl.Value < 6 {
 			s.Logger.Debug("Using Might and Sacrifice")
 			numOfAttacks = 1
@@ -217,8 +223,10 @@ func (s PaladinLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 	if s.Data.PlayerUnit.Skills[skill.BlessedHammer].Level > 0 && lvl.Value >= 18 {
 		mainSkill = skill.BlessedHammer
-		// Bind Smite as narrow-corridor fallback (e.g. Maggot Lair)
-		if s.Data.PlayerUnit.Skills[skill.Smite].Level > 0 {
+		// Bind Zeal as narrow-corridor fallback (e.g. Maggot Lair) - multi-hit is much better than Smite
+		if s.Data.PlayerUnit.Skills[skill.Zeal].Level > 0 {
+			skillBindings = append(skillBindings, skill.Zeal)
+		} else if s.Data.PlayerUnit.Skills[skill.Smite].Level > 0 {
 			skillBindings = append(skillBindings, skill.Smite)
 		}
 	} else if lvl.Value < 6 {

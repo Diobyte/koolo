@@ -121,7 +121,7 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 	return fmt.Errorf("area sync timeout - expected: %v, current: %v", expectedArea, ctx.Data.PlayerUnit.Area)
 }
 
-func MoveToArea(dst area.ID) error {
+func MoveToArea(dst area.ID, options ...step.MoveOption) error {
 	ctx := context.Get()
 	ctx.SetLastAction("MoveToArea")
 
@@ -263,9 +263,9 @@ func MoveToArea(dst area.ID) error {
 		dst == area.TowerCellarLevel3 && ctx.Data.PlayerUnit.Area == area.TowerCellarLevel2 ||
 		dst == area.TowerCellarLevel4 && ctx.Data.PlayerUnit.Area == area.TowerCellarLevel3 ||
 		dst == area.TowerCellarLevel5 && ctx.Data.PlayerUnit.Area == area.TowerCellarLevel4 {
-		err = MoveTo(toFun, step.WithDistanceToFinish(7))
+		err = MoveTo(toFun, append(options, step.WithDistanceToFinish(7))...)
 	} else {
-		err = MoveTo(toFun)
+		err = MoveTo(toFun, options...)
 	}
 
 	if err != nil {

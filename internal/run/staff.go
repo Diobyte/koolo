@@ -8,6 +8,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -57,17 +58,18 @@ func (s Staff) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	err = action.MoveToArea(area.MaggotLairLevel1)
+	// Skip monster engagement in Maggot Lair narrow corridors, just beeline to the objective
+	err = action.MoveToArea(area.MaggotLairLevel1, step.WithIgnoreMonsters())
 	if err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.MaggotLairLevel2)
+	err = action.MoveToArea(area.MaggotLairLevel2, step.WithIgnoreMonsters())
 	if err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.MaggotLairLevel3)
+	err = action.MoveToArea(area.MaggotLairLevel3, step.WithIgnoreMonsters())
 	if err != nil {
 		return err
 	}
@@ -79,13 +81,14 @@ func (s Staff) Run(parameters *RunParameters) error {
 			return chest.Position, true
 		}
 		return data.Position{}, false
-	})
+	}, step.WithIgnoreMonsters())
 	if err != nil {
 		return err
 	}
 
+	// Only clear a small area around the chest to safely interact with it
 	if s.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
-		action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+		action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
 	}
 
 	obj, found := s.ctx.Data.Objects.FindOne(object.StaffOfKingsChest)

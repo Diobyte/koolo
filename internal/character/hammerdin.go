@@ -90,11 +90,16 @@ func (s Hammerdin) KillMonsterSequence(
 			}
 		}
 
-		// Blessed Hammer spirals into walls in narrow corridors like Maggot Lair, use Smite instead
+		// Blessed Hammer spirals into walls in narrow corridors like Maggot Lair
 		narrowAreas := []area.ID{area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3}
 		if slices.Contains(narrowAreas, s.Data.PlayerUnit.Area) {
-			step.SelectLeftSkill(skill.Smite)
-			step.PrimaryAttack(id, 3, false, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
+			// Zeal hits multiple times per swing and benefits from Concentration, much better than Smite
+			if s.Data.PlayerUnit.Skills[skill.Zeal].Level > 0 {
+				step.SelectLeftSkill(skill.Zeal)
+			} else {
+				step.SelectLeftSkill(skill.Smite)
+			}
+			step.PrimaryAttack(id, 5, false, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
 		} else {
 			step.SelectLeftSkill(skill.BlessedHammer)
 			step.PrimaryAttack(
