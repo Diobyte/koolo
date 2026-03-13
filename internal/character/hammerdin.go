@@ -3,9 +3,11 @@ package character
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
@@ -88,13 +90,19 @@ func (s Hammerdin) KillMonsterSequence(
 			}
 		}
 
-		step.PrimaryAttack(
-			id,
-			3,
-			true,
-			step.Distance(2, 2), // X,Y coords of 2,2 is the perfect hammer angle attack for NPC targeting/attacking, you can adjust accordingly anything between 1,1 - 3,3 is acceptable, where the higher the number, the bigger the distance from the player (usually used for De Seis)
-			step.EnsureAura(skill.Concentration),
-		)
+		// Blessed Hammer spirals into walls in narrow corridors like Maggot Lair, use Smite instead
+		narrowAreas := []area.ID{area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3}
+		if slices.Contains(narrowAreas, s.Data.PlayerUnit.Area) {
+			step.SecondaryAttack(skill.Smite, id, 3, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
+		} else {
+			step.PrimaryAttack(
+				id,
+				3,
+				true,
+				step.Distance(2, 2), // X,Y coords of 2,2 is the perfect hammer angle attack for NPC targeting/attacking, you can adjust accordingly anything between 1,1 - 3,3 is acceptable, where the higher the number, the bigger the distance from the player (usually used for De Seis)
+				step.EnsureAura(skill.Concentration),
+			)
+		}
 
 		completedAttackLoops++
 		previousUnitID = int(id)

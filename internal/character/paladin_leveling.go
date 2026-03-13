@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
@@ -118,7 +120,11 @@ func (s PaladinLeveling) KillMonsterSequence(
 		numOfAttacks := 5
 		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
-		if s.Data.PlayerUnit.Skills[skill.BlessedHammer].Level > 0 {
+		// Blessed Hammer spirals into walls in narrow corridors like Maggot Lair, use Zeal instead
+		narrowAreas := []area.ID{area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3}
+		inNarrowArea := slices.Contains(narrowAreas, s.Data.PlayerUnit.Area)
+
+		if s.Data.PlayerUnit.Skills[skill.BlessedHammer].Level > 0 && !inNarrowArea {
 			s.Logger.Debug("Using Blessed Hammer")
 			if previousUnitID == int(id) {
 				if monster.Stats[stat.Life] > 0 {
@@ -131,6 +137,13 @@ func (s PaladinLeveling) KillMonsterSequence(
 			s.Logger.Debug("Performing random movement to reposition.")
 			s.PathFinder.RandomMovement()
 			time.Sleep(time.Millisecond * 150)
+		} else if inNarrowArea {
+			s.Logger.Debug("Narrow corridor detected, using Smite instead of Blessed Hammer")
+			aura := skill.Concentration
+			if s.Data.PlayerUnit.Skills[skill.Concentration].Level == 0 {
+				aura = skill.HolyFire
+			}
+			step.SecondaryAttack(skill.Smite, id, 3, step.Distance(1, 3), step.EnsureAura(aura))
 		} else if lvl.Value < 6 {
 			s.Logger.Debug("Using Might and Sacrifice")
 			numOfAttacks = 1
