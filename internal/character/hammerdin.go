@@ -93,7 +93,8 @@ func (s Hammerdin) KillMonsterSequence(
 		// Blessed Hammer spirals into walls in narrow corridors like Maggot Lair, use Smite instead
 		narrowAreas := []area.ID{area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3}
 		if slices.Contains(narrowAreas, s.Data.PlayerUnit.Area) {
-			step.SecondaryAttack(skill.Smite, id, 3, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
+			step.SelectLeftSkill(skill.Smite)
+			step.PrimaryAttack(id, 3, false, step.Distance(1, 3), step.EnsureAura(skill.Concentration))
 		} else {
 			step.PrimaryAttack(
 				id,

@@ -143,7 +143,8 @@ func (s PaladinLeveling) KillMonsterSequence(
 			if s.Data.PlayerUnit.Skills[skill.Concentration].Level == 0 {
 				aura = skill.HolyFire
 			}
-			step.SecondaryAttack(skill.Smite, id, 3, step.Distance(1, 3), step.EnsureAura(aura))
+			step.SelectLeftSkill(skill.Smite)
+			step.PrimaryAttack(id, 3, false, step.Distance(1, 3), step.EnsureAura(aura))
 		} else if lvl.Value < 6 {
 			s.Logger.Debug("Using Might and Sacrifice")
 			numOfAttacks = 1
