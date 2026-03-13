@@ -1642,13 +1642,15 @@
 
                 <!-- Shared Stash -->
                 <div id="stash-shared" class="stash-content">
-                    {{ if not .Armory.IsDLC }}
                     <div class="shared-page-tabs">
                         <button class="shared-page-btn active" onclick="showSharedPage(1)">1</button>
                         <button class="shared-page-btn" onclick="showSharedPage(2)">2</button>
                         <button class="shared-page-btn" onclick="showSharedPage(3)">3</button>
+                        {{ if .Armory.IsDLC }}
+                        <button class="shared-page-btn" onclick="showSharedPage(4)">4</button>
+                        <button class="shared-page-btn" onclick="showSharedPage(5)">5</button>
+                        {{ end }}
                     </div>
-                    {{ end }}
 
                     <!-- Page 1 -->
                     <div id="shared-page-1" class="shared-page active">
@@ -1675,8 +1677,7 @@
                         </div>
                     </div>
 
-                    {{ if not .Armory.IsDLC }}
-                    <!-- Pages 2-3 (LoD shared stash) -->
+                    <!-- Pages 2-3 (shared stash) -->
                     <div id="shared-page-2" class="shared-page">
                         <div class="inventory-container">
                             <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
@@ -1712,6 +1713,56 @@
                             </div>
                             <div class="inventory-items-layer">
                                 {{ range .Armory.SharedStash3 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{ if .Armory.IsDLC }}
+                    <!-- Pages 4-5 (DLC shared stash) -->
+                    <div id="shared-page-4" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash4 }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="shared-page-5" class="shared-page">
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                                {{ range $row := iterate 10 }}
+                                {{ range $col := iterate 10 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
+                            </div>
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.SharedStash5 }}
                                 <div class="inventory-item"
                                      style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
                                      data-item='{{ . | json }}'
@@ -1964,7 +2015,7 @@
 
     <!-- Keyboard Shortcuts Help -->
     <div class="shortcuts-help" id="shortcutsHelp">
-        <kbd>/</kbd> Search &nbsp; <kbd>S</kbd> Selection &nbsp; <kbd>1-4</kbd> Stash Tabs &nbsp; <kbd>Esc</kbd> Close
+        <kbd>/</kbd> Search &nbsp; <kbd>S</kbd> Selection &nbsp; <kbd>1-5</kbd> Stash Tabs &nbsp; <kbd>Esc</kbd> Close
     </div>
 
     <!-- Drop Selected Items FAB -->
