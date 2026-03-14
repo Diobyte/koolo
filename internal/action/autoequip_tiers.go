@@ -373,23 +373,6 @@ func calculateBeltScore(itm data.Item) float64 {
 	return 0.0
 }
 
-func getBeltSize(itm data.Item) int {
-	if size := beltSizes[itm.Desc().Code]; size > 0 {
-		return size
-	}
-	return BeltBaseSlots
-}
-
-func getCurrentBeltSize() int {
-	ctx := context.Get()
-	for _, item := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
-		if item.Desc().Type == "belt" {
-			return beltSizes[item.Desc().Code]
-		}
-	}
-	return 0
-}
-
 func calculatePerLevelStats(itm data.Item) float64 {
 	ctx := context.Get()
 	charLevel, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)

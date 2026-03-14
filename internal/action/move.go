@@ -621,7 +621,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					obj, found := ctx.Data.Objects.FindByID(shrine.ID)
 					return found && !obj.Selectable
 				}); err != nil {
-					ctx.Logger.Warn("Failed to interact with shrine", slog.Any("error", err))
+					ctx.Logger.Debug("Failed to interact with shrine", slog.Any("error", err))
 				}
 				blacklistedInteractions[shrine.ID] = true
 				shrine = data.Object{}
@@ -632,7 +632,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					obj, found := ctx.Data.Objects.FindByID(chest.ID)
 					return found && !obj.Selectable
 				}); err != nil {
-					ctx.Logger.Warn("Failed to interact with chest", slog.Any("error", err))
+					ctx.Logger.Debug("Failed to interact with chest", slog.Any("error", err))
 					blacklistedInteractions[chest.ID] = true
 				}
 				if !opts.IgnoreItems() {

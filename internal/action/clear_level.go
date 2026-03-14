@@ -6,23 +6,12 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
-
-var interactableShrines = []object.ShrineType{
-	object.ExperienceShrine,
-	object.StaminaShrine,
-	object.ManaRegenShrine,
-	object.SkillShrine,
-	object.RefillShrine,
-	object.HealthShrine,
-	object.ManaShrine,
-}
 
 func ClearCurrentLevel(openChests bool, filter data.MonsterFilter) error {
 	return ClearCurrentLevelEx(openChests, filter, nil)
@@ -147,7 +136,20 @@ func clearRoom(room data.Room, filter data.MonsterFilter) error {
 	ctx := context.Get()
 	ctx.SetLastAction("clearRoom")
 
-	path, _, found := ctx.PathFinder.GetClosestWalkablePath(room.GetCenter())
+	var path interface{ To() data.Position }
+	var found bool
+	for attempt := 0; attempt < 3; attempt++ {
+		p, _, f := ctx.PathFinder.GetClosestWalkablePath(room.GetCenter())
+		if f {
+			path = p
+			found = true
+			break
+		}
+		if attempt < 2 {
+			ctx.PathFinder.RandomMovement()
+			utils.Sleep(200)
+		}
+	}
 	if !found {
 		ctx.Logger.Warn("Failed to find a path to the room center, skipping room",
 			slog.Int("roomX", room.GetCenter().X),
