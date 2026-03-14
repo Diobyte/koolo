@@ -340,7 +340,7 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	}
 
 	// These items should NEVER be stashed, regardless of quest status, pickit rules, or first run.
-	if i.Name == "horadricstaff" {
+	if i.Name == "HoradricStaff" {
 		return false, false, "", ""
 	}
 
@@ -348,7 +348,7 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return false, false, "", ""
 	}
 
-	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && i.IsFromQuest() && i.Name != "HoradricCube" || i.Name == "HoradricStaff" {
+	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && i.IsFromQuest() && i.Name != "HoradricCube" {
 		return false, false, "", ""
 	}
 
@@ -366,7 +366,7 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return false, false, "", ""
 	}
 
-	if i.Location.LocationType == item.LocationInventory && ctx.CharacterCfg.Inventory.InventoryLock[i.Position.Y][i.Position.X] == 0 || i.IsPotion() {
+	if (i.Location.LocationType == item.LocationInventory && ctx.CharacterCfg.Inventory.InventoryLock[i.Position.Y][i.Position.X] == 0) || i.IsPotion() {
 		return false, false, "", ""
 	}
 
@@ -397,12 +397,8 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	return false, false, "", ""
 }
 
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels for crafting via maxJewelsKept.
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels for crafting via JewelsToKeep.
-// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
-// It now supports keeping multiple jewels (of any quality) for crafting via JewelsToKeep.
+// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of
+// an enabled cube recipe. Keeps multiple jewels (of any quality) for crafting via JewelsToKeep.
 func shouldKeepRecipeItem(i data.Item) bool {
 	ctx := context.Get()
 	ctx.SetLastStep("shouldKeepRecipeItem")

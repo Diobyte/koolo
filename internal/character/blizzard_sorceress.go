@@ -131,6 +131,8 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			if posFound {
 				lastReposition = time.Now()
 				step.MoveTo(safePos, step.WithIgnoreMonsters())
+			} else {
+				s.Logger.Debug("Could not find safe reposition point, continuing attack from current position")
 			}
 			// Always fall through to attack — never skip the attack phase
 		}
@@ -278,6 +280,7 @@ func (s BlizzardSorceress) KillMephisto() error {
 */
 
 func (s BlizzardSorceress) KillMephisto() error {
+	ctx := context.Get()
 
 	if s.CharacterCfg.Character.BlizzardSorceress.UseStaticOnMephisto {
 
@@ -297,7 +300,7 @@ func (s BlizzardSorceress) KillMephisto() error {
 		if s.Data.PlayerUnit.Skills[skill.Blizzard].Level > 0 {
 			s.Logger.Info("Applying initial Blizzard cast.")
 			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, attackOption)
-			time.Sleep(time.Millisecond * 300) // Wait for cast to register and apply chill
+			utils.Sleep(300) // Wait for cast to register and apply chill
 		}
 
 		canCastStaticField := s.Data.PlayerUnit.Skills[skill.StaticField].Level > 0
@@ -318,6 +321,8 @@ func (s BlizzardSorceress) KillMephisto() error {
 			staticAttackCount := 0
 
 			for staticAttackCount < maxStaticAttacks {
+				ctx.PauseIfNotPriority()
+
 				if s.Data.PlayerUnit.IsDead() {
 					return health.ErrDied
 				}
@@ -348,9 +353,9 @@ func (s BlizzardSorceress) KillMephisto() error {
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 					s.Logger.Debug("Using Static Field on Mephisto.")
 					step.SecondaryAttack(skill.StaticField, monster.UnitID, 1, staticFieldRange)
-					time.Sleep(time.Millisecond * 150)
+					utils.Sleep(150)
 				} else {
-					time.Sleep(time.Millisecond * 50)
+					utils.Sleep(50)
 				}
 				staticAttackCount++
 			}
@@ -371,7 +376,6 @@ func (s BlizzardSorceress) KillMephisto() error {
 
 	} else {
 
-		ctx := context.Get()
 		opts := step.Distance(15, 80)
 		ctx.ForceAttack = true
 
@@ -620,26 +624,29 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 
 		for dist := safeDistance; dist <= safeDistance+6; dist += 2 {
 			for spread := -3; spread <= 3; spread++ {
-				pos := data.Position{
-					X: playerPos.X + int(vx*float64(dist)) + spread,
-					Y: playerPos.Y + int(vy*float64(dist)) + spread,
+				// Explore perpendicular offsets: spread X while keeping Y, then vice versa
+				candidates := []data.Position{
+					{X: playerPos.X + int(vx*float64(dist)) + spread, Y: playerPos.Y + int(vy*float64(dist))},
+					{X: playerPos.X + int(vx*float64(dist)), Y: playerPos.Y + int(vy*float64(dist)) + spread},
 				}
-				if !s.Data.AreaData.IsWalkable(pos) {
-					continue
-				}
-
-				minMonsterDist := math.MaxFloat64
-				for _, m := range aliveEnemies {
-					d := float64(pather.DistanceFromPoint(pos, m.Position))
-					if d < minMonsterDist {
-						minMonsterDist = d
+				for _, pos := range candidates {
+					if !s.Data.AreaData.IsWalkable(pos) {
+						continue
 					}
+
+					minMonsterDist := math.MaxFloat64
+					for _, m := range aliveEnemies {
+						d := float64(pather.DistanceFromPoint(pos, m.Position))
+						if d < minMonsterDist {
+							minMonsterDist = d
+						}
+					}
+
+					playerDist := float64(pather.DistanceFromPoint(pos, playerPos))
+					score := minMonsterDist*2.0 - playerDist*1.0
+
+					scoredPositions = append(scoredPositions, scoredPosition{pos: pos, score: score})
 				}
-
-				playerDist := float64(pather.DistanceFromPoint(pos, playerPos))
-				score := minMonsterDist*2.0 - playerDist*1.0
-
-				scoredPositions = append(scoredPositions, scoredPosition{pos: pos, score: score})
 			}
 		}
 	}
