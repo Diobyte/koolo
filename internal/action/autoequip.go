@@ -75,8 +75,9 @@ func AutoEquip() error {
 	}
 
 	// Safety mechanism to prevent infinite loops
-	maxIterations := 30
+	maxIterations := 10
 	currentIteration := 0
+	mercEquipDone := false
 
 	for { // Use an infinite loop that we can break from
 		currentIteration++
@@ -121,10 +122,11 @@ func AutoEquip() error {
 		if playerChanged {
 			*ctx.Data = ctx.GameReader.GetData()
 			allItems = ctx.Data.Inventory.ByLocation(locations...)
+			mercEquipDone = false // Player changed, allow merc re-evaluation
 		}
 
 		mercChanged := false
-		if ctx.Data.MercHPPercent() > 0 {
+		if !mercEquipDone && ctx.Data.MercHPPercent() > 0 {
 			// Create a new list of items for the merc, EXCLUDING player's equipped items.
 			mercEvalItems := make([]data.Item, 0)
 			for _, itm := range allItems {
@@ -156,6 +158,12 @@ func AutoEquip() error {
 			}
 
 			return nil
+		}
+
+		// If only merc changed, mark merc as done to prevent re-processing.
+		// Merc slots are independent and don't cascade like player 2H/shield combos.
+		if mercChanged && !playerChanged {
+			mercEquipDone = true
 		}
 
 		// If something changed, let's refresh data and loop again to ensure stability
@@ -646,15 +654,20 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		equippedByID := getEquippedUnitLocations(target)
 		var bestCandidate data.Item
 		foundCandidate := false
-		for _, itm := range items { // Changed "item" to "itm" here
+		for _, itm := range items {
 			if itm.InTradeOrStoreScreen {
 				continue
 			}
 			if equippedLoc, equipped := equippedByID[itm.UnitID]; equipped && equippedLoc != loc {
 				continue
 			}
-			// A valid candidate is not equipped, OR is already equipped in the current slot we are checking.
-			bestCandidate = itm // And here
+			// Skip items already at the target location in the correct body slot.
+			// This prevents re-equipping items that are already where they should be,
+			// even if UnitID tracking becomes stale after a data refresh.
+			if itm.Location.LocationType == target && itm.Location.BodyLocation == loc {
+				continue
+			}
+			bestCandidate = itm
 			foundCandidate = true
 			break
 		}
@@ -677,8 +690,18 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		if currentlyEquipped.UnitID != 0 {
-			oldScore := itemScores[currentlyEquipped.UnitID][loc]
 			newScore := itemScores[bestCandidate.UnitID][loc]
+
+			// Look up the equipped item's score. If it's missing from our evaluation
+			// (e.g. UnitID changed after data refresh), skip equipping to prevent
+			// thrashing between items we can't properly compare.
+			equippedScores, hasEquippedScore := itemScores[currentlyEquipped.UnitID]
+			if !hasEquippedScore {
+				ctx.Logger.Debug(fmt.Sprintf("Skipping equip of %s to %s: currently equipped item (UnitID %d) has no evaluated score, cannot compare safely.",
+					bestCandidate.IdentifiedName, loc, currentlyEquipped.UnitID))
+				continue
+			}
+			oldScore := equippedScores[loc]
 
 			// If the new item is NOT strictly better, we skip the equip.
 			if newScore <= oldScore {
