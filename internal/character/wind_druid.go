@@ -20,10 +20,9 @@ import (
 )
 
 const (
-	druMaxAttacksLoop   = 20              // Max number of attack loops before stopping
-	druMinDistance      = 2               // Min distance to maintain from target
-	druMaxDistance      = 8               // Max distance to maintain from target
-	druidCastingTimeout = 3 * time.Second // Timeout for casting actions
+	druMaxAttacksLoop = 20 // Max number of attack loops before stopping
+	druMinDistance    = 2  // Min distance to maintain from target
+	druMaxDistance    = 8  // Max distance to maintain from target
 )
 
 type WindDruid struct {
