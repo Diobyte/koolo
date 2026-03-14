@@ -236,6 +236,7 @@
             <a href="#run-settings" aria-label="Runs" title="Runs"><i class="bi bi-play-circle"></i><span class="nav-text">Runs</span></a>
             <a href="#gambling-settings" aria-label="Gambling" title="Gambling"><i class="bi bi-cash-coin"></i><span class="nav-text">Gambling</span></a>
             <a href="#muling-settings" aria-label="Muling" title="Muling"><i class="bi bi-box-seam"></i><span class="nav-text">Muling</span></a>
+            <a href="#storeloot-settings" aria-label="StoreLoot" title="StoreLoot"><i class="bi bi-safe"></i><span class="nav-text">StoreLoot</span></a>
             <a href="#runeword-settings" aria-label="Runeword" title="Runeword"><i class="bi bi-gem"></i><span class="nav-text">Runeword</span></a>
             <a href="#cube-recipes" aria-label="Cube" title="Cube"><i class="bi bi-box"></i><span class="nav-text">Cube</span></a>
             <a href="#back-to-town-settings" aria-label="Back to town" title="Back to town"><i class="bi bi-house-door"></i><span class="nav-text">Back to town</span></a>
@@ -1895,6 +1896,83 @@
                         if (e.target.classList.contains('remove-mule-profile') || e.target.parentElement.classList.contains('remove-mule-profile')) {
                             const button = e.target.classList.contains('remove-mule-profile') ? e.target : e.target.parentElement;
                             button.parentElement.remove();
+                        }
+                    });
+                });
+            </script>
+            <h3 id="storeloot-settings"><i class="bi bi-safe section-icon" aria-hidden="true"></i>StoreLoot (Cross-Account Mule)</h3>
+            <p>Transfer items from multiple farming accounts to a dedicated mule account. Farmers drop items; the mule picks them up and stashes them.</p>
+            <label>
+                <input type="checkbox" name="storeLootEnabled" id="storeLootEnabled" {{ if .Config.StoreLoot.Enabled }}checked{{ end }}/>
+                Enable StoreLoot
+            </label>
+            <div id="storeloot-settings-body" style="{{ if not .Config.StoreLoot.Enabled }}display: none;{{ end }}">
+                <label>
+                    <input type="checkbox" name="storeLootIsMule" id="storeLootIsMule" {{ if .Config.StoreLoot.IsMule }}checked{{ end }}/>
+                    This character is the StoreLoot mule (receives items)
+                </label>
+                <div id="storeloot-farmer-settings" style="{{ if .Config.StoreLoot.IsMule }}display: none;{{ end }}">
+                    <label>
+                        Mule Supervisor Name
+                        <input type="text" name="storeLootMuleName" value="{{ .Config.StoreLoot.MuleName }}" placeholder="Name of the mule supervisor to send items to"/>
+                        <small>Leave blank to accept items from any StoreLoot mule.</small>
+                    </label>
+                </div>
+                <div id="storeloot-mule-settings" style="{{ if not .Config.StoreLoot.IsMule }}display: none;{{ end }}">
+                    <label>
+                        Game Name Prefix
+                        <input type="text" name="storeLootGameNamePrefix" value="{{ .Config.StoreLoot.GameNamePrefix }}" placeholder="sl-mule"/>
+                        <small>Prefix for created game names.</small>
+                    </label>
+                    <label>
+                        Game Password
+                        <input type="text" name="storeLootGamePassword" value="{{ .Config.StoreLoot.GamePassword }}" placeholder="password"/>
+                    </label>
+                    <div id="storeloot-mule-chars-container">
+                        <h6>Mule Characters (rotation order)</h6>
+                        <p><small>When the current mule character's stash fills up, the bot switches to the next character in this list. All characters must be on the same account.</small></p>
+                        <div id="storeloot-mule-chars-list">
+                            {{ range $index, $char := .Config.StoreLoot.MuleCharacters }}
+                            <div class="storeloot-char-entry">
+                                <input type="text" name="storeLootMuleCharacters[]" value="{{ $char }}" placeholder="Character name" required/>
+                                <button type="button" class="remove-storeloot-char secondary" title="Remove">-</button>
+                            </div>
+                            {{ end }}
+                        </div>
+                        <button type="button" id="add-storeloot-char" class="outline"><i class="bi bi-plus-circle"></i> Add Mule Character</button>
+                    </div>
+                </div>
+            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const slEnabled = document.getElementById('storeLootEnabled');
+                    const slBody = document.getElementById('storeloot-settings-body');
+                    const slIsMule = document.getElementById('storeLootIsMule');
+                    const slFarmer = document.getElementById('storeloot-farmer-settings');
+                    const slMule = document.getElementById('storeloot-mule-settings');
+                    if (slEnabled) {
+                        slEnabled.addEventListener('change', function() {
+                            slBody.style.display = this.checked ? 'block' : 'none';
+                        });
+                    }
+                    if (slIsMule) {
+                        slIsMule.addEventListener('change', function() {
+                            slFarmer.style.display = this.checked ? 'none' : 'block';
+                            slMule.style.display = this.checked ? 'block' : 'none';
+                        });
+                    }
+                    document.getElementById('add-storeloot-char')?.addEventListener('click', function() {
+                        const list = document.getElementById('storeloot-mule-chars-list');
+                        const entry = document.createElement('div');
+                        entry.classList.add('storeloot-char-entry');
+                        entry.innerHTML = '<input type="text" name="storeLootMuleCharacters[]" placeholder="Character name" required/>' +
+                            '<button type="button" class="remove-storeloot-char secondary" title="Remove">-</button>';
+                        list.appendChild(entry);
+                    });
+                    document.getElementById('storeloot-mule-chars-list')?.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('remove-storeloot-char') || e.target.parentElement?.classList.contains('remove-storeloot-char')) {
+                            const btn = e.target.classList.contains('remove-storeloot-char') ? e.target : e.target.parentElement;
+                            btn.parentElement.remove();
                         }
                     });
                 });

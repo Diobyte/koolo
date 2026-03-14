@@ -546,6 +546,17 @@ type CharacterCfg struct {
 		CompanionGameName     string `yaml:"companionGameName"`
 		CompanionGamePassword string `yaml:"companionGamePassword"`
 	} `yaml:"companion"`
+	StoreLoot struct {
+		Enabled        bool     `yaml:"enabled"`
+		IsMule         bool     `yaml:"isMule"`
+		MuleName       string   `yaml:"muleName"`
+		MuleCharacters []string `yaml:"muleCharacters"` // mule-side: list of characters to rotate through when stash fills
+		GameNamePrefix string   `yaml:"gameNamePrefix"`
+		GamePassword   string   `yaml:"gamePassword"`
+		// Runtime fields set by event handler, not persisted
+		StoreLootGameName     string `yaml:"-"`
+		StoreLootGamePassword string `yaml:"-"`
+	} `yaml:"storeLoot"`
 	Gambling struct {
 		Enabled bool     `yaml:"enabled"`
 		Items   []string `yaml:"items,omitempty"`

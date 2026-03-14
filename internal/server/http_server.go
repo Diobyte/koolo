@@ -2265,6 +2265,7 @@ type ConfigUpdateOptions struct {
 	Client              bool `json:"client"`
 	Scheduler           bool `json:"scheduler"`
 	Muling              bool `json:"muling"`
+	StoreLoot           bool `json:"storeLoot"`
 	Shopping            bool `json:"shopping"`
 	CharacterCreation   bool `json:"characterCreation"` // Auto-create character setting
 	UpdateAllRunDetails bool `json:"updateAllRunDetails"`
@@ -2611,6 +2612,19 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			}
 		}
 		cfg.Muling.MuleProfiles = validMuleProfiles
+	}
+
+	// StoreLoot
+	if sections.StoreLoot {
+		cfg.StoreLoot.Enabled = values.Has("storeLootEnabled")
+		cfg.StoreLoot.IsMule = values.Has("storeLootIsMule")
+		cfg.StoreLoot.MuleName = values.Get("storeLootMuleName")
+		cfg.StoreLoot.GameNamePrefix = values.Get("storeLootGameNamePrefix")
+		cfg.StoreLoot.GamePassword = values.Get("storeLootGamePassword")
+		cfg.StoreLoot.MuleCharacters = values["storeLootMuleCharacters[]"]
+		if cfg.StoreLoot.MuleCharacters == nil {
+			cfg.StoreLoot.MuleCharacters = []string{}
+		}
 	}
 
 	// Shopping
@@ -3637,6 +3651,18 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Muling.MuleProfiles = validMuleProfiles
 
 		cfg.Muling.ReturnTo = r.FormValue("mulingReturnTo")
+
+		// StoreLoot
+		cfg.StoreLoot.Enabled = r.FormValue("storeLootEnabled") == "on"
+		cfg.StoreLoot.IsMule = r.FormValue("storeLootIsMule") == "on"
+		cfg.StoreLoot.MuleName = r.FormValue("storeLootMuleName")
+		cfg.StoreLoot.GameNamePrefix = r.FormValue("storeLootGameNamePrefix")
+		cfg.StoreLoot.GamePassword = r.FormValue("storeLootGamePassword")
+		cfg.StoreLoot.MuleCharacters = r.Form["storeLootMuleCharacters[]"]
+		if cfg.StoreLoot.MuleCharacters == nil {
+			cfg.StoreLoot.MuleCharacters = []string{}
+		}
+
 		favoriteRuns := sanitizeFavoriteRunSelection(r.Form["runFavoriteRuns"])
 		config.Koolo.RunFavoriteRuns = favoriteRuns
 		if err := config.SaveKooloConfig(config.Koolo); err != nil {

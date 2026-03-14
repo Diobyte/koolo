@@ -305,6 +305,13 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 	statsHandler := NewStatsHandler(supervisorName, logger)
 	mng.eventListener.Register(statsHandler.Handle)
+
+	// StoreLoot: Register event handler on farmer supervisors to receive mule game info
+	if cfg.StoreLoot.Enabled && !cfg.StoreLoot.IsMule {
+		storeLootHandler := NewStoreLootEventHandler(supervisorName, logger, cfg)
+		mng.eventListener.Register(storeLootHandler.Handle)
+	}
+
 	supervisor, err := NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
 
 	if err != nil {

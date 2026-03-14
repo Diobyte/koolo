@@ -230,6 +230,18 @@ func (s *SinglePlayerSupervisor) Start() error {
 			continue
 		}
 
+		// StoreLoot: Check if a StoreLoot mule game is available and we should queue a drop
+		if s.bot.ctx.CharacterCfg.StoreLoot.Enabled && !s.bot.ctx.CharacterCfg.StoreLoot.IsMule {
+			storeLootGameName := s.bot.ctx.CharacterCfg.StoreLoot.StoreLootGameName
+			if storeLootGameName != "" && s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() == nil && s.bot.ctx.Drop.Active() == nil {
+				storeLootPassword := s.bot.ctx.CharacterCfg.StoreLoot.StoreLootGamePassword
+				s.bot.ctx.Logger.Info("StoreLoot: mule game available, queuing drop request",
+					"game", storeLootGameName)
+				s.bot.ctx.Drop.QueueStoreLootDrop(storeLootGameName, storeLootPassword)
+				continue // Let Drop.Pending check on next iteration pick it up immediately
+			}
+		}
+
 		if firstRun {
 			if err = s.waitUntilCharacterSelectionScreen(); err != nil {
 				return fmt.Errorf("error waiting for character selection screen: %w", err)
@@ -764,6 +776,11 @@ func (s *SinglePlayerSupervisor) HandleMenuFlow() error {
 		s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 	}
 
+	// StoreLoot mule: always create online games
+	if s.bot.ctx.CharacterCfg.StoreLoot.Enabled && s.bot.ctx.CharacterCfg.StoreLoot.IsMule {
+		return s.HandleStoreLootMenuFlow()
+	}
+
 	if s.bot.ctx.CharacterCfg.Companion.Enabled && !s.bot.ctx.CharacterCfg.Companion.Leader {
 		return s.HandleCompanionMenuFlow()
 	}
@@ -866,6 +883,59 @@ func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {
 	}
 
 	return fmt.Errorf("[Menu Flow]: Unhandled Companion menu scenario")
+}
+
+func (s *SinglePlayerSupervisor) HandleStoreLootMenuFlow() error {
+	atCharacterSelectionScreen := s.bot.ctx.GameReader.IsInCharacterSelectionScreen()
+
+	if atCharacterSelectionScreen {
+		if s.bot.ctx.CharacterCfg.AuthMethod != "None" {
+			if err := s.ensureOnline(); err != nil {
+				return err
+			}
+		}
+
+		// StoreLoot always uses lobby games so we can set a specific name and password.
+		if err := s.tryEnterLobby(); err != nil {
+			return err
+		}
+		return s.createStoreLootLobbyGame()
+	}
+
+	if s.bot.ctx.GameReader.IsInLobby() {
+		return s.createStoreLootLobbyGame()
+	}
+
+	return fmt.Errorf("idle")
+}
+
+func (s *SinglePlayerSupervisor) createStoreLootLobbyGame() error {
+	cfg := s.bot.ctx.CharacterCfg
+	gameName := cfg.StoreLoot.GameNamePrefix + fmt.Sprintf("%d", cfg.Game.PublicGameCounter)
+	gamePassword := cfg.StoreLoot.GamePassword
+
+	s.bot.ctx.Logger.Info("[StoreLoot Menu Flow]: Creating lobby game",
+		slog.String("game", gameName))
+
+	err := s.callManagerWithTimeout(func() error {
+		return s.bot.ctx.Manager.CreateNamedLobbyGame(gameName, gamePassword)
+	})
+
+	if err != nil {
+		cfg.Game.PublicGameCounter++
+		s.bot.ctx.CurrentGame.FailedToCreateGameAttempts++
+		const maxAttempts = 5
+		if s.bot.ctx.CurrentGame.FailedToCreateGameAttempts >= maxAttempts {
+			s.bot.ctx.Logger.Error(fmt.Sprintf("[StoreLoot Menu Flow]: Failed to create game %d times. Forcing client restart.", maxAttempts))
+			s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
+			return ErrUnrecoverableClientState
+		}
+		return fmt.Errorf("[StoreLoot Menu Flow]: Failed to create lobby game: %w", err)
+	}
+
+	cfg.Game.PublicGameCounter++
+	s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
+	return nil
 }
 
 func (s *SinglePlayerSupervisor) tryEnterLobby() error {

@@ -214,3 +214,35 @@ func ResetCompanionGameInfo(be BaseEvent, leader string) ResetCompanionGameInfoE
 		Leader:    leader,
 	}
 }
+
+// RequestStoreLootJoinGameEvent is sent by the StoreLoot mule when it creates a game
+// and wants farmers to know the game name/password for dropping items.
+type RequestStoreLootJoinGameEvent struct {
+	BaseEvent
+	MuleSupervisor string
+	Name           string
+	Password       string
+}
+
+func RequestStoreLootJoinGame(be BaseEvent, muleSupervisor string, name string, password string) RequestStoreLootJoinGameEvent {
+	return RequestStoreLootJoinGameEvent{
+		BaseEvent:      be,
+		MuleSupervisor: muleSupervisor,
+		Name:           name,
+		Password:       password,
+	}
+}
+
+// ResetStoreLootGameInfoEvent is sent when the StoreLoot mule exits its game
+// (e.g., stash full, switching characters), so farmers stop targeting that game.
+type ResetStoreLootGameInfoEvent struct {
+	BaseEvent
+	MuleSupervisor string
+}
+
+func ResetStoreLootGameInfo(be BaseEvent, muleSupervisor string) ResetStoreLootGameInfoEvent {
+	return ResetStoreLootGameInfoEvent{
+		BaseEvent:      be,
+		MuleSupervisor: muleSupervisor,
+	}
+}

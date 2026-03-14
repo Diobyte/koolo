@@ -70,6 +70,8 @@ func BuildRun(run string) Run {
 		return NewDuriel()
 	case string(config.MuleRun):
 		return NewMule()
+	case string(config.StoreLootRun):
+		return NewStoreLoot()
 	case string(config.MephistoRun):
 		return NewMephisto(nil)
 	case string(config.TravincalRun):

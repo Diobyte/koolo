@@ -253,3 +253,19 @@ func (m *Manager) AreDropQuotasSatisfied() bool {
 	}
 	return m.filters.AreDropQuotasSatisfied()
 }
+
+// QueueStoreLootDrop creates and queues a drop request targeting a StoreLoot mule's game.
+// Unlike regular drops which use filter criteria, StoreLoot drops transfer stash items
+// without filter restrictions.
+func (m *Manager) QueueStoreLootDrop(gameName, gamePassword string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	req := &Request{
+		RoomName:  gameName,
+		Password:  gamePassword,
+		Filters:   Filters{Enabled: false},
+		CreatedAt: time.Now(),
+	}
+	m.pending = append(m.pending, req)
+}

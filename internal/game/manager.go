@@ -172,6 +172,61 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	return gameName, errors.New("error creating game! Timeout")
 }
 
+// CreateNamedLobbyGame creates a lobby game with an explicit name and password
+// instead of reading them from the Companion config.
+func (gm *Manager) CreateNamedLobbyGame(gameName, gamePassword string) error {
+	// Click "Create game" tab
+	gm.hid.Click(LeftButton, 845, 54)
+	utils.Sleep(200)
+
+	difficultyPosition := map[difficulty.Difficulty]struct {
+		X, Y int
+	}{
+		difficulty.Normal:    {X: 900, Y: 252},
+		difficulty.Nightmare: {X: 980, Y: 252},
+		difficulty.Hell:      {X: 1065, Y: 252},
+	}
+
+	cfg, _ := config.GetCharacter(gm.supervisorName)
+	difficultyPos := difficultyPosition[cfg.Game.Difficulty]
+	gm.hid.Click(LeftButton, difficultyPos.X, difficultyPos.Y)
+	utils.Sleep(200)
+
+	// Click the game name textbox, delete text and type new game name
+	gm.hid.Click(LeftButton, 1000, 116)
+	gm.clearGameNameOrPasswordField()
+	for _, ch := range gameName {
+		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
+	}
+
+	// Same for password
+	gm.hid.Click(LeftButton, 1000, 161)
+	utils.Sleep(200)
+	if gamePassword != "" {
+		gm.clearGameNameOrPasswordField()
+		for _, ch := range gamePassword {
+			gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
+		}
+	}
+	gm.hid.PressKey(win.VK_RETURN)
+
+	for range 15 {
+		if gm.gr.InGame() {
+			return nil
+		}
+		utils.Sleep(1000)
+
+		panel := gm.gr.GetPanel("DismissableModal")
+		if panel.PanelName != "" && panel.PanelEnabled && panel.PanelVisible {
+			gm.hid.PressKey(win.VK_ESCAPE)
+			utils.Sleep(1000)
+			return errors.New("error creating game! Got error message")
+		}
+	}
+
+	return errors.New("error creating game! Timeout")
+}
+
 func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 
 	// Click "Join game" tab
@@ -415,5 +470,3 @@ func StartGame(username string, password string, authmethod string, authToken st
 
 	return 0, 0, errors.New("GPU initialization failed after maximum retries")
 }
-
-
