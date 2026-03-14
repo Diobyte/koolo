@@ -483,7 +483,8 @@ func CubeRecipes() error {
 				itemsInInv := ctx.Data.Inventory.ByLocation(item.LocationInventory)
 
 				stashingRequired := false
-				stashingGrandCharm := false
+				forceStash := false
+				isSocketRecipe := strings.Contains(recipe.Name, "Add Sockets to")
 
 				// Check if the items that are not in the protected invetory slots should be stashed
 				for _, it := range itemsInInv {
@@ -498,6 +499,13 @@ func CubeRecipes() error {
 						if shouldStash {
 							ctx.Logger.Debug("Stashing item after cube recipe.", "item", it.Name, "recipe", recipe.Name, "reason", reason)
 							stashingRequired = true
+						} else if isSocketRecipe {
+							// Socket recipe results must always be stashed — the newly
+							// socketed item won't match shouldStashIt because its socket
+							// state changed, but it's the whole point of the recipe.
+							ctx.Logger.Debug("Stashing socket recipe result.", slog.String("item", string(it.Name)), slog.String("recipe", recipe.Name))
+							stashingRequired = true
+							forceStash = true
 						} else if it.Name == "GrandCharm" {
 							ctx.Logger.Debug("Checking if we need to stash a GrandCharm that doesn't match any NIP rules.", "recipe", recipe.Name)
 							// Check if we have a GrandCharm in stash that doesn't match any NIP rules
@@ -515,7 +523,7 @@ func CubeRecipes() error {
 
 								ctx.Logger.Debug("GrandCharm doesn't match any NIP rules and we don't have any in stash to be used for this recipe. Stashing it.", "recipe", recipe.Name)
 								stashingRequired = true
-								stashingGrandCharm = true
+								forceStash = true
 
 							} else {
 								DropInventoryItem(it)
@@ -529,10 +537,11 @@ func CubeRecipes() error {
 				}
 
 				// Add items to the stash if needed
-				if stashingRequired && !stashingGrandCharm {
+				if stashingRequired && !forceStash {
 					_ = Stash(false)
-				} else if stashingGrandCharm {
-					// Force stashing of the invetory
+				} else if forceStash {
+					// Force stashing of the inventory — needed for socket recipe
+					// results and grand charm rerolls that don't match NIP rules.
 					_ = Stash(true)
 				}
 
