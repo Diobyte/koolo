@@ -322,8 +322,13 @@ func selectSecondarySkillButton(ctx *context.Status, skillID skill.ID) (game.Mou
 
 func performAttack(ctx *context.Status, settings attackSettings, targetID data.UnitID, x, y int) {
 	monsterPos := data.Position{X: x, Y: y}
-	if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, monsterPos) && !ctx.ForceAttack {
-		return // Skip attack if no line of sight
+	distance := ctx.PathFinder.DistanceFromMe(monsterPos)
+
+	// Skip LoS check for melee range (≤ 4 tiles). In narrow corridors like Maggot Lair,
+	// thickened collision tiles cause false LoS negatives that silently block melee attacks.
+	// The game engine already handles melee collision correctly at close range.
+	if distance > 4 && !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, monsterPos) && !ctx.ForceAttack {
+		return // Skip ranged attack if no line of sight
 	}
 
 	// Check if we should use packet casting for Blizzard (location-based)
