@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -43,6 +45,7 @@ func (ca CompanionAssist) SkipTownRoutines() bool {
 
 func (ca CompanionAssist) Run(_ *RunParameters) error {
 	ca.ctx.SetLastAction("CompanionAssist")
+	defer ca.ctx.WaitingForParty.Store(false)
 
 	leaderName := ca.ctx.CharacterCfg.Companion.LeaderName
 	if leaderName == "" {
@@ -79,6 +82,7 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 				return nil
 			}
 			ca.ctx.SetLastAction("CompanionAssist:WaitingForLeader")
+			ca.ctx.WaitingForParty.Store(true)
 			utils.Sleep(int(tickInterval.Milliseconds()))
 			continue
 		}
@@ -86,6 +90,7 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 
 		// If leader is in town and we're not, go to town
 		if leader.Area.IsTown() && !ca.ctx.Data.PlayerUnit.Area.IsTown() {
+			ca.ctx.WaitingForParty.Store(false)
 			ca.ctx.SetLastAction("CompanionAssist:ReturningToTown")
 			ca.ctx.Logger.Debug("Companion assist: leader is in town, returning to town")
 			if err := action.ReturnTown(); err != nil {
@@ -95,12 +100,27 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 			continue
 		}
 
-		// If we're in town and leader is in town, wait
+		// If both in town — check if same act. If different act, WP to leader's town.
 		if leader.Area.IsTown() && ca.ctx.Data.PlayerUnit.Area.IsTown() {
-			ca.ctx.SetLastAction("CompanionAssist:IdleInTown")
+			if leader.Area != ca.ctx.Data.PlayerUnit.Area {
+				ca.ctx.WaitingForParty.Store(false)
+				ca.ctx.SetLastAction("CompanionAssist:TravelingToLeaderTown")
+				ca.ctx.Logger.Info("Companion assist: leader is in a different town, using waypoint",
+					slog.String("leaderTown", leader.Area.Area().Name),
+					slog.String("myTown", ca.ctx.Data.PlayerUnit.Area.Area().Name))
+				if err := action.WayPoint(leader.Area); err != nil {
+					ca.ctx.Logger.Warn("Companion assist: failed to WP to leader's town", slog.Any("error", err))
+				}
+			} else {
+				ca.ctx.SetLastAction("CompanionAssist:IdleInTown")
+				ca.ctx.WaitingForParty.Store(true)
+			}
 			utils.Sleep(int(tickInterval.Milliseconds()))
 			continue
 		}
+
+		// Active gameplay from here — suppress stuck detection bypass
+		ca.ctx.WaitingForParty.Store(false)
 
 		// If leader entered a different area, try to follow via portal or area transition
 		if leader.Area != ca.ctx.Data.PlayerUnit.Area {
@@ -143,19 +163,11 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 	}
 }
 
-// followLeaderToArea attempts to reach the leader's area via town portals or area transitions.
+// followLeaderToArea attempts to reach the leader's area via adjacent walk, town portals, or waypoints.
 func (ca CompanionAssist) followLeaderToArea(leader data.RosterMember) error {
-	// If we're in town and leader is not, look for a TP to take
-	if ca.ctx.Data.PlayerUnit.Area.IsTown() && !leader.Area.IsTown() {
-		ca.ctx.Logger.Debug("Companion assist: leader left town, looking for town portal",
-			slog.String("leaderArea", leader.Area.Area().Name))
-		if err := ca.useNearestTP(); err != nil {
-			return fmt.Errorf("no portal to leader's area: %w", err)
-		}
-		return nil
-	}
+	playerArea := ca.ctx.Data.PlayerUnit.Area
 
-	// If leader is in an adjacent area, try to walk there
+	// If leader is in an adjacent area, walk there directly
 	for _, adj := range ca.ctx.Data.AreaData.AdjacentLevels {
 		if adj.Area == leader.Area {
 			ca.ctx.Logger.Debug("Companion assist: leader is in adjacent area, moving there",
@@ -164,24 +176,113 @@ func (ca CompanionAssist) followLeaderToArea(leader data.RosterMember) error {
 		}
 	}
 
-	// If leader went to a completely different area, return to town and use TP
-	if !ca.ctx.Data.PlayerUnit.Area.IsTown() {
-		ca.ctx.Logger.Debug("Companion assist: leader is in a different area, returning to town",
-			slog.String("leaderArea", leader.Area.Area().Name))
-		if err := action.ReturnTown(); err != nil {
-			return err
-		}
-		return ca.useNearestTP()
+	// If we're in town, try to reach the leader's area
+	if playerArea.IsTown() {
+		return ca.travelFromTownToLeader(leader)
 	}
 
-	return fmt.Errorf("cannot reach leader area %s", leader.Area.Area().Name)
+	// We're in the field but not adjacent — return to town first, then figure it out
+	ca.ctx.Logger.Debug("Companion assist: leader is in a different area, returning to town",
+		slog.String("leaderArea", leader.Area.Area().Name))
+	if err := action.ReturnTown(); err != nil {
+		return err
+	}
+	return ca.travelFromTownToLeader(leader)
 }
 
-// useNearestTP walks to and enters the nearest town portal.
-func (ca CompanionAssist) useNearestTP() error {
+// travelFromTownToLeader handles reaching the leader from town. Tries leader's TP first,
+// then uses waypoints if the leader is in a different act or no TP is available.
+func (ca CompanionAssist) travelFromTownToLeader(leader data.RosterMember) error {
+	playerArea := ca.ctx.Data.PlayerUnit.Area
+	leaderAct := leader.Area.Act()
+	myAct := playerArea.Act()
+
+	// If different act, WP to the leader's act town first
+	if myAct != leaderAct {
+		leaderTown := town.GetTownByArea(leader.Area).TownArea()
+		ca.ctx.Logger.Info("Companion assist: leader is in a different act, using waypoint to travel",
+			slog.String("leaderArea", leader.Area.Area().Name),
+			slog.Int("leaderAct", leaderAct))
+		if err := action.WayPoint(leaderTown); err != nil {
+			return fmt.Errorf("failed to WP to leader's act town: %w", err)
+		}
+	}
+
+	// Now in the same act's town — try leader's TP
+	if err := ca.useLeaderTP(); err == nil {
+		return nil
+	}
+
+	// No TP found — try to WP to the closest waypoint to the leader's area
+	wpDest := ca.findClosestWP(leader.Area)
+	if wpDest == 0 {
+		return fmt.Errorf("no waypoint route to leader area %s", leader.Area.Area().Name)
+	}
+
+	ca.ctx.Logger.Info("Companion assist: using waypoint to get near leader",
+		slog.String("wp", wpDest.Area().Name),
+		slog.String("leaderArea", leader.Area.Area().Name))
+	if err := action.WayPoint(wpDest); err != nil {
+		return fmt.Errorf("failed to WP near leader: %w", err)
+	}
+	return nil
+}
+
+// findClosestWP returns the best waypoint destination to reach the leader's area.
+// If the leader's area itself has a WP, return it. Otherwise walk backwards through
+// LinkedFrom chains to find a WP area that leads toward the leader.
+func (ca CompanionAssist) findClosestWP(leaderArea area.ID) area.ID {
+	// If leader's exact area has a waypoint, use it
+	if _, ok := area.WPAddresses[leaderArea]; ok {
+		return leaderArea
+	}
+
+	// Check if the leader's area appears in any WP's LinkedFrom chain (meaning
+	// you can walk FROM that chain THROUGH the leader's area to reach the WP).
+	// We want the WP whose LinkedFrom includes or passes through the leader's area.
+	// The most practical approach: find any WP in the same act — the follower will
+	// WP there and then be in range for the next loop iteration to use adjacent walk.
+	leaderAct := leaderArea.Act()
+	var bestWP area.ID
+	bestRow := 0
+	for wpArea, addr := range area.WPAddresses {
+		if wpArea.Act() != leaderAct {
+			continue
+		}
+		// Check if leader's area is in the LinkedFrom chain (direct connection)
+		for _, linked := range addr.LinkedFrom {
+			if linked == leaderArea {
+				return wpArea
+			}
+		}
+		// Track highest row in the same act as fallback (deepest WP)
+		if addr.Row > bestRow {
+			bestRow = addr.Row
+			bestWP = wpArea
+		}
+	}
+	return bestWP
+}
+
+// useLeaderTP walks to and enters the leader's town portal. Returns error if no TP found.
+func (ca CompanionAssist) useLeaderTP() error {
+	leaderName := ca.ctx.CharacterCfg.Companion.LeaderName
+
+	// First pass: prefer leader's portal
+	for _, obj := range ca.ctx.Data.Objects {
+		if obj.IsPortal() && obj.Owner == leaderName {
+			ca.ctx.Logger.Debug("Companion assist: found leader's town portal, entering")
+			return action.InteractObject(obj, func() bool {
+				return !ca.ctx.Data.PlayerUnit.Area.IsTown()
+			})
+		}
+	}
+
+	// Fallback: take any portal
 	for _, obj := range ca.ctx.Data.Objects {
 		if obj.IsPortal() {
-			ca.ctx.Logger.Debug("Companion assist: found town portal, entering")
+			ca.ctx.Logger.Debug("Companion assist: found town portal, entering",
+				slog.String("owner", obj.Owner))
 			return action.InteractObject(obj, func() bool {
 				return !ca.ctx.Data.PlayerUnit.Area.IsTown()
 			})
