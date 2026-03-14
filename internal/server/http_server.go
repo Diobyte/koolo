@@ -158,23 +158,15 @@ func (s *WebSocketServer) writePump(client *Client) {
 		client.conn.Close()
 	}()
 
-	for {
-		select {
-		case message, ok := <-client.send:
-			if !ok {
-				client.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
+	for message := range client.send {
+		w, err := client.conn.NextWriter(websocket.TextMessage)
+		if err != nil {
+			return
+		}
+		w.Write(message)
 
-			w, err := client.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			w.Write(message)
-
-			if err := w.Close(); err != nil {
-				return
-			}
+		if err := w.Close(); err != nil {
+			return
 		}
 	}
 }

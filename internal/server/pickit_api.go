@@ -550,55 +550,6 @@ func (api *PickitAPI) sendError(w http.ResponseWriter, message string, statusCod
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
-func (api *PickitAPI) loadPickitFileRules(characterID, fileName string) ([]pickit.PickitRule, error) {
-	rules := []pickit.PickitRule{}
-
-	// Get character's pickit directory
-	pickitDir := filepath.Join("config", characterID, "pickit")
-	filePath := filepath.Join(pickitDir, fileName)
-
-	// Check if file exists
-	fileInfo, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		return rules, fmt.Errorf("file does not exist: %s", filePath)
-	}
-	if err != nil {
-		return rules, fmt.Errorf("failed to stat file: %w", err)
-	}
-
-	// Log file size for debugging
-	log.Printf("Loading pickit file: %s (size: %d bytes)", filePath, fileInfo.Size())
-
-	// Read file content
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return rules, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Parse NIP rules (basic parsing for now)
-	lines := strings.Split(string(content), "\n")
-	validLineCount := 0
-	for i, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "//") {
-			continue
-		}
-
-		validLineCount++
-		rule := pickit.PickitRule{
-			ID:           fmt.Sprintf("%s_%d", fileName, i),
-			FileName:     fileName,
-			GeneratedNIP: line,
-			Enabled:      true,
-		}
-		rules = append(rules, rule)
-	}
-
-	log.Printf("Parsed %d valid rules from %d total lines", validLineCount, len(lines))
-
-	return rules, nil
-}
-
 func (api *PickitAPI) loadCharacterRules(characterID string) ([]pickit.PickitRule, error) {
 	rules := []pickit.PickitRule{}
 
@@ -761,33 +712,6 @@ func (api *PickitAPI) deleteRule(characterID, ruleID string) error {
 	}
 
 	return nil
-}
-
-func (api *PickitAPI) getCharacterFiles(characterID string) ([]pickit.PickitFile, error) {
-	files := []pickit.PickitFile{}
-
-	// Get character's pickit directory
-	pickitDir := filepath.Join("config", characterID, "pickit")
-
-	entries, err := os.ReadDir(pickitDir)
-	if err != nil {
-		return files, err
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".nip") {
-			info, _ := entry.Info()
-			files = append(files, pickit.PickitFile{
-				ID:           entry.Name(),
-				Name:         entry.Name(), // Keep full filename including .nip extension
-				CharacterID:  characterID,
-				FilePath:     filepath.Join(pickitDir, entry.Name()),
-				LastModified: info.ModTime().Format("2006-01-02 15:04:05"),
-			})
-		}
-	}
-
-	return files, nil
 }
 
 // getPickitFilesFromPath returns all .nip files from a custom directory path
