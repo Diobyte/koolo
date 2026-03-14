@@ -16,18 +16,22 @@ func CheckForScaryAuraAndCurse() {
 	aurasCfg := ctx.CharacterCfg.ChickenOnAuras
 
 	if cursesCfg.AmplifyDamage && ctx.Data.PlayerUnit.States.HasState(state.Amplifydamage) {
+		ctx.Logger.Warn("Chickening: player has Amplify Damage curse")
 		panic(fmt.Errorf("%w: Player has amplify damage curse", health.ErrChicken))
 	}
 
 	if cursesCfg.Decrepify && ctx.Data.PlayerUnit.States.HasState(state.Decrepify) {
+		ctx.Logger.Warn("Chickening: player has Decrepify curse")
 		panic(fmt.Errorf("%w: Player has decrepify curse", health.ErrChicken))
 	}
 
 	if cursesCfg.LowerResist && ctx.Data.PlayerUnit.States.HasState(state.Lowerresist) {
+		ctx.Logger.Warn("Chickening: player has Lower Resist curse")
 		panic(fmt.Errorf("%w: Player has lower resist curse", health.ErrChicken))
 	}
 
 	if cursesCfg.BloodMana && ctx.Data.PlayerUnit.States.HasState(state.BloodMana) {
+		ctx.Logger.Warn("Chickening: player has Blood Mana curse")
 		panic(fmt.Errorf("%w: Player has blood mana curse", health.ErrChicken))
 	}
 
@@ -64,8 +68,12 @@ func CheckForScaryAuraAndCurse() {
 			}
 
 			if scaryAura != "" {
+				ctx.Logger.Warn("Chickening: nearby monster has scary aura",
+					"aura", scaryAura,
+					"monsterID", m.Name,
+					"distance", ctx.PathFinder.DistanceFromMe(m.Position),
+				)
 				message := fmt.Errorf("%w: Mob has %s aura", health.ErrChicken, scaryAura)
-				ctx.Logger.Debug(message.Error())
 				panic(message)
 			}
 		}
