@@ -76,6 +76,33 @@ const (
 	DevelopmentRun Run = "development"
 )
 
+// ShortBonusRuns lists quick farming runs suitable for bonus runs while waiting for party.
+var ShortBonusRuns = []Run{
+	CountessRun,
+	AndarielRun,
+	SummonerRun,
+	MephistoRun,
+	TravincalRun,
+	EldritchRun,
+	PindleskinRun,
+	NihlathakRun,
+	AncientTunnelsRun,
+	MausoleumRun,
+	PitRun,
+	StonyTombRun,
+	ArachnidLairRun,
+	TristramRun,
+	BoneAshRun,
+	CaveRun,
+	SpiderCavernRun,
+	DrifterCavernRun,
+	ThreshsocketRun,
+	EnduguRun,
+	FireEyeRun,
+	RakanishuRun,
+	LowerKurastChestRun,
+}
+
 type LevelingRunInfo struct {
 	Run         Run
 	Act         int

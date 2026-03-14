@@ -110,6 +110,9 @@ type Stats struct {
 	IdentifiedItems     int
 	Games               []GameStats
 	IsCompanionFollower bool
+	// Party role info for dashboard UI
+	PartyRole       string `json:"partyRole"`       // "", "leader", "follower"
+	PartyLeaderName string `json:"partyLeaderName"` // For followers: leader's character name
 	// UI contains lightweight live character info for the dashboard
 	UI               CharacterOverview
 	MuleEnabled      bool `json:"muleEnabled"`

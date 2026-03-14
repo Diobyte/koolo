@@ -71,6 +71,10 @@ type Context struct {
 	IsBossEquipmentActive     bool          // flag for barb leveling
 	Drop                      *drop.Manager // Drop: Per-supervisor Drop manager
 	IsAllocatingStatsOrSkills atomic.Bool   // Prevents stuck detection during stat/skill allocation
+	WaitingForParty           atomic.Bool   // Suppresses stuck detection while waiting for party members
+	CompletedRuns             []string      // Runs completed this game (used for rejoin dedup)
+	CompletedGameID           string        // Game ID when CompletedRuns was populated
+	completedRunsMu           sync.Mutex
 }
 
 type Debug struct {
@@ -269,4 +273,25 @@ func (ctx *Context) Cleanup() {
 	// Reset counters on cleanup for a new session
 	ctx.CurrentGame.FailedToCreateGameAttempts = 0
 	ctx.CurrentGame.FailedMenuAttempts = 0 // Also reset this on cleanup
+}
+
+func (ctx *Context) AddCompletedRun(name string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = append(ctx.CompletedRuns, name)
+}
+
+func (ctx *Context) GetCompletedRuns() []string {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	out := make([]string, len(ctx.CompletedRuns))
+	copy(out, ctx.CompletedRuns)
+	return out
+}
+
+func (ctx *Context) ResetCompletedRuns(gameID string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = nil
+	ctx.CompletedGameID = gameID
 }
