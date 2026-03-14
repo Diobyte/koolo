@@ -72,6 +72,7 @@ const (
 	UberIzualRun             Run = "uber_izual"
 	UberDurielRun            Run = "uber_duriel"
 	LilithRun                Run = "lilith"
+	CompanionAssistRun       Run = "companion_assist"
 	// Development / Utility runs
 	DevelopmentRun Run = "development"
 )

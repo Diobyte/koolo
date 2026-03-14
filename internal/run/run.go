@@ -30,6 +30,11 @@ type TownRoutineSkipper interface {
 }
 
 func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
+	// If follower has AssistLeader enabled, replace all runs with companion assist
+	if cfg.Companion.Enabled && !cfg.Companion.Leader && cfg.Companion.AssistLeader {
+		return []Run{NewCompanionAssist()}
+	}
+
 	//if cfg.Companion.Enabled && !cfg.Companion.Leader {
 	//	return []Run{Companion{baseRun: baseRun}}
 	//}
@@ -195,6 +200,8 @@ func BuildRun(run string) Run {
 		return NewUberDuriel()
 	case string(config.LilithRun):
 		return NewLilith()
+	case string(config.CompanionAssistRun):
+		return NewCompanionAssist()
 	// Development / Utility runs
 	case string(config.DevelopmentRun):
 		return NewDevRun()

@@ -2555,6 +2555,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
 			cfg.Companion.WaitForParty = values.Has("companionWaitForParty")
 			cfg.Companion.OpenTPForPlayer = values.Has("companionOpenTPForPlayer")
+			cfg.Companion.AssistLeader = values.Has("companionAssistLeader")
 			cfg.Companion.BonusRuns = values.Has("companionBonusRuns")
 			cfg.Companion.RandomGameNames = values.Has("companionRandomGameNames")
 			if raw := values.Get("companionPartyWaitTimeout"); raw != "" {
@@ -3554,6 +3555,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
 		cfg.Companion.WaitForParty = r.Form.Has("companionWaitForParty")
 		cfg.Companion.OpenTPForPlayer = r.Form.Has("companionOpenTPForPlayer")
+		cfg.Companion.AssistLeader = r.Form.Has("companionAssistLeader")
 		cfg.Companion.BonusRuns = r.Form.Has("companionBonusRuns")
 		cfg.Companion.RandomGameNames = r.Form.Has("companionRandomGameNames")
 		if raw := r.Form.Get("companionPartyWaitTimeout"); raw != "" {

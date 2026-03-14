@@ -1728,6 +1728,10 @@
                     Wait for party
                 </label>
                 <label>
+                    <input type="checkbox" name="companionAssistLeader" {{ if .Config.Companion.AssistLeader }}checked{{ end }}/>
+                    Assist leader (follow & fight)
+                </label>
+                <label>
                     <input type="checkbox" name="companionBonusRuns" id="companionBonusRuns" {{ if .Config.Companion.BonusRuns }}checked{{ end }}/>
                     Bonus runs while waiting
                 </label>

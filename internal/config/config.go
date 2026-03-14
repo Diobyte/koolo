@@ -548,6 +548,7 @@ type CharacterCfg struct {
 		WaitForParty          bool     `yaml:"waitForParty"`
 		PartyWaitTimeout      int      `yaml:"partyWaitTimeout"`
 		OpenTPForPlayer       bool     `yaml:"openTPForPlayer"`
+		AssistLeader          bool     `yaml:"assistLeader"`
 		BonusRuns             bool     `yaml:"bonusRuns"`
 		BonusRunsList         []string `yaml:"bonusRunsList,omitempty"`
 		RandomGameNames       bool     `yaml:"randomGameNames"`
