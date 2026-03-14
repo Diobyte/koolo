@@ -138,6 +138,9 @@ func AutoEquip() error {
 			mercChanged, err = equipBestItems(mercItems, mercScores, item.LocationMercenary) // Pass mercScores
 			if err != nil {
 				ctx.Logger.Error(fmt.Sprintf("Mercenary equip error: %v. Continuing...", err))
+				if errors.Is(err, ErrNotEnoughSpace) {
+					return err
+				}
 			}
 		}
 
@@ -1056,6 +1059,13 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 		}
 
 		if target == item.LocationMercenary {
+			// Check if merc already has an item in this slot — we need inventory space to receive it
+			currentMercItem := GetMercEquippedItem(ctx.Data.Inventory, bodyloc)
+			if currentMercItem.UnitID != 0 {
+				if _, found := findInventorySpace(currentMercItem); !found {
+					return ErrNotEnoughSpace
+				}
+			}
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
 			utils.Sleep(EquipDelayMS)
 			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
