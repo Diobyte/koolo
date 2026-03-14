@@ -14,32 +14,19 @@ func ReviveMerc() {
 
 	status.SetLastAction("ReviveMerc") // SetLastAction is a method on Status
 
-	if !status.CharacterCfg.Character.UseMerc {
-		return
-	}
+	if status.CharacterCfg.Character.UseMerc && status.Data.MercHPPercent() <= 0 && NeedsTPsToContinue(status.Context) {
 
-	if status.Data.MercHPPercent() > 0 {
-		return
-	}
+		status.Logger.Info("Merc is dead, let's revive it!")
 
-	if !NeedsTPsToContinue(status.Context) {
-		status.Logger.Warn("Merc is dead but no TPs available, cannot revive")
-		return
-	}
+		mercNPC := town.GetTownByArea(status.Data.PlayerUnit.Area).MercContractorNPC()
 
-	status.Logger.Info("Merc is dead, let's revive it!")
+		InteractNPC(mercNPC)
 
-	mercNPC := town.GetTownByArea(status.Data.PlayerUnit.Area).MercContractorNPC()
-
-	if err := InteractNPC(mercNPC); err != nil {
-		status.Logger.Warn("Failed to interact with merc contractor NPC", "error", err)
-		return
-	}
-
-	if mercNPC == npc.Tyrael2 {
-		status.HID.KeySequence(win.VK_END, win.VK_UP, win.VK_RETURN, win.VK_ESCAPE)
-	} else {
-		status.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN, win.VK_ESCAPE)
+		if mercNPC == npc.Tyrael2 {
+			status.HID.KeySequence(win.VK_END, win.VK_UP, win.VK_RETURN, win.VK_ESCAPE)
+		} else {
+			status.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN, win.VK_ESCAPE)
+		}
 	}
 }
 

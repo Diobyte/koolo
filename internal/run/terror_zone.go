@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -72,7 +71,7 @@ func (tz TerrorZone) Run(parameters *RunParameters) error {
 
 	routes := terrorzones.RoutesFor(primary)
 	if len(routes) == 0 {
-		tz.ctx.Logger.Debug("No terror zone route defined", slog.String("area", primary.Area().Name))
+		tz.ctx.Logger.Debug("No terror zone route defined for %v", primary.Area().Name)
 		return nil
 	}
 

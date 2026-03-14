@@ -674,6 +674,36 @@ func (s Javazon) chargedStrike(monsterID data.UnitID) {
 	ctx.HID.Click(game.RightButton, screenX, screenY)
 }
 
+func (s Javazon) chargedStrikeBossFast(monsterID data.UnitID) {
+	ctx := context.Get()
+	ctx.PauseIfNotPriority()
+
+	monster, found := s.Data.Monsters.FindByID(monsterID)
+	if !found || !jzAliveMonster(monster) {
+		return
+	}
+
+	// Ensure we are close enough for Charged Strike.
+	if ctx.PathFinder.DistanceFromMe(monster.Position) > 5 {
+		_ = action.MoveToCoords(monster.Position, step.WithDistanceToFinish(3))
+		ctx.RefreshGameData()
+		monster, found = s.Data.Monsters.FindByID(monsterID)
+		if !found || !jzAliveMonster(monster) {
+			return
+		}
+	}
+
+	csKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.ChargedStrike)
+	if found && s.Data.PlayerUnit.RightSkill != skill.ChargedStrike {
+		ctx.HID.PressKeyBinding(csKey)
+		utils.Sleep(jzDkMinSkillSwapDelayMS)
+	}
+
+	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
+	ctx.HID.Click(game.RightButton, screenX, screenY)
+	utils.Sleep(jzDkMinClickDelayMS)
+}
+
 // chargedStrikeAccurate is used for non-boss situations (DK cleanup / general clearing)
 // to avoid "ground-click spam" and unintended walking. Boss sequences intentionally keep the fast spam.
 func (s Javazon) chargedStrikeAccurate(targetID data.UnitID, attacks int) {

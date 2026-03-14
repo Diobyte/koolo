@@ -2,7 +2,6 @@ package action
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -27,7 +26,7 @@ func HealAtNPC() error {
 	if shouldHeal {
 		err := InteractNPC(town.GetTownByArea(ctx.Data.PlayerUnit.Area).HealNPC())
 		if err != nil {
-			ctx.Logger.Warn("Failed to heal on NPC", slog.Any("error", err))
+			ctx.Logger.Warn("Failed to heal on NPC: %v", err)
 		}
 	}
 

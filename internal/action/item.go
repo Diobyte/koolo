@@ -14,10 +14,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-// dlcQuantityWarned tracks which DLC item names have already been warned about
-// exceeding MaxQuantity, to avoid spamming the log every call.
-var dlcQuantityWarned = make(map[string]bool)
-
 func doesExceedQuantity(rule nip.Rule) bool {
 	ctx := context.Get()
 	ctx.SetLastAction("doesExceedQuantity")
@@ -37,6 +33,7 @@ func doesExceedQuantity(rule nip.Rule) bool {
 	}
 
 	matchedItemsInStash := 0
+	warnedDLC := false
 
 	for _, stashItem := range stashItems {
 		res, _ := rule.Evaluate(stashItem)
@@ -44,16 +41,16 @@ func doesExceedQuantity(rule nip.Rule) bool {
 			qty := GetItemQuantity(stashItem)
 			matchedItemsInStash += qty
 
-			// Warn once per item name per session when a DLC stacked item
-			// exceeds MaxQuantity — these can't be individually dropped from
-			// DLC tabs, so the user may need to consume or cube them manually.
-			if matchedItemsInStash >= maxQuantity && !dlcQuantityWarned[string(stashItem.Name)] {
+			// Warn once when a DLC stacked item exceeds MaxQuantity — these can't
+			// be individually dropped from DLC tabs, so the user may need to
+			// consume or cube them manually.
+			if !warnedDLC && matchedItemsInStash >= maxQuantity {
 				switch stashItem.Location.LocationType {
 				case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 					if qty > 1 {
 						ctx.Logger.Warn(fmt.Sprintf("DLC stacked item %s (qty %d) exceeds MaxQuantity %d — excess cannot be auto-dropped from DLC tabs",
 							stashItem.Name, qty, maxQuantity))
-						dlcQuantityWarned[string(stashItem.Name)] = true
+						warnedDLC = true
 					}
 				}
 			}

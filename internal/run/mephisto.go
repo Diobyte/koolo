@@ -97,9 +97,7 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 	_, isLevelingChar := m.ctx.Char.(context.LevelingCharacter)
 	if isLevelingChar && lvl.Value < 80 {
 
-		if err := action.ReturnTown(); err != nil {
-			m.ctx.Logger.Warn("Failed to return to town before Mephisto fight", "error", err)
-		}
+		action.ReturnTown()
 		action.IdentifyAll(false)
 		action.Stash(false)
 		action.ReviveMerc()
@@ -173,18 +171,12 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 		}
 
 		m.ctx.Logger.Debug("Moving to red portal")
-		portal, found := m.ctx.Data.Objects.FindOne(object.HellGate)
-		if !found {
-			m.ctx.Logger.Error("Hell Gate portal not found after Mephisto kill")
-			return nil
-		}
+		portal, _ := m.ctx.Data.Objects.FindOne(object.HellGate)
 		action.MoveToCoords(portal.Position)
 
-		if err := action.InteractObject(portal, func() bool {
+		action.InteractObject(portal, func() bool {
 			return m.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
-		}); err != nil {
-			m.ctx.Logger.Warn("Failed to enter Hell Gate portal", "error", err)
-		}
+		})
 
 		if isLevelingChar {
 			utils.Sleep(1000)

@@ -94,7 +94,6 @@ type CharacterSettings struct {
 	FarmerProfiles          []string
 	LevelingSequenceFiles   []string
 	Supervisors             []string
-	ShortBonusRuns          []string
 }
 
 type SkillOption struct {

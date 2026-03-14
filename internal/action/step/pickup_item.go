@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	clickDelay    = 25 * time.Millisecond
 	spiralDelay   = 25 * time.Millisecond
 	pickupTimeout = 3 * time.Second
 )

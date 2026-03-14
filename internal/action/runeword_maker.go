@@ -198,11 +198,11 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 		ctx.Logger.Debug("Switched to correct tab")
 		utils.Sleep(500)
 		screenPos := ui.GetScreenCoordsForItem(base)
-		ctx.Logger.Debug(fmt.Sprintf("Clicking at %d:%d to move base to inventory", screenPos.X, screenPos.Y))
+		ctx.Logger.Debug(fmt.Sprintf("Clicking after 5s at %d:%d", screenPos.X, screenPos.Y))
 		moveSucceeded := false
-		for attempt := 0; attempt < 3; attempt++ {
+		for attempt := 0; attempt < 2; attempt++ {
 			ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-			utils.Sleep(800)
+			utils.Sleep(500)
 			ctx.RefreshGameData()
 			moved, found := ctx.Data.Inventory.FindByID(base.UnitID)
 			if found && moved.Location.LocationType == item.LocationInventory {
@@ -210,7 +210,6 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 				moveSucceeded = true
 				break
 			}
-			ctx.Logger.Debug(fmt.Sprintf("Stash-to-inventory move attempt %d failed for base %s, retrying...", attempt+1, base.Name))
 		}
 		if !moveSucceeded {
 			ctx.Logger.Error("Failed to move base item from stash to inventory", "item", base.Name)

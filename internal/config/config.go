@@ -538,20 +538,13 @@ type CharacterCfg struct {
 		RunewordRerollRules map[string][]RunewordRerollRule   `yaml:"runewordRerollRules,omitempty"`
 	} `yaml:"game"`
 	Companion struct {
-		Enabled               bool     `yaml:"enabled"`
-		Leader                bool     `yaml:"leader"`
-		LeaderName            string   `yaml:"leaderName"`
-		GameNameTemplate      string   `yaml:"gameNameTemplate"`
-		GamePassword          string   `yaml:"gamePassword"`
-		CompanionGameName     string   `yaml:"companionGameName"`
-		CompanionGamePassword string   `yaml:"companionGamePassword"`
-		WaitForParty          bool     `yaml:"waitForParty"`
-		PartyWaitTimeout      int      `yaml:"partyWaitTimeout"`
-		OpenTPForPlayer       bool     `yaml:"openTPForPlayer"`
-		AssistLeader          bool     `yaml:"assistLeader"`
-		BonusRuns             bool     `yaml:"bonusRuns"`
-		BonusRunsList         []string `yaml:"bonusRunsList,omitempty"`
-		RandomGameNames       bool     `yaml:"randomGameNames"`
+		Enabled               bool   `yaml:"enabled"`
+		Leader                bool   `yaml:"leader"`
+		LeaderName            string `yaml:"leaderName"`
+		GameNameTemplate      string `yaml:"gameNameTemplate"`
+		GamePassword          string `yaml:"gamePassword"`
+		CompanionGameName     string `yaml:"companionGameName"`
+		CompanionGamePassword string `yaml:"companionGamePassword"`
 	} `yaml:"companion"`
 	StoreLoot struct {
 		Enabled        bool     `yaml:"enabled"`

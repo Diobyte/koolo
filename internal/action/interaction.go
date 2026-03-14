@@ -27,24 +27,14 @@ func InteractNPC(npc npc.ID) error {
 	}
 
 	var err error
-	for attempt := range 5 {
+	for range 5 {
 		err = MoveToCoords(pos)
 		if err != nil {
-			ctx.Logger.Debug("InteractNPC move failed, retrying",
-				"npc", npc,
-				"attempt", attempt+1,
-				"error", err,
-			)
 			continue
 		}
 
 		err = step.InteractNPC(npc)
 		if err != nil {
-			ctx.Logger.Debug("InteractNPC interact failed, retrying",
-				"npc", npc,
-				"attempt", attempt+1,
-				"error", err,
-			)
 			continue
 		}
 		break

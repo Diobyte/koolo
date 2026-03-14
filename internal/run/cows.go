@@ -48,7 +48,6 @@ func (a Cows) Run(parameters *RunParameters) error {
 
 	// Check if we already have the items in cube so we can skip.
 	if a.hasWristAndBookInCube() {
-		a.ctx.Logger.Info("Wrist Leg and Book already in cube, skipping gathering")
 
 		// Sell junk, refill potions, etc. (basically ensure space for getting the TP tome)
 		action.PreRun(false)
@@ -56,7 +55,6 @@ func (a Cows) Run(parameters *RunParameters) error {
 		a.ctx.Logger.Info("Wrist Leg and Book found in cube")
 		// Move to town if needed
 		if !a.ctx.Data.PlayerUnit.Area.IsTown() {
-			a.ctx.Logger.Debug("Not in town, returning to town before stash interaction")
 			if err := action.ReturnTown(); err != nil {
 				return err
 			}
@@ -80,7 +78,6 @@ func (a Cows) Run(parameters *RunParameters) error {
 		}
 		// If we dont have Wirstleg and Book in cube
 	} else {
-		a.ctx.Logger.Info("Need to gather Wirt's Leg and prepare portal")
 		// Drop any WirtsLegs lingering in the personal stash from a
 		// previous difficulty or run before we go get a fresh one.
 		if err := a.dropStashedWirtsLegs(); err != nil {

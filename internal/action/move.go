@@ -138,10 +138,7 @@ func MoveToArea(dst area.ID, options ...step.MoveOption) error {
 	// Arcane Sanctuary
 	if dst == area.ArcaneSanctuary && ctx.Data.PlayerUnit.Area == area.PalaceCellarLevel3 {
 		ctx.Logger.Debug("Arcane Sanctuary detected, finding the Portal")
-		portal, found := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
-		if !found {
-			return fmt.Errorf("arcane sanctuary portal not found in Palace Cellar Level 3")
-		}
+		portal, _ := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
 		MoveToCoords(portal.Position)
 
 		return step.InteractObject(portal, func() bool {
@@ -151,10 +148,7 @@ func MoveToArea(dst area.ID, options ...step.MoveOption) error {
 	// Canyon of the Magi
 	if dst == area.CanyonOfTheMagi && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
 		ctx.Logger.Debug("Canyon of the Magi detected, finding the Portal")
-		tome, found := ctx.Data.Objects.FindOne(object.YetAnotherTome)
-		if !found {
-			return fmt.Errorf("YetAnotherTome not found in Arcane Sanctuary")
-		}
+		tome, _ := ctx.Data.Objects.FindOne(object.YetAnotherTome)
 		MoveToCoords(tome.Position)
 		InteractObject(tome, func() bool {
 			if _, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
@@ -164,10 +158,7 @@ func MoveToArea(dst area.ID, options ...step.MoveOption) error {
 			return false
 		})
 		ctx.Logger.Debug("Using Canyon of the Magi Portal")
-		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
-		if !found {
-			return fmt.Errorf("canyon of the Magi portal not found after opening tome")
-		}
+		portal, _ := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 		MoveToCoords(portal.Position)
 		return step.InteractObject(portal, func() bool {
 			return ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi
@@ -630,7 +621,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					obj, found := ctx.Data.Objects.FindByID(shrine.ID)
 					return found && !obj.Selectable
 				}); err != nil {
-					ctx.Logger.Debug("Failed to interact with shrine", slog.Any("error", err))
+					ctx.Logger.Warn("Failed to interact with shrine", slog.Any("error", err))
 				}
 				blacklistedInteractions[shrine.ID] = true
 				shrine = data.Object{}
@@ -641,7 +632,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					obj, found := ctx.Data.Objects.FindByID(chest.ID)
 					return found && !obj.Selectable
 				}); err != nil {
-					ctx.Logger.Debug("Failed to interact with chest", slog.Any("error", err))
+					ctx.Logger.Warn("Failed to interact with chest", slog.Any("error", err))
 					blacklistedInteractions[chest.ID] = true
 				}
 				if !opts.IgnoreItems() {

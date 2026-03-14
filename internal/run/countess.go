@@ -1,9 +1,6 @@
 package run
 
 import (
-	"fmt"
-	"log/slog"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
@@ -96,15 +93,14 @@ func (c Countess) Run(parameters *RunParameters) error {
 	clearFloors := c.ctx.CharacterCfg.Game.Countess.ClearFloors
 
 	for _, a := range areas {
-		c.ctx.Logger.Debug("Descending tower", slog.String("area", a.Area().Name))
 		err = action.MoveToArea(a)
 		if err != nil {
-			return fmt.Errorf("moving to %s: %w", a.Area().Name, err)
+			return err
 		}
 
 		if clearFloors && a != area.TowerCellarLevel5 {
 			if err = action.ClearCurrentLevel(false, data.MonsterAnyFilter()); err != nil {
-				return fmt.Errorf("clearing %s: %w", a.Area().Name, err)
+				return err
 			}
 		}
 	}

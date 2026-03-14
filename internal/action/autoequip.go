@@ -75,9 +75,8 @@ func AutoEquip() error {
 	}
 
 	// Safety mechanism to prevent infinite loops
-	maxIterations := 10
+	maxIterations := 30
 	currentIteration := 0
-	mercEquipDone := false
 
 	for { // Use an infinite loop that we can break from
 		currentIteration++
@@ -122,11 +121,10 @@ func AutoEquip() error {
 		if playerChanged {
 			*ctx.Data = ctx.GameReader.GetData()
 			allItems = ctx.Data.Inventory.ByLocation(locations...)
-			mercEquipDone = false // Player changed, allow merc re-evaluation
 		}
 
 		mercChanged := false
-		if !mercEquipDone && ctx.Data.MercHPPercent() > 0 {
+		if ctx.Data.MercHPPercent() > 0 {
 			// Create a new list of items for the merc, EXCLUDING player's equipped items.
 			mercEvalItems := make([]data.Item, 0)
 			for _, itm := range allItems {
@@ -140,9 +138,6 @@ func AutoEquip() error {
 			mercChanged, err = equipBestItems(mercItems, mercScores, item.LocationMercenary) // Pass mercScores
 			if err != nil {
 				ctx.Logger.Error(fmt.Sprintf("Mercenary equip error: %v. Continuing...", err))
-				if errors.Is(err, ErrNotEnoughSpace) {
-					return err
-				}
 			}
 		}
 
@@ -158,12 +153,6 @@ func AutoEquip() error {
 			}
 
 			return nil
-		}
-
-		// If only merc changed, mark merc as done to prevent re-processing.
-		// Merc slots are independent and don't cascade like player 2H/shield combos.
-		if mercChanged && !playerChanged {
-			mercEquipDone = true
 		}
 
 		// If something changed, let's refresh data and loop again to ensure stability
@@ -654,20 +643,15 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		equippedByID := getEquippedUnitLocations(target)
 		var bestCandidate data.Item
 		foundCandidate := false
-		for _, itm := range items {
+		for _, itm := range items { // Changed "item" to "itm" here
 			if itm.InTradeOrStoreScreen {
 				continue
 			}
 			if equippedLoc, equipped := equippedByID[itm.UnitID]; equipped && equippedLoc != loc {
 				continue
 			}
-			// Skip items already at the target location in the correct body slot.
-			// This prevents re-equipping items that are already where they should be,
-			// even if UnitID tracking becomes stale after a data refresh.
-			if itm.Location.LocationType == target && itm.Location.BodyLocation == loc {
-				continue
-			}
-			bestCandidate = itm
+			// A valid candidate is not equipped, OR is already equipped in the current slot we are checking.
+			bestCandidate = itm // And here
 			foundCandidate = true
 			break
 		}
@@ -690,18 +674,8 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 		}
 
 		if currentlyEquipped.UnitID != 0 {
+			oldScore := itemScores[currentlyEquipped.UnitID][loc]
 			newScore := itemScores[bestCandidate.UnitID][loc]
-
-			// Look up the equipped item's score. If it's missing from our evaluation
-			// (e.g. UnitID changed after data refresh), skip equipping to prevent
-			// thrashing between items we can't properly compare.
-			equippedScores, hasEquippedScore := itemScores[currentlyEquipped.UnitID]
-			if !hasEquippedScore {
-				ctx.Logger.Debug(fmt.Sprintf("Skipping equip of %s to %s: currently equipped item (UnitID %d) has no evaluated score, cannot compare safely.",
-					bestCandidate.IdentifiedName, loc, currentlyEquipped.UnitID))
-				continue
-			}
-			oldScore := equippedScores[loc]
 
 			// If the new item is NOT strictly better, we skip the equip.
 			if newScore <= oldScore {
@@ -729,23 +703,8 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 
 		// Handle specific errors
 		if errors.Is(err, ErrNotEnoughSpace) {
-			ctx.Logger.Info("Not enough inventory space to equip. Trying to free space.")
-			step.CloseAllMenus()
+			ctx.Logger.Info("Not enough inventory space to equip. Trying to sell junk.")
 			DrinkAllPotionsInInventory()
-
-			// Try stashing items first to preserve valuable items
-			if stashErr := Stash(false); stashErr != nil {
-				ctx.Logger.Debug(fmt.Sprintf("Stash attempt during equip: %v", stashErr))
-			}
-			*ctx.Data = ctx.GameReader.GetData()
-
-			// Check if stashing freed enough space
-			if _, found := findInventorySpace(currentlyEquipped); found {
-				equippedSomething = true
-				continue
-			}
-
-			// Still no space — try selling junk
 			// Create a temporary lock config that protects the item we want to equip
 			tempLock := make([][]int, len(ctx.CharacterCfg.Inventory.InventoryLock))
 			for i := range ctx.CharacterCfg.Inventory.InventoryLock {
@@ -753,7 +712,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 				copy(tempLock[i], ctx.CharacterCfg.Inventory.InventoryLock[i])
 			}
 
-			// Lock the new item so VendorRefill doesn't sell it
+			// Lock the new item
 			if bestCandidate.Location.LocationType == item.LocationInventory {
 				w, h := bestCandidate.Desc().InventoryWidth, bestCandidate.Desc().InventoryHeight
 				for j := 0; j < h; j++ {
@@ -768,7 +727,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			if sellErr := VendorRefill(VendorRefillOpts{SellJunk: true, BuyConsumables: true, LockConfig: tempLock}); sellErr != nil {
 				return false, fmt.Errorf("failed to sell junk to make space: %w", sellErr)
 			}
-			equippedSomething = true // We made a change (selling/stashing), so we should re-evaluate
+			equippedSomething = true // We made a change (selling junk), so we should re-evaluate
 			*ctx.Data = ctx.GameReader.GetData()
 			if _, found := findInventorySpace(currentlyEquipped); !found {
 				return false, err
@@ -1036,6 +995,96 @@ func equipBestWeapons(itemsByLoc map[item.LocationType][]data.Item, itemScores m
 	return false, nil
 }
 
+func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) {
+	ctx := context.Get()
+
+	allRingsMap := make(map[data.UnitID]data.Item)
+	for _, ring := range itemsByLoc[item.LocLeftRing] {
+		allRingsMap[ring.UnitID] = ring
+	}
+	for _, ring := range itemsByLoc[item.LocRightRing] {
+		allRingsMap[ring.UnitID] = ring
+	}
+
+	var allRings []data.Item
+	for _, ring := range allRingsMap {
+		allRings = append(allRings, ring)
+	}
+
+	sort.Slice(allRings, func(i, j int) bool {
+
+		scoreI := PlayerScore(allRings[i])[item.LocLeftRing]
+		scoreJ := PlayerScore(allRings[j])[item.LocLeftRing]
+		return scoreI > scoreJ
+	})
+
+	if len(allRings) == 0 {
+		return false, nil
+	}
+
+	bestRing := allRings[0]
+	var secondBestRing data.Item
+	if len(allRings) > 1 {
+		secondBestRing = allRings[1]
+	}
+
+	leftEquipped := GetEquippedItem(ctx.Data.Inventory, item.LocLeftRing)
+	rightEquipped := GetEquippedItem(ctx.Data.Inventory, item.LocRightRing)
+
+	equippedRings := []data.Item{leftEquipped, rightEquipped}
+	idealIDs := map[data.UnitID]bool{
+		bestRing.UnitID: true,
+	}
+	if secondBestRing.UnitID != 0 {
+		idealIDs[secondBestRing.UnitID] = true
+	}
+
+	var ringToReplace data.Item
+	for _, equipped := range equippedRings {
+		if equipped.UnitID != 0 && !idealIDs[equipped.UnitID] {
+			ringToReplace = equipped
+			break
+		}
+	}
+
+	if ringToReplace.UnitID != 0 {
+		var replacementRing data.Item
+		if bestRing.UnitID != leftEquipped.UnitID && bestRing.UnitID != rightEquipped.UnitID {
+			replacementRing = bestRing
+		} else if secondBestRing.UnitID != 0 && (secondBestRing.UnitID != leftEquipped.UnitID && secondBestRing.UnitID != rightEquipped.UnitID) {
+			replacementRing = secondBestRing
+		}
+
+		if replacementRing.UnitID != 0 {
+			ctx.Logger.Info(fmt.Sprintf("Replacing ring %s with %s.", ringToReplace.IdentifiedName, replacementRing.IdentifiedName))
+			err := equip(replacementRing, ringToReplace.Location.BodyLocation, item.LocationEquipped)
+			if err != nil {
+				return false, fmt.Errorf("failed to equip ring: %w", err)
+			}
+			return true, nil
+		}
+	}
+
+	if leftEquipped.UnitID == 0 {
+		if bestRing.UnitID != rightEquipped.UnitID {
+			ctx.Logger.Info(fmt.Sprintf("Equipping best ring %s in empty left slot.", bestRing.IdentifiedName))
+			if err := equip(bestRing, item.LocLeftRing, item.LocationEquipped); err == nil {
+				return true, nil
+			}
+		}
+	}
+	if rightEquipped.UnitID == 0 {
+		if secondBestRing.UnitID != 0 && secondBestRing.UnitID != leftEquipped.UnitID {
+			ctx.Logger.Info(fmt.Sprintf("Equipping second best ring %s in empty right slot.", secondBestRing.IdentifiedName))
+			if err := equip(secondBestRing, item.LocRightRing, item.LocationEquipped); err == nil {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // equip handles the physical process of equipping an item. Returns ErrNotEnoughSpace if it fails.
 func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) error {
 	ctx := context.Get()
@@ -1055,33 +1104,26 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			tab = itm.Location.Page + 1
 		}
 		SwitchStashTab(tab)
-
+		ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
+		utils.Sleep(EquipDelayMS)
+		*ctx.Data = ctx.GameReader.GetData()
 		var found bool
-		for moveAttempt := 0; moveAttempt < 3; moveAttempt++ {
-			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
-			utils.Sleep(EquipDelayMS + 300)
-			*ctx.Data = ctx.GameReader.GetData()
-			for _, updatedItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-				if updatedItem.UnitID == itm.UnitID {
-					itm = updatedItem
+		for _, updatedItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+			if updatedItem.UnitID == itm.UnitID {
+				itm = updatedItem
+				found = true
+				break
+			}
+		}
+		// Also check cursor - item may have gone there if inventory was full
+		if !found {
+			for _, cursorItem := range ctx.Data.Inventory.ByLocation(item.LocationCursor) {
+				if cursorItem.UnitID == itm.UnitID {
+					itm = cursorItem
 					found = true
 					break
 				}
 			}
-			// Also check cursor - item may have gone there if inventory was full
-			if !found {
-				for _, cursorItem := range ctx.Data.Inventory.ByLocation(item.LocationCursor) {
-					if cursorItem.UnitID == itm.UnitID {
-						itm = cursorItem
-						found = true
-						break
-					}
-				}
-			}
-			if found {
-				break
-			}
-			ctx.Logger.Debug(fmt.Sprintf("Stash-to-inventory move attempt %d failed, retrying...", moveAttempt+1))
 		}
 		if !found {
 			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.IdentifiedName)
@@ -1097,13 +1139,6 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 		}
 
 		if target == item.LocationMercenary {
-			// Check if merc already has an item in this slot — we need inventory space to receive it
-			currentMercItem := GetMercEquippedItem(ctx.Data.Inventory, bodyloc)
-			if currentMercItem.UnitID != 0 {
-				if _, found := findInventorySpace(currentMercItem); !found {
-					return ErrNotEnoughSpace
-				}
-			}
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
 			utils.Sleep(EquipDelayMS)
 			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
@@ -1199,11 +1234,11 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			}
 		}
 
-		// Verification loop — wait progressively longer for equip to register
+		// Verification loop
 		*ctx.Data = ctx.GameReader.GetData()
 		var itemEquipped bool
-		for i := 0; i < 5; i++ {
-			utils.Sleep(600 + i*200)
+		for i := 0; i < 3; i++ {
+			utils.Sleep(800)
 			*ctx.Data = ctx.GameReader.GetData()
 			for _, inPlace := range ctx.Data.Inventory.ByLocation(target) {
 				if inPlace.UnitID == itm.UnitID && inPlace.Location.BodyLocation == bodyloc {

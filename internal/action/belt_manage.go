@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -16,6 +17,20 @@ var (
 	beltSlotsResurrected = buildBeltSlotCoords(ui.BeltOriginX, ui.BeltOriginY, ui.BeltOffsetPerColX, ui.BeltOffsetPerRowY)
 	beltSlotsClassic     = buildBeltSlotCoords(ui.BeltOriginClassicX, ui.BeltOriginClassicY, ui.BeltClassicOffsetPerColX, ui.BeltClassicOffsetPerRowY)
 )
+
+func isLowGold() bool {
+	// this is redefined, a bigger restructure is needed but out of scope for this change
+	ctx := context.Get()
+
+	var playerLevel int
+	if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+		playerLevel = lvl.Value
+	} else {
+		playerLevel = 1
+	}
+
+	return ctx.Data.PlayerUnit.TotalPlayerGold() < playerLevel*1000
+}
 
 func ManageBelt() error {
 	ctx := context.Get()
