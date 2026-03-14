@@ -1108,6 +1108,9 @@ func ValidateAndSaveConfig(config KooloCfg) error {
 		return fmt.Errorf("error writing koolo config: %w", err)
 	}
 
+	// Clear NIP rules cache so centralized pickit path changes are picked up
+	ClearNIPCache()
+
 	return Load()
 }
 
@@ -1137,6 +1140,9 @@ func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {
 	if err != nil {
 		return fmt.Errorf("error writing supervisor config: %w", err)
 	}
+
+	// Clear NIP rules cache so any pickit path or file changes are picked up on reload
+	ClearNIPCache()
 
 	return Load()
 }

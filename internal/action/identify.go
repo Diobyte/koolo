@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/nip"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/ui"
@@ -28,6 +29,13 @@ func IdentifyAll(skipIdentify bool) error {
 	if len(items) == 0 || skipIdentify {
 		ctx.Logger.Debug("No items to identify...")
 		return nil
+	}
+
+	// Collect UnitIDs of items that were unidentified before this pass,
+	// so we can emit ItemIdentified events for the ones that get identified.
+	unidentifiedIDs := make(map[data.UnitID]struct{}, len(items))
+	for _, i := range items {
+		unidentifiedIDs[i.UnitID] = struct{}{}
 	}
 
 	shouldUseCain := ctx.CharacterCfg.Game.UseCainIdentify
@@ -53,6 +61,7 @@ func IdentifyAll(skipIdentify bool) error {
 		err := CainIdentify()
 		// if identifying with cain fails then we should continue to identify using tome
 		if err == nil {
+			emitIdentifiedEvents(ctx, unidentifiedIDs)
 			return nil // Successfully identified with Cain, no need for tome
 		}
 		ctx.Logger.Debug("Identifying with Cain failed, continuing with identifying with tome", "err", err)
@@ -84,6 +93,8 @@ func IdentifyAll(skipIdentify bool) error {
 		identifyItem(idTome, i)
 	}
 	step.CloseAllMenus()
+
+	emitIdentifiedEvents(ctx, unidentifiedIDs)
 
 	return nil
 }
@@ -189,4 +200,31 @@ func identifyItem(idTome data.Item, i data.Item) {
 
 	ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
 	utils.PingSleep(utils.Critical, 350) // Critical operation: Wait for item identification
+}
+
+// emitIdentifiedEvents refreshes inventory and emits an ItemIdentified event
+// for each item that was previously unidentified and is now identified.
+func emitIdentifiedEvents(ctx *context.Status, unidentifiedIDs map[data.UnitID]struct{}) {
+	ctx.RefreshGameData()
+
+	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if _, wasUnidentified := unidentifiedIDs[i.UnitID]; !wasUnidentified {
+			continue
+		}
+		if !i.Identified {
+			continue
+		}
+
+		displayName := i.IdentifiedName
+		if displayName == "" {
+			displayName = string(i.Desc().Name)
+		}
+
+		ctx.Logger.Info(fmt.Sprintf("Identified: %s [%s]", displayName, i.Quality.ToString()))
+
+		event.Send(event.ItemIdentified(
+			event.Text(ctx.Name, fmt.Sprintf("Item identified: %s [%s]", displayName, i.Quality.ToString())),
+			data.Drop{Item: i},
+		))
+	}
 }

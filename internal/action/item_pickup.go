@@ -88,8 +88,8 @@ func ItemPickup(maxDistance int) error {
 	const pickupWallTimeout = 30 * time.Second                  // Safety timeout for the entire pickup attempt per item
 	const debugPickit = false
 
-	// If we're already picking items, skip it
-	if ctx.CurrentGame.IsPickingItems {
+	// If we're already picking items, skip it (read under mutex to avoid a data race).
+	if ctx.IsPickingItemsSafe() {
 		return nil
 	}
 
@@ -146,7 +146,9 @@ outer:
 				continue
 			}
 
-			ctx.Logger.Warn("Inventory is full and NO Town Portals found. Skipping return to town and continuing current run (no more item pickups this cycle).")
+			ctx.Logger.Warn("Inventory is full and NO Town Portals found. Skipping further item pickups this cycle.",
+				slog.Int("skippedItems", len(itemsToPickup)),
+			)
 			return nil
 		}
 
@@ -344,6 +346,8 @@ outer:
 					)
 					break
 				}
+				// Brief backoff to avoid a tight retry loop while monsters are still active.
+				time.Sleep(150 * time.Millisecond)
 				continue
 			}
 
@@ -409,7 +413,9 @@ outer:
 		}
 
 		// If all attempts failed, blacklist *this specific ground instance* (UnitID), not the whole base item ID.
-		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
+		// This covers all exit paths: max attempts exhausted, wall-clock timeout,
+		// persistent combat interference, movement errors, and inventory-full after town.
+		if lastError != nil {
 			ctx.CurrentGame.BlacklistedItems[itemToPickup.UnitID] = struct{}{}
 
 			// Screenshot with show items on

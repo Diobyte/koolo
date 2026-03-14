@@ -23,14 +23,13 @@ func shouldMatchRulesOnly(i data.Item) bool {
 		// If the item does not need to be identified (QualitySuperior or lower),
 		// check whether it actually upgrades the equipment.
 		if i.Quality <= item.QualitySuperior {
-			if playerRule.Tier() > 0.0 {
-				if IsBetterThanEquipped(i, false, PlayerScore) {
-					return true
-				}
-			} else if mercRule.MercTier() > 0.0 {
-				if IsBetterThanEquipped(i, true, MercScore) {
-					return true
-				}
+			// Check player tier independently.
+			if playerRule.Tier() > 0.0 && IsBetterThanEquipped(i, false, PlayerScore) {
+				return true
+			}
+			// Check merc tier independently so merc-only upgrades are not missed.
+			if mercRule.MercTier() > 0.0 && IsBetterThanEquipped(i, true, MercScore) {
+				return true
 			}
 		} else {
 			// QualityMagic or higher: pick up for later identification.

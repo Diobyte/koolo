@@ -32,8 +32,8 @@
         }
 
         /* Compact table + pickit rule clamp */
-        .container table { table-layout: fixed; width: 100%; }
-        .container thead th { position: sticky; top: 0; background: rgba(31,41,55,1); z-index: 2; }
+        .container table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        .container thead th { position: sticky; top: 0; background: rgb(31,41,55); z-index: 2; }
 
         /* Column widths for balance (tweak if needed) */
         .container thead th:nth-child(1), .container tbody td:nth-child(1){ width: 9.5rem; } /* Time */
@@ -99,7 +99,7 @@
         </div>
     </form>
 
-    <div class="bg-gray-800/40 border border-gray-700 rounded-lg p-2 overflow-hidden">
+    <div class="bg-gray-800/40 border border-gray-700 rounded-lg p-2">
         <table class="min-w-full divide-y divide-gray-700">
             <thead>
             <tr class="bg-gray-800">

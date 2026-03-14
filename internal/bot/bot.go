@@ -442,6 +442,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						return err
 					}
 					firstRun = false
+
+					// Dump armory data after stashing so the armory page reflects current inventory
+					if dumpErr := dumpArmoryData(b.ctx.Name, b.ctx.Data, b.ctx.GameReader.LastGameName()); dumpErr != nil {
+						b.ctx.Logger.Debug("Failed to dump armory data after PreRun", slog.Any("error", dumpErr))
+					}
 				}
 
 				// Update activity before the main run logic is executed.

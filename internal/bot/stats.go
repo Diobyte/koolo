@@ -81,6 +81,12 @@ func (h *StatsHandler) Handle(_ context.Context, e event.Event) error {
 	case event.ItemStashedEvent:
 		h.stats.Drops = append(h.stats.Drops, evt.Item)
 
+	case event.ItemBlackListedEvent:
+		h.stats.BlacklistedItems++
+
+	case event.ItemIdentifiedEvent:
+		h.stats.IdentifiedItems++
+
 	case event.UsedPotionEvent:
 		if len(h.stats.Games) > 0 && len(h.stats.Games[len(h.stats.Games)-1].Runs) > 0 {
 			lastRun := &h.stats.Games[len(h.stats.Games)-1].Runs[len(h.stats.Games[len(h.stats.Games)-1].Runs)-1]
@@ -100,6 +106,8 @@ type Stats struct {
 	SupervisorStatus    SupervisorStatus
 	Details             string
 	Drops               []data.Drop
+	BlacklistedItems    int
+	IdentifiedItems     int
 	Games               []GameStats
 	IsCompanionFollower bool
 	// UI contains lightweight live character info for the dashboard

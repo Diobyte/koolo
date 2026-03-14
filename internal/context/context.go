@@ -220,6 +220,15 @@ func (ctx *Context) SetPickingItems(value bool) {
 	ctx.CurrentGame.mutex.Unlock()
 }
 
+// IsPickingItemsSafe reads IsPickingItems under the mutex to avoid a data race
+// with SetPickingItems, which writes under the same lock.
+func (ctx *Context) IsPickingItemsSafe() bool {
+	ctx.CurrentGame.mutex.Lock()
+	v := ctx.CurrentGame.IsPickingItems
+	ctx.CurrentGame.mutex.Unlock()
+	return v
+}
+
 func (s *Status) PauseIfNotPriority() {
 	// This prevents bot from trying to move when loading screen is shown.
 	if s.Data.OpenMenus.LoadingScreen {

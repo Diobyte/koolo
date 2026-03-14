@@ -2,6 +2,7 @@ package pickit
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -189,9 +190,9 @@ func (b *NIPBuilder) ParseNIP(nipLine string) (*PickitRule, error) {
 
 		// Check if it's a scored rule
 		if strings.Contains(rightSection, "(") && strings.Contains(rightSection, "*") {
-			// Scored rule
+			// Scored rule: ([stat1]*weight1 + [stat2]*weight2 + ...) >= threshold
 			rule.IsScored = true
-			// TODO: Parse scored conditions
+			rule.ScoreWeights, rule.ScoreThreshold = parseScoredSection(rightSection)
 		} else {
 			// Regular stat conditions
 			rightConditions, err := b.parseConditions(rightSection)
@@ -362,6 +363,62 @@ func (b *NIPBuilder) isValidProperty(property string) bool {
 	// Check if it's a stat
 	statType := GetStatTypeByID(property)
 	return statType != nil
+}
+
+// parseScoredSection parses a scored rule section like:
+//
+//	([stat1]*weight1 + [stat2]*weight2) >= threshold
+//
+// It returns the weight map and threshold. On any parse failure the returned
+// map will be nil and threshold 0, leaving the rule flagged as IsScored for
+// later manual inspection without crashing.
+func parseScoredSection(section string) (map[string]float64, float64) {
+	weights := make(map[string]float64)
+	var threshold float64
+
+	// Split on ">=" or ">" to separate the formula from the threshold.
+	var formulaPart, thresholdPart string
+	if idx := strings.Index(section, ">="); idx != -1 {
+		formulaPart = section[:idx]
+		thresholdPart = strings.TrimSpace(section[idx+2:])
+	} else if idx := strings.Index(section, ">"); idx != -1 {
+		formulaPart = section[:idx]
+		thresholdPart = strings.TrimSpace(section[idx+1:])
+	} else {
+		return nil, 0
+	}
+
+	if v, err := strconv.ParseFloat(thresholdPart, 64); err == nil {
+		threshold = v
+	}
+
+	// Strip outer parentheses.
+	formulaPart = strings.TrimSpace(formulaPart)
+	formulaPart = strings.Trim(formulaPart, "()")
+
+	// Split by "+" to get individual terms like "[stat]*weight".
+	terms := strings.Split(formulaPart, "+")
+	for _, term := range terms {
+		term = strings.TrimSpace(term)
+		if term == "" {
+			continue
+		}
+		// Each term looks like "[property]*weight".
+		parts := strings.SplitN(term, "*", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		prop := strings.TrimSpace(parts[0])
+		prop = strings.Trim(prop, "[]")
+
+		w, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if err != nil {
+			continue
+		}
+		weights[prop] = w
+	}
+
+	return weights, threshold
 }
 
 // generateRuleID generates a unique rule ID

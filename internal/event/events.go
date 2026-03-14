@@ -99,6 +99,21 @@ func ItemBlackListed(be BaseEvent, drop data.Drop) ItemBlackListedEvent {
 	}
 }
 
+// ItemIdentifiedEvent is emitted after an item is identified, providing
+// post-identification details for logging, Discord notifications, and the
+// dashboard.
+type ItemIdentifiedEvent struct {
+	BaseEvent
+	Item data.Drop
+}
+
+func ItemIdentified(be BaseEvent, drop data.Drop) ItemIdentifiedEvent {
+	return ItemIdentifiedEvent{
+		BaseEvent: be,
+		Item:      drop,
+	}
+}
+
 func RunStarted(be BaseEvent, runName string) RunStartedEvent {
 	return RunStartedEvent{
 		BaseEvent: be,

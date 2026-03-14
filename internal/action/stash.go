@@ -616,22 +616,22 @@ func shouldNotifyAboutStashing(i data.Item) bool {
 		return false
 	}
 
-	ctx.Logger.Debug(fmt.Sprintf("Checking if we should notify about stashing %s %v", i.Name, i.Desc()))
 	// Don't notify about gems
 	if strings.Contains(i.Desc().Type, "gem") {
 		return false
 	}
 
-	// Skip low runes (below lem)
-	lowRunes := []string{"elrune", "eldrune", "tirrune", "nefrune", "ethrune", "ithrune", "talrune", "ralrune", "ortrune", "thulrune", "amnrune", "solrune", "shaelrune", "dolrune", "helrune", "iorune", "lumrune", "korune", "falrune"}
+	// Skip notifications for low runes that are not commonly used in recipes.
+	// The runes exempted from this skip (tir, tal, ral, ort, thul, amn, sol, lum, nef)
+	// are kept because they are frequently used in popular runeword recipes.
 	if i.Desc().Type == item.TypeRune {
-		itemName := strings.ToLower(string(i.Name))
-		for _, runeName := range lowRunes {
-			if itemName == runeName {
-				if !(i.Name == "tirrune" || i.Name == "talrune" || i.Name == "ralrune" || i.Name == "ortrune" || i.Name == "thulrune" || i.Name == "amnrune" || i.Name == "solrune" || i.Name == "lumrune" || i.Name == "nefrune") { // Exclude specific runes from low rune skip logic if they are part of a recipe you want to keep
-					return false
-				}
-			}
+		silentRunes := map[string]struct{}{
+			"elrune": {}, "eldrune": {}, "ethrune": {}, "ithrune": {},
+			"shaelrune": {}, "dolrune": {}, "helrune": {}, "iorune": {},
+			"korune": {}, "falrune": {},
+		}
+		if _, skip := silentRunes[strings.ToLower(string(i.Name))]; skip {
+			return false
 		}
 	}
 

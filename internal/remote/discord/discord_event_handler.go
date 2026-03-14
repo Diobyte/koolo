@@ -80,6 +80,9 @@ func (b *Bot) Handle(ctx context.Context, e event.Event) error {
 		}
 		message := fmt.Sprintf("**[%s]** %s", e.Supervisor(), e.Message())
 		return b.sendItemScreenshot(ctx, message, buf.Bytes())
+	case event.ItemIdentifiedEvent:
+		message := fmt.Sprintf("**[%s]** %s", evt.Supervisor(), evt.Message())
+		return b.sendEventMessage(ctx, message)
 	default:
 		break
 	}
