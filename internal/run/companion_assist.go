@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
-	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
@@ -46,6 +45,11 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 	ca.ctx.SetLastAction("CompanionAssist")
 
 	leaderName := ca.ctx.CharacterCfg.Companion.LeaderName
+	if leaderName == "" {
+		// AssistLeader requires a specific leader name to follow via roster
+		ca.ctx.Logger.Warn("Companion assist: leaderName is empty, cannot follow unknown leader")
+		return nil
+	}
 
 	ca.ctx.Logger.Info("Companion assist: following leader",
 		slog.String("leader", leaderName))
@@ -55,16 +59,18 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 		combatRadius   = 15 // Kill monsters within this radius of player
 		tickInterval   = 500 * time.Millisecond
 		maxIdleTime    = 5 * time.Minute // Stop if leader not found for this long
-		useTPDistance  = 40              // If leader is very far, try using their TP
 	)
 
 	lastLeaderSeen := time.Now()
-	var lastLeaderArea area.ID
 
 	for {
-		ca.ctx.RefreshGameData()
+		// Check if the run context has been cancelled (game exit, chicken, death, timeout)
+		if !ca.ctx.Manager.InGame() {
+			ca.ctx.Logger.Debug("Companion assist: no longer in game, ending run")
+			return nil
+		}
 
-		// Find leader in roster
+		// Find leader in roster (game data is refreshed by background goroutine)
 		leader, found := ca.ctx.Data.Roster.FindByName(leaderName)
 		if !found {
 			if time.Since(lastLeaderSeen) > maxIdleTime {
@@ -72,6 +78,7 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 					slog.String("leader", leaderName))
 				return nil
 			}
+			ca.ctx.SetLastAction("CompanionAssist:WaitingForLeader")
 			utils.Sleep(int(tickInterval.Milliseconds()))
 			continue
 		}
@@ -79,6 +86,7 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 
 		// If leader is in town and we're not, go to town
 		if leader.Area.IsTown() && !ca.ctx.Data.PlayerUnit.Area.IsTown() {
+			ca.ctx.SetLastAction("CompanionAssist:ReturningToTown")
 			ca.ctx.Logger.Debug("Companion assist: leader is in town, returning to town")
 			if err := action.ReturnTown(); err != nil {
 				ca.ctx.Logger.Warn("Companion assist: failed to return to town", slog.Any("error", err))
@@ -89,37 +97,40 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 
 		// If we're in town and leader is in town, wait
 		if leader.Area.IsTown() && ca.ctx.Data.PlayerUnit.Area.IsTown() {
+			ca.ctx.SetLastAction("CompanionAssist:IdleInTown")
 			utils.Sleep(int(tickInterval.Milliseconds()))
 			continue
 		}
 
 		// If leader entered a different area, try to follow via portal or area transition
 		if leader.Area != ca.ctx.Data.PlayerUnit.Area {
-			if err := ca.followLeaderToArea(leader, lastLeaderArea); err != nil {
+			ca.ctx.SetLastAction("CompanionAssist:FollowingToArea")
+			if err := ca.followLeaderToArea(leader); err != nil {
 				ca.ctx.Logger.Debug("Companion assist: waiting for leader area transition",
 					slog.String("leaderArea", leader.Area.Area().Name),
 					slog.String("myArea", ca.ctx.Data.PlayerUnit.Area.Area().Name))
 				utils.Sleep(int(tickInterval.Milliseconds()))
 				continue
 			}
-			lastLeaderArea = leader.Area
 			continue
 		}
-		lastLeaderArea = leader.Area
 
 		// Same area as leader — clear monsters and follow
 		distToLeader := ca.ctx.PathFinder.DistanceFromMe(leader.Position)
 
 		// Kill nearby monsters first
+		ca.ctx.SetLastAction("CompanionAssist:Combat")
 		if err := action.ClearAreaAroundPlayer(combatRadius, data.MonsterAnyFilter()); err != nil {
 			ca.ctx.Logger.Debug("Companion assist: clear area error", slog.Any("error", err))
 		}
 
 		// Pick up items
+		ca.ctx.SetLastAction("CompanionAssist:Pickup")
 		action.ItemPickup(combatRadius)
 
 		// Move toward leader if too far
 		if distToLeader > followDistance {
+			ca.ctx.SetLastAction("CompanionAssist:MovingToLeader")
 			ca.ctx.Logger.Debug("Companion assist: moving toward leader",
 				slog.Int("distance", distToLeader),
 				slog.Any("leaderPos", leader.Position))
@@ -133,7 +144,7 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 }
 
 // followLeaderToArea attempts to reach the leader's area via town portals or area transitions.
-func (ca CompanionAssist) followLeaderToArea(leader data.RosterMember, lastLeaderArea area.ID) error {
+func (ca CompanionAssist) followLeaderToArea(leader data.RosterMember) error {
 	// If we're in town and leader is not, look for a TP to take
 	if ca.ctx.Data.PlayerUnit.Area.IsTown() && !leader.Area.IsTown() {
 		ca.ctx.Logger.Debug("Companion assist: leader left town, looking for town portal",
