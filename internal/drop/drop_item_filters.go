@@ -123,20 +123,20 @@ var gemNames = map[string]struct{}{
 }
 
 var keyTokenNames = map[string]struct{}{
-	"keyofterror":       {},
-	"keyofhate":         {},
-	"keyofdestruction":  {},
-	"tokenofabsolution": {},
-	"diabloshorn":       {},
-	"baalseye":          {},
-	"mephistosbrain":    {},
-}
-
-var materialNames = map[string]struct{}{
+	"keyofterror":                   {},
+	"keyofhate":                     {},
+	"keyofdestruction":              {},
+	"tokenofabsolution":             {},
+	"diabloshorn":                   {},
+	"baalseye":                      {},
+	"mephistosbrain":                {},
 	"twistedessenceofsuffering":     {},
 	"chargedessenceofhatred":        {},
 	"burningessenceofterror":        {},
 	"festeringessenceofdestruction": {},
+}
+
+var materialNames = map[string]struct{}{
 	"westernworldstoneshard":        {},
 	"easternworldstoneshard":        {},
 	"southernworldstoneshard":       {},
@@ -306,7 +306,7 @@ func (s *ContextFilters) HasDropQuotaLimits() bool {
 }
 
 // AreDropQuotasSatisfied reports whether all finite quotas are satisfied (no more items to Dropper).
-// Returns false if any item has quantity=0 (unlimited), since those can never be fully satisfied.
+// Unlimited items (quantity=0) are skipped so mixed finite+unlimited configurations work correctly.
 func (s *ContextFilters) AreDropQuotasSatisfied() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -323,8 +323,7 @@ func (s *ContextFilters) AreDropQuotasSatisfied() bool {
 	for _, list := range allLists {
 		for _, item := range list {
 			if item.Quantity <= 0 {
-				// Unlimited item selected — quotas can never be considered satisfied
-				return false
+				continue
 			}
 			hasFinite = true
 			if s.Droppered[strings.ToLower(item.Name)] < item.Quantity {

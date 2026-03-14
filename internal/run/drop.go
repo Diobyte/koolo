@@ -374,7 +374,7 @@ func (d Drop) dropStashItems(ctx *context.Status) (int, error) {
 					}
 				}
 
-				if _, ok := d.moveStashItemToInventory(ctx, it); ok {
+				if _, ok := d.moveStashItemToInventory(ctx, it, quotaTracker); ok {
 					movedItems = true
 				} else {
 					attempts[it.UnitID]++
@@ -421,7 +421,7 @@ func (d Drop) dropStashItems(ctx *context.Status) (int, error) {
 	return totalItemsDroppered, fmt.Errorf("Drop: reached max stash passes without emptying items")
 }
 
-func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.Item, bool) {
+func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item, quotas *DropQuotaTracker) (data.Item, bool) {
 	updated := it
 	for _, candidate := range ctx.Data.Inventory.AllItems {
 		if candidate.UnitID == it.UnitID {
@@ -437,7 +437,7 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 		updated.Location.LocationType == item.LocationRunesTab
 
 	if isDLCTab {
-		return d.moveDLCStackToInventory(ctx, updated)
+		return d.moveDLCStackToInventory(ctx, updated, quotas)
 	}
 
 	screenPos := ui.GetScreenCoordsForItem(updated)
@@ -476,7 +476,7 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 // moveDLCStackToInventory moves a full DLC tab stack to inventory by issuing
 // one ctrl+click per unit (the game only moves 1 at a time from these tabs).
 // When inventory fills up mid-stack it flushes to the ground and continues.
-func (d Drop) moveDLCStackToInventory(ctx *context.Status, it data.Item) (data.Item, bool) {
+func (d Drop) moveDLCStackToInventory(ctx *context.Status, it data.Item, quotas *DropQuotaTracker) (data.Item, bool) {
 	qty := it.StackedQuantity
 	if qty <= 0 {
 		qty = 1
@@ -507,7 +507,7 @@ func (d Drop) moveDLCStackToInventory(ctx *context.Status, it data.Item) (data.I
 		if _, hasSpace := findInventorySpace(ctx, it); !hasSpace {
 			ctx.Logger.Debug("Drop: inventory full mid-stack, flushing to ground", "item", it.Name, "movedSoFar", i)
 			dlcTab := dlcTabForLocation(it)
-			if dropped, err := d.dropInventoryDropperables(ctx, dlcTab, nil); err != nil || dropped == 0 {
+			if dropped, err := d.dropInventoryDropperables(ctx, dlcTab, quotas); err != nil || dropped == 0 {
 				ctx.Logger.Warn("Drop: failed to flush inventory mid-stack", "item", it.Name, "error", err)
 				break
 			}
