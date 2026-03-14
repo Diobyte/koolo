@@ -72,9 +72,37 @@ const (
 	UberIzualRun             Run = "uber_izual"
 	UberDurielRun            Run = "uber_duriel"
 	LilithRun                Run = "lilith"
+	CompanionAssistRun       Run = "companion_assist"
 	// Development / Utility runs
 	DevelopmentRun Run = "development"
 )
+
+// ShortBonusRuns lists quick farming runs suitable for bonus runs while waiting for party.
+var ShortBonusRuns = []Run{
+	CountessRun,
+	AndarielRun,
+	SummonerRun,
+	MephistoRun,
+	TravincalRun,
+	EldritchRun,
+	PindleskinRun,
+	NihlathakRun,
+	AncientTunnelsRun,
+	MausoleumRun,
+	PitRun,
+	StonyTombRun,
+	ArachnidLairRun,
+	TristramRun,
+	BoneAshRun,
+	CaveRun,
+	SpiderCavernRun,
+	DrifterCavernRun,
+	ThreshsocketRun,
+	EnduguRun,
+	FireEyeRun,
+	RakanishuRun,
+	LowerKurastChestRun,
+}
 
 type LevelingRunInfo struct {
 	Run         Run

@@ -1,6 +1,8 @@
 package run
 
 import (
+	"fmt"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -163,10 +165,11 @@ func (a Andariel) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	err = action.MoveToArea(area.CatacombsLevel3)
-	action.MoveToArea(area.CatacombsLevel4)
-	if err != nil {
-		return err
+	if err = action.MoveToArea(area.CatacombsLevel3); err != nil {
+		return fmt.Errorf("moving to Catacombs 3: %w", err)
+	}
+	if err = action.MoveToArea(area.CatacombsLevel4); err != nil {
+		return fmt.Errorf("moving to Catacombs 4: %w", err)
 	}
 
 	// Buy and consume antidotes right after entering Catacombs 4.

@@ -18,8 +18,6 @@ import (
 
 const (
 	maxInteractionAttempts = 5
-	portalSyncDelay        = 200
-	maxPortalSyncAttempts  = 15
 )
 
 // InteractObject routes to packet or mouse implementation based on config

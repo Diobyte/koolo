@@ -131,9 +131,11 @@ func (a Ancients) killAncients() error {
 	for {
 		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())
 		if len(ancients) == 0 {
+			a.ctx.Logger.Info("All Ancients defeated")
 			break
 		}
 
+		a.ctx.Logger.Debug("Ancients remaining", "count", len(ancients))
 		a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			for _, m := range d.Monsters.Enemies(data.MonsterEliteFilter()) {
 				return m.UnitID, true

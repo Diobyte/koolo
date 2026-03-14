@@ -97,3 +97,15 @@ func (s *HttpServer) armoryAllAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(allArmories)
 }
+
+// armoryAllStoredAPI returns armory data for every character with stored data on disk
+func (s *HttpServer) armoryAllStoredAPI(w http.ResponseWriter, r *http.Request) {
+	allArmories, err := bot.LoadAllStoredArmoryData()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(allArmories)
+}

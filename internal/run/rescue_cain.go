@@ -3,6 +3,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -80,6 +81,11 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 		}
 	}
 
+	rc.ctx.Logger.Info("Quest state evaluated",
+		slog.Bool("needToGoToTristram", needToGoToTristram),
+		slog.Bool("infusInInventory", infusInInventory),
+	)
+
 	if !infusInInventory && !needToGoToTristram {
 		err = rc.gatherInfussScroll()
 		if err != nil {
@@ -89,6 +95,7 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 	}
 
 	if infusInInventory {
+		rc.ctx.Logger.Info("Scroll in inventory, giving it to Akara for decryption")
 		err = action.InteractNPC(npc.Akara)
 		if err != nil {
 			return err
@@ -105,15 +112,28 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 
 	// Find the Cairn Stone Alpha
 	cairnStone := data.Object{}
+	foundCairn := false
 	for _, o := range rc.ctx.Data.Objects {
 		if o.Name == object.CairnStoneAlpha {
 			cairnStone = o
+			foundCairn = true
 		}
 	}
+	if !foundCairn {
+		rc.ctx.Logger.Error("Cairn Stone Alpha not found in Stony Field")
+		return errors.New("cairn stone alpha not found")
+	}
+
+	rc.ctx.Logger.Debug("Found Cairn Stone Alpha", slog.Any("position", cairnStone.Position))
 
 	// Move to the cairnStone
-	action.MoveToCoords(cairnStone.Position)
-	action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+	if err = action.MoveToCoords(cairnStone.Position); err != nil {
+		rc.ctx.Logger.Error("Failed to move to Cairn Stone Alpha", slog.String("error", err.Error()))
+		return fmt.Errorf("moving to cairn stone: %w", err)
+	}
+	if err = action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter()); err != nil {
+		rc.ctx.Logger.Warn("Failed to clear area around Cairn Stones", slog.String("error", err.Error()))
+	}
 
 	// Handle opening Tristram Portal, will be skipped if its already opened
 	if err = rc.openPortalIfNotOpened(); err != nil {
@@ -121,54 +141,69 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 	}
 
 	// Enter Tristram portal
-	// Find the portal object
-	tristPortal, _ := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	tristPortal, portalFound := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	if !portalFound {
+		rc.ctx.Logger.Error("Tristram portal not found after opening attempt")
+		return errors.New("tristram portal not found")
+	}
 
-	// Interact with the portal
+	rc.ctx.Logger.Info("Entering Tristram portal", slog.Any("position", tristPortal.Position))
 	if err = action.InteractObject(tristPortal, func() bool {
 		return rc.ctx.Data.PlayerUnit.Area == area.Tristram && rc.ctx.Data.AreaData.IsInside(rc.ctx.Data.PlayerUnit.Position)
 	}); err != nil {
-		return err
+		return fmt.Errorf("entering tristram portal: %w", err)
 	}
 
 	// Check if Cain is rescued
 	if o, found := rc.ctx.Data.Objects.FindOne(object.CainGibbet); found && o.Selectable {
+		rc.ctx.Logger.Info("Found Cain in gibbet, attempting rescue", slog.Any("position", o.Position))
 
-		// Move to cain
-		action.MoveToCoords(o.Position)
+		if err = action.MoveToCoords(o.Position); err != nil {
+			rc.ctx.Logger.Warn("Failed to move to Cain gibbet", slog.String("error", err.Error()))
+		}
 
-		action.InteractObject(o, func() bool {
+		if err = action.InteractObject(o, func() bool {
 			obj, _ := rc.ctx.Data.Objects.FindOne(object.CainGibbet)
-
 			return !obj.Selectable
-		})
+		}); err != nil {
+			rc.ctx.Logger.Warn("Failed to interact with Cain gibbet", slog.String("error", err.Error()))
+		}
+	} else if found && !o.Selectable {
+		rc.ctx.Logger.Info("Cain already rescued (gibbet not selectable)")
+	} else {
+		rc.ctx.Logger.Warn("Cain gibbet not found in Tristram")
 	}
 
-	action.ReturnTown()
+	if err = action.ReturnTown(); err != nil {
+		rc.ctx.Logger.Warn("Failed to return to town from Tristram", slog.String("error", err.Error()))
+	}
 
 	utils.Sleep(10000)
 
+	rc.ctx.Logger.Info("Talking to Deckard Cain to complete quest")
 	err = action.InteractNPC(npc.DeckardCain5)
 	if err != nil {
-		return err
+		rc.ctx.Logger.Warn("Failed to talk to Deckard Cain", slog.String("error", err.Error()))
 	}
 
 	step.CloseAllMenus()
 
+	rc.ctx.Logger.Info("Talking to Akara for quest reward")
 	err = action.InteractNPC(npc.Akara)
 	if err != nil {
-		return err
+		rc.ctx.Logger.Warn("Failed to talk to Akara for reward", slog.String("error", err.Error()))
 	}
 
 	step.CloseAllMenus()
 
+	rc.ctx.Logger.Info("Rescue Cain quest run completed")
 	return nil
 }
 
 func (rc RescueCain) gatherInfussScroll() error {
 	rc.ctx.CharacterCfg.Character.ClearPathDist = 20
 	if err := config.SaveSupervisorConfig(rc.ctx.CharacterCfg.ConfigFolderName, rc.ctx.CharacterCfg); err != nil {
-		rc.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
+		rc.ctx.Logger.Error("Failed to save character configuration", slog.String("error", err.Error()))
 	}
 
 	err := action.WayPoint(area.DarkWood)
@@ -178,7 +213,7 @@ func (rc RescueCain) gatherInfussScroll() error {
 
 	rc.ctx.CharacterCfg.Character.ClearPathDist = 30
 	if err := config.SaveSupervisorConfig(rc.ctx.CharacterCfg.ConfigFolderName, rc.ctx.CharacterCfg); err != nil {
-		rc.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
+		rc.ctx.Logger.Error("Failed to save character configuration", slog.String("error", err.Error()))
 	}
 
 	// Find the Inifuss Tree position.
@@ -320,13 +355,13 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 
 	// If the portal already exists, skip this
 	if _, found := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
+		rc.ctx.Logger.Debug("Tristram portal already open, skipping stone activation")
 		return nil
 	}
 
-	rc.ctx.Logger.Debug("Tristram portal not detected, trying to open it")
+	rc.ctx.Logger.Info("Tristram portal not detected, activating Cairn Stones")
 
-	for range 6 {
-		//stoneTries := 0
+	for attempt := range 6 {
 		activeStones := 0
 		for _, cainStone := range []object.Name{
 			object.CairnStoneAlpha,
@@ -335,15 +370,23 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 			object.CairnStoneLambda,
 			object.CairnStoneDelta,
 		} {
-			stone, _ := rc.ctx.Data.Objects.FindOne(cainStone)
+			stone, found := rc.ctx.Data.Objects.FindOne(cainStone)
+			if !found {
+				rc.ctx.Logger.Warn("Cairn Stone not found", slog.Any("stone", cainStone))
+				continue
+			}
 			if stone.Selectable {
 				rc.ctx.PathFinder.RandomMovement()
 				utils.Sleep(250)
-				action.InteractObject(stone, func() bool {
+				if err := action.InteractObject(stone, func() bool {
 					st, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 					return !st.Selectable
-				})
-
+				}); err != nil {
+					rc.ctx.Logger.Warn("Failed to activate Cairn Stone",
+						slog.Any("stone", cainStone),
+						slog.String("error", err.Error()),
+					)
+				}
 			} else {
 				utils.Sleep(200)
 				activeStones++
@@ -353,18 +396,23 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 				break
 			}
 		}
-
+		rc.ctx.Logger.Debug("Stone activation round finished",
+			slog.Int("attempt", attempt+1),
+			slog.Int("activeStones", activeStones),
+		)
 	}
 
-	// Wait upto 15 seconds for the portal to open, checking every second if its up
-	for range 15 {
-		// Wait a second
+	// Wait up to 15 seconds for the portal to open, checking every second
+	rc.ctx.Logger.Debug("Waiting for Tristram portal to appear")
+	for i := range 15 {
 		utils.Sleep(1000)
 
 		if _, portalFound := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal); portalFound {
+			rc.ctx.Logger.Info("Tristram portal appeared", slog.Int("waitSeconds", i+1))
 			return nil
 		}
 	}
 
+	rc.ctx.Logger.Error("Tristram portal did not appear after 15 seconds")
 	return errors.New("failed to open Tristram portal")
 }

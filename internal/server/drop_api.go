@@ -170,7 +170,7 @@ func (s *HttpServer) appendDropHistory(entry DropHistoryEntry) {
 	}
 }
 
-func (s *HttpServer) rememberDropRequest(supervisor, room, password, result string) {
+func (s *HttpServer) rememberDropRequest(supervisor, room, _, result string) {
 	card := s.getDropCardInfo(supervisor)
 	s.appendDropHistory(DropHistoryEntry{
 		Supervisor:     supervisor,

@@ -162,17 +162,6 @@ func (s SorceressLeveling) CheckKeyBindings() []skill.ID {
 	return missingKeybindings
 }
 
-// findDangerousMonsters identifies and returns a list of monsters that are too close to the player.
-func (s SorceressLeveling) findDangerousMonsters() []data.Monster {
-	dangerousMonsters := []data.Monster{}
-	for _, monster := range s.Data.Monsters {
-		if monster.Stats[stat.Life] > 0 && pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position) < SorceressLevelingDangerDistance {
-			dangerousMonsters = append(dangerousMonsters, monster)
-		}
-	}
-	return dangerousMonsters
-}
-
 func (s SorceressLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
@@ -581,7 +570,7 @@ func (s *SorceressLeveling) killMonsterByName(id npc.ID, monsterType data.Monste
 		if m, found := s.Data.Monsters.FindOne(id, monsterType); found {
 			// If the monster's life is 0 or less, it's dead, so break the loop
 			if m.Stats[stat.Life] <= 0 {
-				fmt.Printf("Monster %s (ID: %d) is dead. Breaking attack loop.\n", m.Name, m.UnitID)
+				s.Logger.Info(fmt.Sprintf("Monster %v (ID: %v) is dead. Breaking attack loop.", m.Name, m.UnitID))
 				break
 			}
 
@@ -594,7 +583,7 @@ func (s *SorceressLeveling) killMonsterByName(id npc.ID, monsterType data.Monste
 
 			if err != nil {
 				// Handle errors from KillMonsterSequence, e.g., monster vanished during attack
-				fmt.Printf("Error during KillMonsterSequence: %v. Breaking attack loop.\n", err)
+				s.Logger.Warn(fmt.Sprintf("Error during KillMonsterSequence: %v. Breaking attack loop.", err))
 				break
 			}
 
@@ -603,7 +592,7 @@ func (s *SorceressLeveling) killMonsterByName(id npc.ID, monsterType data.Monste
 
 		} else {
 			// Monster not found, it might have died or moved out of detection range
-			fmt.Printf("Monster (ID: %d, Type: %s) not found. Assuming it's dead or vanished. Breaking loop.\n", id, monsterType)
+			s.Logger.Info(fmt.Sprintf("Monster (ID: %v, Type: %v) not found. Assuming it's dead or vanished. Breaking loop.", id, monsterType))
 			break
 		}
 	}

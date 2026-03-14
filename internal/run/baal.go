@@ -3,6 +3,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -71,36 +72,39 @@ func (s *Baal) Run(parameters *RunParameters) error {
 
 	err := action.WayPoint(area.TheWorldStoneKeepLevel2)
 	if err != nil {
-		return err
+		return fmt.Errorf("WP to WSK2: %w", err)
 	}
 
 	if s.ctx.CharacterCfg.Game.Baal.ClearFloors || s.clearMonsterFilter != nil {
+		s.ctx.Logger.Info("Clearing WSK2")
 		action.ClearCurrentLevel(false, filter)
 	}
 
 	err = action.MoveToArea(area.TheWorldStoneKeepLevel3)
 	if err != nil {
-		return err
+		return fmt.Errorf("moving to WSK3: %w", err)
 	}
 
 	if s.ctx.CharacterCfg.Game.Baal.ClearFloors || s.clearMonsterFilter != nil {
+		s.ctx.Logger.Info("Clearing WSK3")
 		action.ClearCurrentLevel(false, filter)
 	}
 
 	err = action.MoveToArea(area.ThroneOfDestruction)
 	if err != nil {
-		return err
+		return fmt.Errorf("moving to Throne of Destruction: %w", err)
 	}
 	err = action.MoveToCoords(throneMainPos)
 	if err != nil {
-		return err
+		return fmt.Errorf("moving to throne main position: %w", err)
 	}
 	if s.checkForSoulsOrDolls() {
+		s.ctx.Logger.Warn("Souls or dolls detected near throne, aborting run")
 		return errors.New("souls or dolls detected, skipping")
 	}
 
 	// Let's move to a safe area and open the portal in companion mode
-	if s.ctx.CharacterCfg.Companion.Leader {
+	if s.ctx.CharacterCfg.Companion.OpenTPForPlayer {
 		action.MoveToCoords(data.Position{X: 15116, Y: 5071})
 		action.OpenTPIfLeader()
 	}
@@ -162,6 +166,7 @@ func (s *Baal) Run(parameters *RunParameters) error {
 	}
 
 	if !s.hasBaalLeftThrone() {
+		s.ctx.Logger.Error("Baal waves timed out after 7 minutes, portal never appeared")
 		return errors.New("baal waves timeout - portal never appeared")
 	}
 
@@ -242,7 +247,11 @@ func (s Baal) checkForSoulsOrDolls() bool {
 	}
 
 	for _, id := range npcIds {
-		if _, found := s.ctx.Data.Monsters.FindOne(id, data.MonsterTypeNone); found {
+		if m, found := s.ctx.Data.Monsters.FindOne(id, data.MonsterTypeNone); found {
+			s.ctx.Logger.Info("Dangerous monster detected near throne",
+				slog.Any("monsterID", id),
+				slog.Any("position", m.Position),
+			)
 			return true
 		}
 	}

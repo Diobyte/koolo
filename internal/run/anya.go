@@ -124,7 +124,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 		action.Repair()
 		action.VendorRefill(action.VendorRefillOpts{SellJunk: true, BuyConsumables: true})
 
-		for range 5 {
+		for attempt := range 5 {
 			err = action.InteractNPC(npc.Malah)
 			if err != nil {
 				return err
@@ -132,6 +132,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 			a.ctx.RefreshGameData()
 			utils.Sleep(200)
 			if a.hasScroll() || a.hasPotion() {
+				a.ctx.Logger.Info("Got quest item from Malah", "attempt", attempt+1)
 				break
 			}
 		}
@@ -161,7 +162,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 	}
 
 	//Get scroll
-	for range 10 {
+	for attempt := range 10 {
 		err = action.InteractNPC(npc.Malah)
 		if err != nil {
 			return err
@@ -169,6 +170,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 		a.ctx.RefreshGameData()
 		utils.Sleep(200)
 		if a.hasScroll() {
+			a.ctx.Logger.Info("Got Scroll of Resistance from Malah", "attempt", attempt+1)
 			break
 		}
 	}

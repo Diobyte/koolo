@@ -25,7 +25,7 @@ type WhirlwindBarb struct {
 	horkedCorpses    map[data.UnitID]bool
 }
 
-func (s WhirlwindBarb) ShouldIgnoreMonster(m data.Monster) bool {
+func (s *WhirlwindBarb) ShouldIgnoreMonster(m data.Monster) bool {
 	return false
 }
 

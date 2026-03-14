@@ -14,6 +14,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -175,7 +176,7 @@ func enterTownPortal(ctx *context.Status, portal data.Object) error {
 	return fmt.Errorf("timeout waiting for area change to town after %d attempts", maxAttempts)
 }
 
-func returnToUberTristram(ctx *context.Status, findPortalFunc func() (data.Object, error), enterPortalFunc func(data.Object) error) error {
+func returnToUberTristram(_ *context.Status, findPortalFunc func() (data.Object, error), enterPortalFunc func(data.Object) error) error {
 	portal, err := findPortalFunc()
 	if err != nil {
 		return fmt.Errorf("failed to find Uber Tristram portal: %w", err)
@@ -480,7 +481,7 @@ func hasMonstersNearPortal(ctx *context.Status, portalPos data.Position) bool {
 		if m.Stats[stat.Life] <= 0 {
 			continue
 		}
-		distance := ctx.PathFinder.DistanceFromMe(m.Position)
+		distance := pather.DistanceFromPoint(portalPos, m.Position)
 		if distance <= checkRadius {
 			return true
 		}

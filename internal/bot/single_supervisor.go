@@ -36,6 +36,7 @@ const (
 
 type SinglePlayerSupervisor struct {
 	*baseSupervisor
+	lastPlayedGame string // tracks the last game we SUCCESSFULLY played in (not just attempted to join)
 }
 
 func (s *SinglePlayerSupervisor) GetData() *game.Data {
@@ -243,8 +244,13 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		if firstRun {
-			if err = s.waitUntilCharacterSelectionScreen(); err != nil {
-				return fmt.Errorf("error waiting for character selection screen: %w", err)
+			// Companions may end up in lobby after a failed game join — skip waiting
+			// for character selection screen if we're already in lobby, HandleMenuFlow
+			// will handle it via HandleCompanionMenuFlow.
+			if !(s.bot.ctx.CharacterCfg.Companion.Enabled && !s.bot.ctx.CharacterCfg.Companion.Leader && s.bot.ctx.GameReader.IsInLobby()) {
+				if err = s.waitUntilCharacterSelectionScreen(); err != nil {
+					return fmt.Errorf("error waiting for character selection screen: %w", err)
+				}
 			}
 		}
 
@@ -313,11 +319,52 @@ func (s *SinglePlayerSupervisor) Start() error {
 			rand.Shuffle(len(runs), func(i, j int) { runs[i], runs[j] = runs[j], runs[i] })
 		}
 
+		// Check if this is a rejoin (same game) — skip already completed runs
+		currentGameID := s.bot.ctx.GameReader.LastGameName()
+		if s.bot.ctx.CompletedGameID == currentGameID {
+			completed := s.bot.ctx.GetCompletedRuns()
+			if len(completed) > 0 {
+				completedSet := make(map[string]bool, len(completed))
+				for _, name := range completed {
+					completedSet[name] = true
+				}
+				var filtered []run.Run
+				for _, r := range runs {
+					if !completedSet[r.Name()] {
+						filtered = append(filtered, r)
+					}
+				}
+				s.bot.ctx.Logger.Info(fmt.Sprintf("Rejoined game %s, skipping %d already completed runs, %d remaining", currentGameID, len(completed), len(filtered)))
+				runs = filtered
+				if len(runs) == 0 {
+					s.bot.ctx.Logger.Info("All runs already completed in this game, exiting")
+					s.bot.ctx.Manager.ExitGame()
+					utils.Sleep(3000)
+					timeSpentNotInGameStart = time.Now()
+					continue
+				}
+			}
+		} else {
+			s.bot.ctx.ResetCompletedRuns(currentGameID)
+		}
+
 		event.Send(event.GameCreated(event.Text(s.name, "New game created"), s.bot.ctx.GameReader.LastGameName(), s.bot.ctx.GameReader.LastGamePass()))
 		s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 		s.bot.ctx.LastBuffAt = time.Time{}
 		s.logGameStart(runs)
 		s.bot.ctx.RefreshGameData()
+
+		// Register in party registry if WaitForParty is enabled
+		if s.bot.ctx.CharacterCfg.Companion.Enabled && s.bot.ctx.CharacterCfg.Companion.WaitForParty {
+			gameID := s.bot.ctx.GameReader.LastGameName()
+			GetPartyRegistry().RegisterMember(s.name, gameID)
+			// Store this member's configured runs so bonus run logic knows what's taken
+			runNames := make([]string, len(s.bot.ctx.CharacterCfg.Game.Runs))
+			for i, r := range s.bot.ctx.CharacterCfg.Game.Runs {
+				runNames[i] = string(r)
+			}
+			GetPartyRegistry().SetMemberRuns(s.name, runNames)
+		}
 
 		// Dump armory data on game start
 		if err := s.dumpArmory(); err != nil {
@@ -337,6 +384,14 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		if s.bot.ctx.CharacterCfg.Companion.Enabled && s.bot.ctx.CharacterCfg.Companion.Leader {
 			event.Send(event.RequestCompanionJoinGame(event.Text(s.name, "New Game Started "+s.bot.ctx.Data.Game.LastGameName), s.bot.ctx.CharacterCfg.CharacterName, s.bot.ctx.Data.Game.LastGameName, s.bot.ctx.Data.Game.LastGamePassword))
+			// Store game info in party registry so companions can rejoin after crash/chicken
+			if s.bot.ctx.CharacterCfg.Companion.WaitForParty {
+				GetPartyRegistry().SetActiveGame(
+					s.bot.ctx.Data.Game.LastGameName,
+					s.bot.ctx.Data.Game.LastGamePassword,
+					s.bot.ctx.CharacterCfg.CharacterName,
+				)
+			}
 		}
 
 		if firstRun {
@@ -421,6 +476,14 @@ func (s *SinglePlayerSupervisor) Start() error {
 					}
 
 					if !s.bot.ctx.GameReader.InGame() || s.bot.ctx.Data.PlayerUnit.ID == 0 {
+						continue
+					}
+
+					// Skip stuck detection while waiting for party members
+					if s.bot.ctx.WaitingForParty.Load() {
+						stuckSince = time.Time{}
+						droppedMouseItem = false
+						lastPosition = s.bot.ctx.Data.PlayerUnit.Position
 						continue
 					}
 
@@ -532,10 +595,35 @@ func (s *SinglePlayerSupervisor) Start() error {
 				timeSpentNotInGameStart = time.Now()
 				continue
 			}
-			if errors.Is(err, context.DeadlineExceeded) {
-				// We don't log the generic "Bot run finished with error" message if it was a planned timeout
+
+			// Party: on death with WaitForParty, stay in game to maintain player count
+			// for better XP/loot for remaining party members
+			partyWaitEnabled := s.bot.ctx.CharacterCfg.Companion.Enabled && s.bot.ctx.CharacterCfg.Companion.WaitForParty
+			isDeath := errors.Is(err, health.ErrDied)
+
+			if partyWaitEnabled && isDeath {
+				s.bot.ctx.Logger.Info("Party: died but staying in game to maintain player count for party members")
+				event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), event.FinishedDied))
+
+				// Wait for other party members to finish while idling in game
+				s.waitForPartyMembers(ctx)
+
+				s.bot.ctx.Logger.Info("Party: all members done after death idle, now exiting game")
 			} else {
-				s.bot.ctx.Logger.Info(fmt.Sprintf("Bot run finished with error: %s. Initiating game exit and cooldown.", err.Error()))
+				if errors.Is(err, context.DeadlineExceeded) {
+					// We don't log the generic "Bot run finished with error" message if it was a planned timeout
+				} else {
+					s.bot.ctx.Logger.Info(fmt.Sprintf("Bot run finished with error: %s. Initiating game exit and cooldown.", err.Error()))
+				}
+
+				// Party: mark done on non-death errors (chicken/timeout) so others don't wait forever
+				if partyWaitEnabled {
+					GetPartyRegistry().MarkDone(s.name)
+					// If leader errors out, clear active game so companions don't rejoin a dead game
+					if s.bot.ctx.CharacterCfg.Companion.Leader {
+						GetPartyRegistry().ClearActiveGame()
+					}
+				}
 			}
 
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
@@ -573,18 +661,21 @@ func (s *SinglePlayerSupervisor) Start() error {
 			s.bot.ctx.Data.AreaData = game.AreaData{}
 			timeSpentNotInGameStart = time.Now()
 
-			var gameFinishReason event.FinishReason
-			switch {
-			case errors.Is(err, health.ErrChicken):
-				gameFinishReason = event.FinishedChicken
-			case errors.Is(err, health.ErrMercChicken):
-				gameFinishReason = event.FinishedMercChicken
-			case errors.Is(err, health.ErrDied):
-				gameFinishReason = event.FinishedDied
-			default:
-				gameFinishReason = event.FinishedError
+			if !isDeath || !partyWaitEnabled {
+				// Only send GameFinished event if we didn't already send it above (death+party case)
+				var gameFinishReason event.FinishReason
+				switch {
+				case errors.Is(err, health.ErrChicken):
+					gameFinishReason = event.FinishedChicken
+				case errors.Is(err, health.ErrMercChicken):
+					gameFinishReason = event.FinishedMercChicken
+				case errors.Is(err, health.ErrDied):
+					gameFinishReason = event.FinishedDied
+				default:
+					gameFinishReason = event.FinishedError
+				}
+				event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
 			}
-			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
 
 			s.bot.ctx.Logger.Warn(
 				fmt.Sprintf("Game finished with errors, reason: %s. Game total time: %0.2fs", err.Error(), time.Since(gameStart).Seconds()),
@@ -601,7 +692,18 @@ func (s *SinglePlayerSupervisor) Start() error {
 			slog.String("supervisor", s.name),
 			slog.Uint64("mapSeed", uint64(s.bot.ctx.GameReader.MapSeed())),
 		)
+
+		// Track last successfully played game BEFORE waiting (GameReader may change during wait)
+		s.lastPlayedGame = s.bot.ctx.GameReader.LastGameName()
+
+		// Party wait: idle in game until all party members finish their runs
+		s.waitForPartyMembers(ctx)
+
 		if s.bot.ctx.CharacterCfg.Companion.Enabled && s.bot.ctx.CharacterCfg.Companion.Leader {
+			// Clear active game from registry so companions don't try to rejoin a closing game
+			if s.bot.ctx.CharacterCfg.Companion.WaitForParty {
+				GetPartyRegistry().ClearActiveGame()
+			}
 			event.Send(event.ResetCompanionGameInfo(event.Text(s.name, "Game "+s.bot.ctx.Data.Game.LastGameName+" finished"), s.bot.ctx.CharacterCfg.CharacterName))
 		}
 		if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
@@ -616,6 +718,271 @@ func (s *SinglePlayerSupervisor) Start() error {
 		s.bot.ctx.Data.AreaData = game.AreaData{}
 		timeSpentNotInGameStart = time.Now()
 	}
+}
+
+// waitForPartyMembers idles in-game until all party members have finished their runs.
+// Skipped if WaitForParty is disabled. Sets WaitingForParty flag to suppress activity monitor.
+//
+// Grace period: if only 1 member is registered (just self), waits up to 30s for
+// other members to join and register before accepting AllDone. This prevents the
+// leader from exiting before companions even enter the game.
+func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
+	if !s.bot.ctx.CharacterCfg.Companion.Enabled || !s.bot.ctx.CharacterCfg.Companion.WaitForParty {
+		return
+	}
+
+	pr := GetPartyRegistry()
+	pr.MarkDone(s.name)
+
+	// Grace period: wait for other members to register before checking AllDone.
+	// Without this, leader finishes before companions enter the game → AllDone=true instantly.
+	const gracePeriod = 30 * time.Second
+	graceDeadline := time.Now().Add(gracePeriod)
+
+	if pr.MemberCount() <= 1 {
+		s.bot.ctx.Logger.Info("Party: only self registered, waiting grace period for others to join",
+			slog.Duration("gracePeriod", gracePeriod))
+		s.bot.ctx.WaitingForParty.Store(true)
+
+		graceTicker := time.NewTicker(2 * time.Second)
+	graceWait:
+		for {
+			select {
+			case <-ctx.Done():
+				graceTicker.Stop()
+				s.bot.ctx.WaitingForParty.Store(false)
+				return
+			case <-graceTicker.C:
+				if s.leaderStartedNewGame() {
+					s.bot.ctx.Logger.Info("Party: leader started new game during grace period, exiting to rejoin",
+						slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
+					graceTicker.Stop()
+					s.bot.ctx.WaitingForParty.Store(false)
+					return
+				}
+				if pr.MemberCount() > 1 {
+					s.bot.ctx.Logger.Info("Party: other members joined during grace period",
+						slog.Int("members", pr.MemberCount()))
+					break graceWait
+				}
+				if time.Now().After(graceDeadline) {
+					s.bot.ctx.Logger.Info("Party: grace period expired, no other members joined — proceeding solo")
+					graceTicker.Stop()
+					s.bot.ctx.WaitingForParty.Store(false)
+					return
+				}
+			}
+		}
+		graceTicker.Stop()
+	}
+
+	// Remove members that were preserved from previous game but didn't rejoin
+	// (e.g. paused/stopped bots). Without this, leader waits PartyWaitTimeout every game.
+	pr.PurgeStaleMembers()
+
+	if pr.AllDone() {
+		s.bot.ctx.Logger.Info("Party: all members already done, no wait needed")
+		s.bot.ctx.WaitingForParty.Store(false)
+		return
+	}
+
+	// Bonus runs: do extra runs while waiting for party members instead of idling
+	if s.bot.ctx.CharacterCfg.Companion.BonusRuns {
+		s.doBonusRuns(ctx, pr)
+		if pr.AllDone() {
+			return
+		}
+	}
+
+	// Set flag so activity monitor doesn't kill us
+	s.bot.ctx.WaitingForParty.Store(true)
+	defer s.bot.ctx.WaitingForParty.Store(false)
+
+	timeout := time.Duration(s.bot.ctx.CharacterCfg.Companion.PartyWaitTimeout) * time.Second
+	if timeout <= 0 {
+		timeout = 300 * time.Second // 5 min default
+	}
+
+	s.bot.ctx.Logger.Info("Party: waiting for other members to finish",
+		slog.Any("status", pr.Status()),
+		slog.Duration("timeout", timeout))
+
+	deadline := time.Now().Add(timeout)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.bot.ctx.Logger.Info("Party: context cancelled while waiting")
+			return
+		case <-ticker.C:
+			if pr.AllDone() {
+				s.bot.ctx.Logger.Info("Party: all members done, proceeding to exit game")
+				return
+			}
+			if s.leaderStartedNewGame() {
+				s.bot.ctx.Logger.Info("Party: leader started new game, exiting to rejoin",
+					slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
+				return
+			}
+			if time.Now().After(deadline) {
+				s.bot.ctx.Logger.Warn("Party: wait timeout reached, proceeding to exit game",
+					slog.Any("status", pr.Status()))
+				return
+			}
+		}
+	}
+}
+
+// leaderStartedNewGame returns true if the leader has created a new game and is
+// waiting for this follower to join. Used to break out of bonus runs / idle wait
+// when the leader crashes/chickens and starts fresh.
+func (s *SinglePlayerSupervisor) leaderStartedNewGame() bool {
+	if !s.bot.ctx.CharacterCfg.Companion.Enabled || s.bot.ctx.CharacterCfg.Companion.Leader {
+		return false
+	}
+	newGame := s.bot.ctx.CharacterCfg.Companion.CompanionGameName
+
+	// Fallback: check party registry (same as HandleCompanionMenuFlow)
+	if newGame == "" {
+		if activeGame := GetPartyRegistry().GetActiveGame(); activeGame != nil {
+			leaderOK := s.bot.ctx.CharacterCfg.Companion.LeaderName == "" ||
+				s.bot.ctx.CharacterCfg.Companion.LeaderName == activeGame.LeaderName
+			if leaderOK {
+				newGame = activeGame.GameName
+			}
+		}
+	}
+
+	return newGame != "" && newGame != s.bot.ctx.Data.Game.LastGameName
+}
+
+// doBonusRuns executes random short farming runs while waiting for party members.
+// It reuses bot.Run() for each bonus run, which provides all background infrastructure
+// (data refresh, health manager, item pickup, panic recovery) automatically.
+func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
+	// Don't start bonus runs if character is dead
+	s.bot.ctx.RefreshGameData()
+	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
+		s.bot.ctx.Logger.Warn("Party: character is dead, skipping bonus runs")
+		return
+	}
+
+	// Build bonus pool: use configured list or all short runs, minus runs taken by party members
+	allowedRuns := s.bot.ctx.CharacterCfg.Companion.BonusRunsList
+	allowedSet := make(map[string]bool, len(allowedRuns))
+	for _, r := range allowedRuns {
+		allowedSet[r] = true
+	}
+
+	takenRuns := pr.GetAllPartyRuns()
+	var bonusPool []string
+	for _, r := range config.ShortBonusRuns {
+		name := string(r)
+		if takenRuns[name] {
+			continue
+		}
+		// If user configured specific runs, only include those
+		if len(allowedSet) > 0 && !allowedSet[name] {
+			continue
+		}
+		bonusPool = append(bonusPool, name)
+	}
+	if len(bonusPool) == 0 {
+		s.bot.ctx.Logger.Info("Party: no available bonus runs (all short runs taken by party)")
+		return
+	}
+
+	// Shuffle pool so bonus runs are in random order, then execute without repeats
+	rand.Shuffle(len(bonusPool), func(i, j int) { bonusPool[i], bonusPool[j] = bonusPool[j], bonusPool[i] })
+
+	s.bot.ctx.Logger.Info("Party: starting bonus runs while waiting",
+		slog.Any("bonusPool", bonusPool),
+		slog.Int("available", len(bonusPool)))
+
+	// Create a cancellable context for bonus runs — cancelled when leader starts new game
+	// or all members are done, so the current run aborts IMMEDIATELY.
+	bonusCtx, bonusCancel := context.WithCancel(ctx)
+	defer bonusCancel()
+
+	// Monitor goroutine: cancel bonus runs when leader creates new game or all done
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-bonusCtx.Done():
+				return
+			case <-ticker.C:
+				if s.leaderStartedNewGame() {
+					s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus run immediately")
+					bonusCancel()
+					return
+				}
+				if pr.AllDone() {
+					s.bot.ctx.Logger.Info("Party: all members done, aborting bonus run immediately")
+					bonusCancel()
+					return
+				}
+			}
+		}
+	}()
+
+	bonusDeadline := time.After(5 * time.Minute)
+	for i := 0; i < len(bonusPool); i++ {
+		select {
+		case <-bonusCtx.Done():
+			return
+		case <-bonusDeadline:
+			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min)")
+			return
+		default:
+		}
+
+		if pr.AllDone() {
+			s.bot.ctx.Logger.Info("Party: all members done, stopping bonus runs")
+			return
+		}
+
+		if s.leaderStartedNewGame() {
+			s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus runs to rejoin")
+			return
+		}
+
+		runName := bonusPool[i]
+
+		// Re-check: another party member might have claimed this run as bonus in the meantime
+		if pr.GetAllPartyRuns()[runName] {
+			s.bot.ctx.Logger.Debug("Party: bonus run already taken, skipping", slog.String("run", runName))
+			continue
+		}
+
+		bonusRun := run.BuildRun(runName)
+		if bonusRun == nil {
+			continue
+		}
+
+		// Register in party registry so other members exclude this run from their pool
+		pr.AddMemberRun(s.name, runName)
+
+		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
+
+		err := s.bot.Run(bonusCtx, false, []run.Run{bonusRun})
+		if err != nil {
+			// Context cancelled = leader started new game or all done — not an error
+			if bonusCtx.Err() != nil {
+				s.bot.ctx.Logger.Info("Party: bonus run aborted (party event)", slog.String("run", runName))
+				return
+			}
+			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
+			return
+		}
+
+		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
+	}
+
+	s.bot.ctx.Logger.Info("Party: all bonus runs exhausted")
 }
 
 func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
@@ -851,6 +1218,30 @@ func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {
 
 	gameName := s.bot.ctx.CharacterCfg.Companion.CompanionGameName
 	gamePassword := s.bot.ctx.CharacterCfg.Companion.CompanionGamePassword
+
+	// If no game info from event, check party registry for active game (rejoin after crash/chicken)
+	if gameName == "" && s.bot.ctx.CharacterCfg.Companion.WaitForParty {
+		if activeGame := GetPartyRegistry().GetActiveGame(); activeGame != nil {
+			// Only rejoin if the leader matches our config (or no leader configured)
+			leaderOK := s.bot.ctx.CharacterCfg.Companion.LeaderName == "" ||
+				s.bot.ctx.CharacterCfg.Companion.LeaderName == activeGame.LeaderName
+			if leaderOK {
+				s.bot.ctx.Logger.Info("Party: found active game in registry, rejoining after crash/chicken",
+					slog.String("game", activeGame.GameName),
+					slog.String("leader", activeGame.LeaderName))
+				gameName = activeGame.GameName
+				gamePassword = activeGame.Password
+			}
+		}
+	}
+
+	// Don't rejoin the game we just finished — wait for leader to create a new one
+	if gameName != "" && gameName == s.lastPlayedGame {
+		s.bot.ctx.Logger.Debug("Party: active game is the same we just left, waiting for new game",
+			slog.String("game", gameName))
+		utils.Sleep(2000)
+		return fmt.Errorf("idle")
+	}
 
 	if gameName == "" {
 		utils.Sleep(2000)

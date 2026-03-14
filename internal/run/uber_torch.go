@@ -137,7 +137,7 @@ func (t Torch) findPortal() (data.Object, error) {
 	return findUberTristramPortal(t.ctx)
 }
 
-func (t Torch) runUberTristram(parameters *RunParameters) error {
+func (t Torch) runUberTristram(_ *RunParameters) error {
 	if err := t.mephisto(); err != nil {
 		return fmt.Errorf("failed to kill Mephisto: %w", err)
 	}
@@ -510,12 +510,13 @@ func (t *Torch) searchAndKillBoss(bossNPC npc.ID, bossName string) error {
 	t.ctx.RefreshGameData()
 	if boss, found := t.ctx.Data.Monsters.FindOne(bossNPC, data.MonsterTypeUnique); found && boss.Stats[stat.Life] > 0 {
 		t.ctx.Logger.Info(fmt.Sprintf("Found Uber %s, starting fight", bossName))
-		if bossNPC == npc.UberDiablo {
+		switch bossNPC {
+		case npc.UberDiablo:
 			if err := t.ctx.Char.KillUberDiablo(); err != nil {
 				return fmt.Errorf("failed to kill Uber Diablo: %w", err)
 			}
 			t.ctx.Logger.Info("Successfully killed Uber Diablo")
-		} else if bossNPC == npc.UberBaal {
+		case npc.UberBaal:
 			if err := t.ctx.Char.KillUberBaal(); err != nil {
 				return fmt.Errorf("failed to kill Uber Baal: %w", err)
 			}

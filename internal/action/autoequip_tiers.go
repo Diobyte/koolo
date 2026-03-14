@@ -199,13 +199,6 @@ var (
 		stat.AbsorbLightningPercent: 2.7,
 		stat.AbsorbMagicPercent:     2.7,
 	}
-
-	beltSizes = map[string]int{
-		"lbl": 2,
-		"vbl": 2,
-		"mbl": 3,
-		"tbl": 3,
-	}
 )
 
 type mercCTCWeights struct {
@@ -371,23 +364,6 @@ func calculateBeltScore(itm data.Item) float64 {
 	}
 
 	return 0.0
-}
-
-func getBeltSize(itm data.Item) int {
-	if size := beltSizes[itm.Desc().Code]; size > 0 {
-		return size
-	}
-	return BeltBaseSlots
-}
-
-func getCurrentBeltSize() int {
-	ctx := context.Get()
-	for _, item := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
-		if item.Desc().Type == "belt" {
-			return beltSizes[item.Desc().Code]
-		}
-	}
-	return 0
 }
 
 func calculatePerLevelStats(itm data.Item) float64 {
