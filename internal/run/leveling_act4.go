@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -130,7 +131,7 @@ func (a Leveling) act4() error {
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
-		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
+		a.ctx.Logger.Debug("After Izual attempt", slog.Bool("izualQuestCompleted", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
 		if err != nil {
 			return err
 		}
@@ -171,11 +172,11 @@ func (a Leveling) act4() error {
 		return nil
 	}
 
-	a.ctx.Logger.Debug("Current Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
+	a.ctx.Logger.Debug("Current Izual quest completed status", slog.Bool("izualQuestCompleted", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
-		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
+		a.ctx.Logger.Debug("After Izual attempt", slog.Bool("izualQuestCompleted", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed()))
 		if err != nil {
 			return err
 		}
@@ -219,14 +220,14 @@ func (a Leveling) OuterSteppes() error {
 
 	err := action.MoveToArea(area.OuterSteppes)
 	if err != nil {
-		a.ctx.Logger.Error("Failed to move to Outer Steppes area: %v", err)
+		a.ctx.Logger.Error("Failed to move to Outer Steppes area", slog.Any("error", err))
 		return err
 	}
 	a.ctx.Logger.Debug("Successfully reached Outer Steppes.")
 
 	err = action.ClearCurrentLevel(false, data.MonsterAnyFilter())
 	if err != nil {
-		a.ctx.Logger.Error("Failed to clear Outer Steppes area: %v", err)
+		a.ctx.Logger.Error("Failed to clear Outer Steppes area", slog.Any("error", err))
 		return err
 	}
 	a.ctx.Logger.Debug("Successfully cleared Outer Steppes area.")

@@ -199,13 +199,6 @@ var (
 		stat.AbsorbLightningPercent: 2.7,
 		stat.AbsorbMagicPercent:     2.7,
 	}
-
-	beltSizes = map[string]int{
-		"lbl": 2,
-		"vbl": 2,
-		"mbl": 3,
-		"tbl": 3,
-	}
 )
 
 type mercCTCWeights struct {
