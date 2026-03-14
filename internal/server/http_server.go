@@ -1025,6 +1025,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/armory", s.armoryAPI)
 	http.HandleFunc("/api/armory/characters", s.armoryCharactersAPI)
 	http.HandleFunc("/api/armory/all", s.armoryAllAPI)
+	http.HandleFunc("/api/armory/all-stored", s.armoryAllStoredAPI)
 
 	s.registerDropRoutes()
 

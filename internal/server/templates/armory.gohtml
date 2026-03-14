@@ -1904,9 +1904,16 @@
                 <h3 style="color: #bfa969; margin-bottom: 8px;"><i class="bi bi-gem"></i> Runeword Planner</h3>
                 <p style="color: #888; margin-bottom: 16px; font-size: 13px;">Analyzes runes across all characters to show which runewords you can make.</p>
                 
+                <div style="margin-bottom: 16px;">
+                    <label style="display: inline-flex; align-items: center; cursor: pointer; color: #ccc; font-size: 14px; gap: 8px;">
+                        <input type="checkbox" id="showAllStoredPlayers" style="width: 16px; height: 16px; accent-color: #bfa969; cursor: pointer;">
+                        <span>Show runes from all stored characters (includes characters not currently configured)</span>
+                    </label>
+                </div>
+                
                 <!-- Your Rune Inventory -->
                 <div class="runeword-section">
-                    <h4><i class="bi bi-collection"></i> Your Runes (All Characters)</h4>
+                    <h4 id="runeInventoryHeader"><i class="bi bi-collection"></i> Your Runes (Configured Characters)</h4>
                     <div class="rune-inventory" id="runeInventory">
                         <span style="color: #888;">Loading rune inventory...</span>
                     </div>
@@ -2487,6 +2494,14 @@
             });
         });
 
+        // Runeword planner "all stored players" checkbox
+        const allStoredCheckbox = document.getElementById('showAllStoredPlayers');
+        if (allStoredCheckbox) {
+            allStoredCheckbox.addEventListener('change', function() {
+                loadRunewordPlanner();
+            });
+        }
+
         // ============ SEARCH ============
         let allArmoryData = null;
         let activeFilter = 'all';
@@ -2782,9 +2797,31 @@
         ];
 
         let runeInventory = {};
+        let allStoredArmoryData = null;
+
+        async function fetchAllStoredArmoryData() {
+            if (allStoredArmoryData) return allStoredArmoryData;
+            try {
+                const response = await fetch('/api/armory/all-stored');
+                allStoredArmoryData = await response.json();
+                return allStoredArmoryData;
+            } catch (error) {
+                console.error('Failed to fetch all stored armory data:', error);
+                return {};
+            }
+        }
 
         async function loadRunewordPlanner() {
-            const data = await fetchAllArmoryData();
+            const useAllStored = document.getElementById('showAllStoredPlayers')?.checked || false;
+            const data = useAllStored ? await fetchAllStoredArmoryData() : await fetchAllArmoryData();
+            
+            // Update header to reflect data source
+            const header = document.getElementById('runeInventoryHeader');
+            if (header) {
+                const label = useAllStored ? 'All Stored Characters' : 'Configured Characters';
+                header.innerHTML = '<i class="bi bi-collection"></i> Your Runes (' + label + ')';
+            }
+            
             console.log('Runeword Planner - Fetched data:', data);
             runeInventory = {};
 
