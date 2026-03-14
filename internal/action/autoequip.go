@@ -706,8 +706,23 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 
 		// Handle specific errors
 		if errors.Is(err, ErrNotEnoughSpace) {
-			ctx.Logger.Info("Not enough inventory space to equip. Trying to sell junk.")
+			ctx.Logger.Info("Not enough inventory space to equip. Trying to free space.")
+			step.CloseAllMenus()
 			DrinkAllPotionsInInventory()
+
+			// Try stashing items first to preserve valuable items
+			if stashErr := Stash(false); stashErr != nil {
+				ctx.Logger.Debug(fmt.Sprintf("Stash attempt during equip: %v", stashErr))
+			}
+			*ctx.Data = ctx.GameReader.GetData()
+
+			// Check if stashing freed enough space
+			if _, found := findInventorySpace(currentlyEquipped); found {
+				equippedSomething = true
+				continue
+			}
+
+			// Still no space — try selling junk
 			// Create a temporary lock config that protects the item we want to equip
 			tempLock := make([][]int, len(ctx.CharacterCfg.Inventory.InventoryLock))
 			for i := range ctx.CharacterCfg.Inventory.InventoryLock {
@@ -715,7 +730,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 				copy(tempLock[i], ctx.CharacterCfg.Inventory.InventoryLock[i])
 			}
 
-			// Lock the new item
+			// Lock the new item so VendorRefill doesn't sell it
 			if bestCandidate.Location.LocationType == item.LocationInventory {
 				w, h := bestCandidate.Desc().InventoryWidth, bestCandidate.Desc().InventoryHeight
 				for j := 0; j < h; j++ {
@@ -730,7 +745,7 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			if sellErr := VendorRefill(VendorRefillOpts{SellJunk: true, BuyConsumables: true, LockConfig: tempLock}); sellErr != nil {
 				return false, fmt.Errorf("failed to sell junk to make space: %w", sellErr)
 			}
-			equippedSomething = true // We made a change (selling junk), so we should re-evaluate
+			equippedSomething = true // We made a change (selling/stashing), so we should re-evaluate
 			*ctx.Data = ctx.GameReader.GetData()
 			if _, found := findInventorySpace(currentlyEquipped); !found {
 				return false, err
