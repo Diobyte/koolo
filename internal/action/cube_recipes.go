@@ -1,6 +1,7 @@
 package action
 
 import (
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -438,8 +439,16 @@ func CubeRecipes() error {
 
 		ctx.Logger.Debug("Cube recipe is enabled, processing", "recipe", recipe.Name)
 
+		const maxTransmutesPerRecipe = 10 // Limit per recipe per game to avoid spending entire games cubing
+		transmuteCount := 0
 		continueProcessing := true
 		for continueProcessing {
+			if transmuteCount >= maxTransmutesPerRecipe {
+				ctx.Logger.Info("Cube recipe: reached max transmutations for this game, deferring rest to next game",
+					slog.String("recipe", recipe.Name),
+					slog.Int("count", transmuteCount))
+				break
+			}
 			if items, hasItems := hasItemsForRecipe(ctx, recipe); hasItems {
 
 				// TODO: Check if we have the items in our storage and if not, purchase them, else take the item from the storage
@@ -468,6 +477,7 @@ func CubeRecipes() error {
 				if err = CubeTransmute(); err != nil {
 					return err
 				}
+				transmuteCount++
 
 				// Get a list of items that are in our inventory
 				itemsInInv := ctx.Data.Inventory.ByLocation(item.LocationInventory)

@@ -58,15 +58,24 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 		slog.String("leader", leaderName))
 
 	const (
-		followDistance = 10 // Move toward leader when farther than this
-		combatRadius   = 15 // Kill monsters within this radius of player
-		tickInterval   = 500 * time.Millisecond
-		maxIdleTime    = 5 * time.Minute // Stop if leader not found for this long
+		followDistance  = 10 // Move toward leader when farther than this
+		combatRadius    = 15 // Kill monsters within this radius of player
+		tickInterval    = 500 * time.Millisecond
+		maxIdleTime     = 5 * time.Minute // Stop if leader not found for this long
+		maxPathFailures = 8               // Give up on area after this many consecutive path failures
 	)
 
 	lastLeaderSeen := time.Now()
+	consecutivePathFails := 0
+	lastPathFailArea := area.ID(0)
 
 	for {
+		// Check if the bot has been stopped (e.g., global idle detection, chicken, death)
+		if ca.ctx.ExecutionPriority >= context.PriorityStop {
+			ca.ctx.Logger.Debug("Companion assist: bot stopped, ending run")
+			return nil
+		}
+
 		// Check if the run context has been cancelled (game exit, chicken, death, timeout)
 		if !ca.ctx.Manager.InGame() {
 			ca.ctx.Logger.Debug("Companion assist: no longer in game, ending run")
@@ -125,15 +134,41 @@ func (ca CompanionAssist) Run(_ *RunParameters) error {
 		// If leader entered a different area, try to follow via portal or area transition
 		if leader.Area != ca.ctx.Data.PlayerUnit.Area {
 			ca.ctx.SetLastAction("CompanionAssist:FollowingToArea")
-			if err := ca.followLeaderToArea(leader); err != nil {
-				ca.ctx.Logger.Debug("Companion assist: waiting for leader area transition",
+
+			// Track consecutive path failures to the same area to avoid infinite retries
+			if leader.Area != lastPathFailArea {
+				consecutivePathFails = 0
+				lastPathFailArea = leader.Area
+			}
+
+			if consecutivePathFails >= maxPathFailures {
+				ca.ctx.Logger.Warn("Companion assist: too many path failures to leader area, waiting in town",
 					slog.String("leaderArea", leader.Area.Area().Name),
-					slog.String("myArea", ca.ctx.Data.PlayerUnit.Area.Area().Name))
+					slog.Int("failures", consecutivePathFails))
+				// Return to town and wait instead of endlessly retrying
+				if !ca.ctx.Data.PlayerUnit.Area.IsTown() {
+					_ = action.ReturnTown()
+				}
+				ca.ctx.WaitingForParty.Store(true)
 				utils.Sleep(int(tickInterval.Milliseconds()))
 				continue
 			}
+
+			if err := ca.followLeaderToArea(leader); err != nil {
+				consecutivePathFails++
+				ca.ctx.Logger.Debug("Companion assist: waiting for leader area transition",
+					slog.String("leaderArea", leader.Area.Area().Name),
+					slog.String("myArea", ca.ctx.Data.PlayerUnit.Area.Area().Name),
+					slog.Int("pathFailures", consecutivePathFails))
+				utils.Sleep(int(tickInterval.Milliseconds()))
+				continue
+			}
+			consecutivePathFails = 0
 			continue
 		}
+
+		// Successfully in the same area — reset path failure tracking
+		consecutivePathFails = 0
 
 		// Same area as leader — clear monsters and follow
 		distToLeader := ca.ctx.PathFinder.DistanceFromMe(leader.Position)
