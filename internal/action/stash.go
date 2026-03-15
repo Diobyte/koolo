@@ -367,7 +367,12 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return false, false, "", ""
 	}
 
-	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && i.IsFromQuest() && i.Name != "HoradricCube" {
+	// Use isQuestItem() instead of i.IsFromQuest() because the memory-level
+	// quest flag is unreliable for some items (e.g. StaffOfKings).
+	// isQuestItem checks both IsFromQuest() AND the explicit questItems list,
+	// so items like StaffOfKings are correctly excluded from stashing during
+	// leveling — preventing the stash-fail loop when personal stash is full.
+	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && isQuestItem(i) && i.Name != "HoradricCube" {
 		return false, false, "", ""
 	}
 
