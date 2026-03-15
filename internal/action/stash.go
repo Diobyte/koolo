@@ -248,9 +248,10 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 	displayName := formatItemName(i)
 
 	// For DLC characters, try the specialized tab first (Gems/Runes/Materials).
-	// The game auto-sorts these via Ctrl+Click, but explicitly switching to
-	// the correct tab is more robust and avoids silent fallthrough if the
-	// auto-sort fails for any reason.
+	// DLC stackable items (gems, runes, materials) can ONLY be placed in their
+	// dedicated DLC tab — the game won't accept them in regular stash pages.
+	// If the DLC tab is full (e.g. stack at 99), do NOT fall through to regular
+	// tabs or it causes an infinite loop of tab-cycling with failed Ctrl+clicks.
 	if ctx.Data.IsDLC() {
 		if dlcTab := dlcTabForItem(i); dlcTab != 0 {
 			SwitchStashTab(dlcTab)
@@ -258,7 +259,11 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 				ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to DLC tab %d", displayName, i.Quality.ToString(), dlcTab))
 				return true
 			}
-			ctx.Logger.Debug(fmt.Sprintf("DLC tab %d full or failed for %s, falling through to regular tabs", dlcTab, displayName))
+			// DLC stackable items cannot go into regular stash tabs.
+			// Do NOT set StashFull — regular stash has plenty of room for
+			// normal items, only this specific DLC stack is full.
+			ctx.Logger.Warn(fmt.Sprintf("DLC tab %d full for %s (stack likely at 99) — leaving in inventory", dlcTab, displayName))
+			return false
 		}
 	}
 
