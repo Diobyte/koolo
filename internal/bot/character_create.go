@@ -30,7 +30,7 @@ const (
 	KEYEVENTF_UNICODE = 0x0004
 	KEYEVENTF_KEYUP   = 0x0002
 
-	gameVersionMenuOpenDelay = 400
+	gameVersionMenuOpenDelay = 800
 	expansionUpPresses       = 3
 )
 
@@ -111,8 +111,9 @@ func AutoCreateCharacter(class, name string) error {
 		utils.Sleep(500)
 	}
 
-	// Wait for character selection screen and confirm the new character is visible/selected
-	for i := 0; i < 5; i++ {
+	// Wait for character selection screen and confirm the new character is visible/selected.
+	// D2R character creation can take 5-15s depending on system load and DLC content.
+	for i := 0; i < 15; i++ {
 		if ctx.GameReader.IsInCharacterSelectionScreen() {
 			// Give it a moment to update selection state
 			utils.Sleep(500)
@@ -126,7 +127,7 @@ func AutoCreateCharacter(class, name string) error {
 				return nil
 			}
 		}
-		utils.Sleep(500)
+		utils.Sleep(1000)
 	}
 
 	return errors.New("creation timeout or character not found after creation")
@@ -301,14 +302,21 @@ func getGameVersionOptionsWithRetry(ctx *context.Status) []string {
 		return options
 	}
 
-	if ctx != nil {
-		ctx.Logger.Warn("[AutoCreate] options read failed/empty, retrying after delay")
+	// Retry with increasing delays — the D2R UI renders dropdown contents
+	// asynchronously and can take longer on slow systems.
+	for _, delay := range []int{500, 1000, 1500} {
+		if ctx != nil {
+			ctx.Logger.Warn("[AutoCreate] options read failed/empty, retrying after delay")
+		}
+		utils.Sleep(delay)
+		options = getGameVersionDropdownOptions(ctx)
+		if len(options) > 0 {
+			return options
+		}
 	}
 
-	utils.Sleep(1000)
-	options = getGameVersionDropdownOptions(ctx)
-	if len(options) == 0 && ctx != nil {
-		ctx.Logger.Warn("[AutoCreate] options read failed/empty after retry")
+	if ctx != nil {
+		ctx.Logger.Warn("[AutoCreate] options read failed/empty after all retries")
 	}
 
 	return options

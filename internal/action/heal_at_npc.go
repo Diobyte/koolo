@@ -14,8 +14,8 @@ func HealAtNPC() error {
 	ctx.SetLastAction("HealAtNPC")
 
 	shouldHeal := false
-	if ctx.Data.PlayerUnit.HPPercent() < 80 {
-		ctx.Logger.Info(fmt.Sprintf("Current life is %d, healing on NPC", ctx.Data.PlayerUnit.HPPercent()))
+	if ctx.Data.SafeHPPercent() < 80 {
+		ctx.Logger.Info(fmt.Sprintf("Current life is %d, healing on NPC", ctx.Data.SafeHPPercent()))
 		shouldHeal = true
 	}
 

@@ -27,6 +27,46 @@ type Data struct {
 	ExpChar             uint // 1=Classic, 2=LoD, 3=DLC (auto-detected from memory)
 }
 
+// SafeHPPercent returns PlayerUnit.HPPercent() clamped to [0, 100].
+// Corrupted memory reads can produce negative or overflow values (e.g. int64 min);
+// this wrapper prevents those from propagating into chicken/potion logic.
+func (d Data) SafeHPPercent() int {
+	hp := d.PlayerUnit.HPPercent()
+	if hp < 0 {
+		return 0
+	}
+	if hp > 100 {
+		return 100
+	}
+	return hp
+}
+
+// SafeMPPercent returns PlayerUnit.MPPercent() clamped to [0, 100].
+func (d Data) SafeMPPercent() int {
+	mp := d.PlayerUnit.MPPercent()
+	if mp < 0 {
+		return 0
+	}
+	if mp > 100 {
+		return 100
+	}
+	return mp
+}
+
+// SafeMercHPPercent returns MercHPPercent() clamped to [0, 100].
+// Corrupted stat values from memory can produce negative or overflowed results;
+// this wrapper prevents false chicken triggers and arithmetic issues downstream.
+func (d Data) SafeMercHPPercent() int {
+	hp := d.MercHPPercent()
+	if hp < 0 {
+		return 0
+	}
+	if hp > 100 {
+		return 100
+	}
+	return hp
+}
+
 // IsDLC returns true if the current character has the DLC expansion (ExpChar >= 3).
 func (d Data) IsDLC() bool {
 	return d.ExpChar >= 3

@@ -433,7 +433,7 @@ func HireMerc() error {
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 	if isLevelingChar && ctx.CharacterCfg.Character.UseMerc {
 		// Check if we already have a suitable mercenary
-		if isMercenaryPresent(npc.Guard) && ctx.Data.MercHPPercent() > 0 {
+		if isMercenaryPresent(npc.Guard) && ctx.Data.SafeMercHPPercent() > 0 {
 			ctx.Logger.Debug("An Act 2 merc is already present and alive, no need to hire a new one.")
 			return nil
 		}

@@ -177,7 +177,7 @@ func (a Andariel) Run(parameters *RunParameters) error {
 		if err := action.ReturnTown(); err != nil {
 			return err
 		}
-		mercAlive := a.ctx.Data.MercHPPercent() > 0
+		mercAlive := a.ctx.Data.SafeMercHPPercent() > 0
 		if err := a.buyAndDrinkAntidotePotions(mercAlive); err != nil {
 			return err
 		}
@@ -275,7 +275,7 @@ func (a Andariel) Run(parameters *RunParameters) error {
 
 // Consume antidotes from the inventory only, optionally feeding the mercenary.
 func (a Andariel) drinkAntidotePotions(selfTarget, mercTarget int) (int, int) {
-	mercAlive := a.ctx.Data.MercHPPercent() > 0
+	mercAlive := a.ctx.Data.SafeMercHPPercent() > 0
 	if selfTarget < 0 {
 		selfTarget = 0
 	}

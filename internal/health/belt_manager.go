@@ -32,12 +32,12 @@ func (bm BeltManager) DrinkPotion(potionType data.PotionType, merc bool) bool {
 		binding := bm.data.KeyBindings.UseBelt[p.X]
 		if merc {
 			bm.hid.PressKeyWithModifier(binding.Key1[0], game.ShiftKey)
-			bm.logger.Debug(fmt.Sprintf("Using %s potion on Mercenary [Column: %d]. HP: %d", potionType, p.X+1, bm.data.MercHPPercent()))
+			bm.logger.Debug(fmt.Sprintf("Using %s potion on Mercenary [Column: %d]. HP: %d", potionType, p.X+1, bm.data.SafeMercHPPercent()))
 			event.Send(event.UsedPotion(event.Text(bm.supervisor, ""), potionType, true))
 			return true
 		}
 		bm.hid.PressKeyBinding(binding)
-		bm.logger.Debug(fmt.Sprintf("Using %s potion [Column: %d]. HP: %d MP: %d", potionType, p.X+1, bm.data.PlayerUnit.HPPercent(), bm.data.PlayerUnit.MPPercent()))
+		bm.logger.Debug(fmt.Sprintf("Using %s potion [Column: %d]. HP: %d MP: %d", potionType, p.X+1, bm.data.SafeHPPercent(), bm.data.SafeMPPercent()))
 		event.Send(event.UsedPotion(event.Text(bm.supervisor, ""), potionType, false))
 		return true
 	}

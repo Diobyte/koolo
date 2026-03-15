@@ -126,7 +126,7 @@ func AutoEquip() error {
 		}
 
 		mercChanged := false
-		if !mercEquipDone && ctx.Data.MercHPPercent() > 0 {
+		if !mercEquipDone && ctx.Data.SafeMercHPPercent() > 0 {
 			// Create a new list of items for the merc, EXCLUDING player's equipped items.
 			mercEvalItems := make([]data.Item, 0)
 			for _, itm := range allItems {

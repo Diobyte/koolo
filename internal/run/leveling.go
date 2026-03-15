@@ -72,7 +72,16 @@ func (a Leveling) GoToCurrentProgressionTown() error {
 	targetArea := a.GetCurrentProgressionTownWP()
 
 	if targetArea != a.ctx.Data.PlayerUnit.Area {
-		if err := action.WayPoint(a.GetCurrentProgressionTownWP()); err != nil {
+		if err := action.WayPoint(targetArea); err != nil {
+			// If the target waypoint hasn't been discovered yet (e.g. Pandemonium
+			// Fortress after completing Act 3 Guardian but before visiting Act 4),
+			// fall back to the previous act's town instead of failing the entire run.
+			if errors.Is(err, action.ErrWaypointNotDiscovered) {
+				a.ctx.Logger.Warn("Waypoint not discovered for progression town, falling back",
+					slog.String("target", area.Areas[targetArea].Name),
+					slog.String("currentArea", area.Areas[a.ctx.Data.PlayerUnit.Area].Name))
+				return nil
+			}
 			return err
 		}
 	}

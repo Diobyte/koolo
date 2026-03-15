@@ -46,7 +46,7 @@ func (b *Bot) shouldReturnToTown(lvl int, needHealingPotionsRefill, needManaPoti
 			b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill ||
 			townChicken ||
 			b.ctx.CharacterCfg.BackToTown.MercDied &&
-				b.ctx.Data.MercHPPercent() <= 0 &&
+				b.ctx.Data.SafeMercHPPercent() <= 0 &&
 				b.ctx.CharacterCfg.Character.UseMerc &&
 				b.ctx.Data.PlayerUnit.TotalPlayerGold() > 100000) &&
 			!b.ctx.Data.PlayerUnit.Area.IsTown() &&
@@ -265,7 +265,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				b.updateActivityAndPosition()
 
 				// Merc check (Fast)
-				if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
+				if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.SafeMercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
 					time.Sleep(200 * time.Millisecond)
 				}
 
@@ -336,7 +336,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 
 				shouldReturnTown := false
-				townChicken := b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.PlayerUnit.HPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
+				townChicken := b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.SafeHPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
 
 				if _, found := b.ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); found {
 					if !b.NeedsTPsToContinue() {
@@ -394,7 +394,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 							reason = "Equipment broken"
 						} else if b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill {
 							reason = "No mana potions found"
-						} else if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
+						} else if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.SafeMercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
 							reason = "Mercenary is dead"
 						} else if townChicken {
 							reason = "Town chicken"

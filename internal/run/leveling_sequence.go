@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -678,7 +679,13 @@ func (ls LevelingSequence) GoToCurrentProgressionTown() error {
 	targetArea := ls.GetCurrentProgressionTownWP()
 
 	if targetArea != ls.ctx.Data.PlayerUnit.Area {
-		if err := action.WayPoint(ls.GetCurrentProgressionTownWP()); err != nil {
+		if err := action.WayPoint(targetArea); err != nil {
+			if errors.Is(err, action.ErrWaypointNotDiscovered) {
+				ls.ctx.Logger.Warn("Waypoint not discovered for progression town, falling back",
+					slog.String("target", area.Areas[targetArea].Name),
+					slog.String("currentArea", area.Areas[ls.ctx.Data.PlayerUnit.Area].Name))
+				return nil
+			}
 			return err
 		}
 	}

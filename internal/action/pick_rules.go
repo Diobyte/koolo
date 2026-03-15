@@ -17,6 +17,18 @@ var ShouldBuyByTiers func(data.Item) bool
 func shouldMatchRulesOnly(i data.Item) bool {
 	ctx := context.Get()
 
+	// When stash is full, skip items that would only be picked for stashing.
+	// Equipment upgrades (tier items better than currently equipped) can still
+	// be equipped directly and are allowed through.
+	if ctx.CurrentGame.StashFull {
+		playerRule, mercRule := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateTiers(i, ctx.Data.CharacterCfg.Runtime.TierRules)
+		isPlayerUpgrade := playerRule.Tier() > 0.0 && i.Quality <= item.QualitySuperior && IsBetterThanEquipped(i, false, PlayerScore)
+		isMercUpgrade := mercRule.MercTier() > 0.0 && i.Quality <= item.QualitySuperior && IsBetterThanEquipped(i, true, MercScore)
+		if !isPlayerUpgrade && !isMercUpgrade {
+			return false
+		}
+	}
+
 	// Evaluate tier rules (player and merc tiers).
 	playerRule, mercRule := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateTiers(i, ctx.Data.CharacterCfg.Runtime.TierRules)
 	if playerRule.Tier() > 0.0 || mercRule.MercTier() > 0.0 {

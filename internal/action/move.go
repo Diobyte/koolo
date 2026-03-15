@@ -753,7 +753,7 @@ func findClosestShrine(maxScanDistance float64) *data.Object {
 	ctx := context.Get()
 
 	// Check if the bot is dead or chickened before proceeding.
-	if ctx.Data.PlayerUnit.IsDead() || ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
+	if ctx.Data.PlayerUnit.IsDead() || ctx.Data.SafeHPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt || ctx.Data.AreaData.Area.IsTown() {
 		ctx.Logger.Debug("Bot is dead or chickened, skipping shrine search.")
 		return nil
 	}
@@ -795,13 +795,13 @@ func findClosestShrine(maxScanDistance float64) *data.Object {
 		if o.IsShrine() && o.Selectable {
 			for _, sType := range alwaysTakeShrines {
 				if o.Shrine.ShrineType == sType {
-					if sType == object.HealthShrine && ctx.Data.PlayerUnit.HPPercent() > 95 {
+					if sType == object.HealthShrine && ctx.Data.SafeHPPercent() > 95 {
 						continue
 					}
-					if sType == object.ManaShrine && ctx.Data.PlayerUnit.MPPercent() > 95 {
+					if sType == object.ManaShrine && ctx.Data.SafeMPPercent() > 95 {
 						continue
 					}
-					if sType == object.RefillShrine && ctx.Data.PlayerUnit.HPPercent() > 95 && ctx.Data.PlayerUnit.MPPercent() > 95 {
+					if sType == object.RefillShrine && ctx.Data.SafeHPPercent() > 95 && ctx.Data.SafeMPPercent() > 95 {
 						continue
 					}
 

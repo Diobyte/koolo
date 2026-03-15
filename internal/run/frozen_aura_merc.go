@@ -39,7 +39,7 @@ func (fam FrozenAuraMerc) CheckConditions(parameters *RunParameters) SequencerRe
 		return SequencerStop
 	}
 
-	if fam.ctx.Data.MercHPPercent() < 0 || !fam.ctx.CharacterCfg.Character.ShouldHireAct2MercFrozenAura {
+	if fam.ctx.Data.SafeMercHPPercent() < 0 || !fam.ctx.CharacterCfg.Character.ShouldHireAct2MercFrozenAura {
 		return SequencerSkip
 	}
 

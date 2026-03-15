@@ -409,7 +409,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			}
 		} else if isColdImmuneNotLightImmune {
 			// Case 2: All Cold Immune monsters (excluding designated bosses)
-			if s.Data.MercHPPercent() <= 0 {
+			if s.Data.SafeMercHPPercent() <= 0 {
 				//s.Logger.Info("Mercenary is dead, skipping attack on Cold Immune monster.", slog.String("monsterID", fmt.Sprintf("%v", id)))
 				return nil
 			}
@@ -481,7 +481,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			continue // Continue the loop to re-evaluate the monster
 		}
 
-		if s.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 {
+		if s.Data.SafeMPPercent() < 15 && lvl.Value < 12 {
 			if s.Context.Data.PlayerUnit.IsDead() {
 				s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 				return nil

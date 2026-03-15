@@ -18,7 +18,7 @@ func ReviveMerc() {
 		return
 	}
 
-	if status.Data.MercHPPercent() > 0 {
+	if status.Data.SafeMercHPPercent() > 0 {
 		return
 	}
 

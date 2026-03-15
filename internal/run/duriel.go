@@ -144,7 +144,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 		if err := action.WayPoint(area.LutGholein); err != nil {
 			return err
 		}
-		mercAlive := d.ctx.Data.MercHPPercent() > 0
+		mercAlive := d.ctx.Data.SafeMercHPPercent() > 0
 		if err := d.buyAndDrinkThawingPotions(mercAlive, updateThawingBuff); err != nil {
 			return err
 		}
@@ -157,7 +157,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 			return err
 		}
 
-		mercAlive := d.ctx.Data.MercHPPercent() > 0
+		mercAlive := d.ctx.Data.SafeMercHPPercent() > 0
 		if err := d.buyAndDrinkThawingPotions(mercAlive, updateThawingBuff); err != nil {
 			return err
 		}
@@ -351,7 +351,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 
 // Consume thawing potions from the inventory only, optionally feeding the mercenary.
 func (d Duriel) drinkThawingPotions(selfTarget, mercTarget int) (int, int) {
-	mercAlive := d.ctx.Data.MercHPPercent() > 0
+	mercAlive := d.ctx.Data.SafeMercHPPercent() > 0
 	if selfTarget < 0 {
 		selfTarget = 0
 	}

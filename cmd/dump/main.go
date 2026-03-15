@@ -392,6 +392,16 @@ func findStat(pu interface {
 	return s.Value
 }
 
+func clampPercent(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > 100 {
+		return 100
+	}
+	return v
+}
+
 // ── map seed & collision grid ────────────────────────────────────────────────
 
 // getMapSeed reads the map seed from the D2R process memory using the same
@@ -579,8 +589,8 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 		Class: fmt.Sprintf("%v", pu.Class),
 		Level: lvl,
 		Area:  areaDisplayName(pu.Area),
-		HP:    pu.HPPercent(),
-		MP:    pu.MPPercent(),
+		HP:    clampPercent(pu.HPPercent()),
+		MP:    clampPercent(pu.MPPercent()),
 		Mode:  fmt.Sprintf("%v", pu.Mode),
 		Dead:  pu.IsDead(),
 	}
@@ -820,7 +830,7 @@ func collectData(gr *memory.GameReader) (resp apiResponse) {
 
 	// ── Weapon slot & merc ──
 	resp.WeaponSlot = d.ActiveWeaponSlot
-	resp.MercHP = d.MercHPPercent()
+	resp.MercHP = clampPercent(d.MercHPPercent())
 
 	// ── Menus ──
 	om := d.OpenMenus

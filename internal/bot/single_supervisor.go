@@ -886,7 +886,7 @@ func (s *SinglePlayerSupervisor) leaderStartedNewGame() bool {
 func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
 	// Don't start bonus runs if character is dead
 	s.bot.ctx.RefreshGameData()
-	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
+	if s.bot.ctx.Data.SafeHPPercent() <= 0 {
 		s.bot.ctx.Logger.Warn("Party: character is dead, skipping bonus runs")
 		return
 	}

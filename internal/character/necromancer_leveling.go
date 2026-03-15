@@ -128,7 +128,7 @@ func (n *NecromancerLeveling) shouldRetreat() bool {
 	}
 
 	// Retreat if health is critically low
-	if n.Data.PlayerUnit.HPPercent() < 30 {
+	if n.Data.SafeHPPercent() < 30 {
 		n.Logger.Warn("Health critically low, attempting to retreat")
 		return true
 	}
@@ -336,7 +336,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 3))
 			//n.Logger.Debug("Using Basic attack (pre-Teeth)")
 			utils.Sleep(150)
-		} else if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
+		} else if n.Data.SafeMPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 2))
 			//n.Logger.Debug("Using Basic attack")
 			utils.Sleep(150)
@@ -541,7 +541,7 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 			}
 
 			// Reposition if health is getting low (but not critical)
-			if n.Data.PlayerUnit.HPPercent() < 50 && distanceToBoss < 10 {
+			if n.Data.SafeHPPercent() < 50 && distanceToBoss < 10 {
 				n.Logger.Debug("Health low, repositioning to safer distance")
 				shouldReposition = true
 			}
@@ -600,7 +600,7 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 			step.SecondaryAttack(skill.Teeth, boss.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth on boss")
 			utils.Sleep(150)
-		} else if lvl.Value < 2 || n.Data.PlayerUnit.MPPercent() < 15 {
+		} else if lvl.Value < 2 || n.Data.SafeMPPercent() < 15 {
 			// Basic attack for very low level or out of mana
 			step.PrimaryAttack(boss.UnitID, 2, false, step.Distance(1, 5))
 			n.Logger.Debug("Using basic attack on boss")

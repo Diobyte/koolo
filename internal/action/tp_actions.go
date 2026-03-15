@@ -29,11 +29,11 @@ func checkPlayerDeathForTP(ctx *context.Status) error {
 		return health.ErrDied
 	}
 	// Player chicken check
-	if ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt {
+	if ctx.Data.SafeHPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt {
 		return health.ErrChicken
 	}
 	// Mercenary chicken check
-	if ctx.Data.MercHPPercent() > 0 && ctx.Data.MercHPPercent() <= ctx.Data.CharacterCfg.Health.MercChickenAt {
+	if ctx.Data.SafeMercHPPercent() > 0 && ctx.Data.SafeMercHPPercent() <= ctx.Data.CharacterCfg.Health.MercChickenAt {
 		return health.ErrMercChicken
 	}
 	return nil

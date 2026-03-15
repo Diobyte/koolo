@@ -55,19 +55,19 @@ func (hm *Manager) HandleHealthAndMana() error {
 	}
 
 	// Player chicken check
-	if hm.data.PlayerUnit.HPPercent() <= hpConfig.ChickenAt {
-		return fmt.Errorf("%w: Current Health: %d percent", ErrChicken, hm.data.PlayerUnit.HPPercent())
+	if hm.data.SafeHPPercent() <= hpConfig.ChickenAt {
+		return fmt.Errorf("%w: Current Health: %d percent", ErrChicken, hm.data.SafeHPPercent())
 	}
 
 	// Mercenary chicken check
-	if hm.data.MercHPPercent() > 0 && hm.data.MercHPPercent() <= hpConfig.MercChickenAt {
-		return fmt.Errorf("%w: Current Merc Health: %d percent", ErrMercChicken, hm.data.MercHPPercent())
+	if hm.data.SafeMercHPPercent() > 0 && hm.data.SafeMercHPPercent() <= hpConfig.MercChickenAt {
+		return fmt.Errorf("%w: Current Merc Health: %d percent", ErrMercChicken, hm.data.SafeMercHPPercent())
 	}
 
 	// Player rejuvenation potion check
 	if time.Since(hm.lastRejuv) > rejuvInterval &&
-		(hm.data.PlayerUnit.HPPercent() <= hpConfig.RejuvPotionAtLife ||
-			hm.data.PlayerUnit.MPPercent() < hpConfig.RejuvPotionAtMana) {
+		(hm.data.SafeHPPercent() <= hpConfig.RejuvPotionAtLife ||
+			hm.data.SafeMPPercent() < hpConfig.RejuvPotionAtMana) {
 		if hm.beltManager.DrinkPotion(data.RejuvenationPotion, false) {
 			hm.lastRejuv = time.Now()
 			return nil
@@ -75,7 +75,7 @@ func (hm *Manager) HandleHealthAndMana() error {
 	}
 
 	// Player healing potion check
-	if hm.data.PlayerUnit.HPPercent() <= hpConfig.HealingPotionAt &&
+	if hm.data.SafeHPPercent() <= hpConfig.HealingPotionAt &&
 		time.Since(hm.lastHeal) > healingInterval {
 		if hm.beltManager.DrinkPotion(data.HealingPotion, false) {
 			hm.lastHeal = time.Now()
@@ -83,7 +83,7 @@ func (hm *Manager) HandleHealthAndMana() error {
 	}
 
 	// Player mana potion check
-	if hm.data.PlayerUnit.MPPercent() <= hpConfig.ManaPotionAt &&
+	if hm.data.SafeMPPercent() <= hpConfig.ManaPotionAt &&
 		time.Since(hm.lastMana) > manaInterval {
 		if hm.beltManager.DrinkPotion(data.ManaPotion, false) {
 			hm.lastMana = time.Now()
@@ -91,10 +91,10 @@ func (hm *Manager) HandleHealthAndMana() error {
 	}
 
 	// Mercenary healing logic
-	if hm.data.MercHPPercent() > 0 {
+	if hm.data.SafeMercHPPercent() > 0 {
 		// Mercenary rejuvenation potion check
 		if time.Since(hm.lastRejuvMerc) > rejuvInterval &&
-			hm.data.MercHPPercent() <= hpConfig.MercRejuvPotionAt {
+			hm.data.SafeMercHPPercent() <= hpConfig.MercRejuvPotionAt {
 			if hm.beltManager.DrinkPotion(data.RejuvenationPotion, true) {
 				hm.lastRejuvMerc = time.Now()
 				return nil
@@ -102,7 +102,7 @@ func (hm *Manager) HandleHealthAndMana() error {
 		}
 
 		// Mercenary healing potion check
-		if hm.data.MercHPPercent() <= hpConfig.MercHealingPotionAt &&
+		if hm.data.SafeMercHPPercent() <= hpConfig.MercHealingPotionAt &&
 			time.Since(hm.lastMercHeal) > healingMercInterval {
 			if hm.beltManager.DrinkPotion(data.HealingPotion, true) {
 				hm.lastMercHeal = time.Now()
