@@ -270,6 +270,11 @@ func (s *SinglePlayerSupervisor) Start() error {
 			// if it gets stuck reading game state.
 			errChan := make(chan error, 1)
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						errChan <- fmt.Errorf("panic in HandleMenuFlow: %v", r)
+					}
+				}()
 				errChan <- s.HandleMenuFlow()
 			}()
 
@@ -455,6 +460,11 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		// In-Game Activity Monitor
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					s.bot.ctx.Logger.Error(fmt.Sprintf("Activity monitor panic recovered: %v", r))
+				}
+			}()
 			ticker := time.NewTicker(activityCheckInterval)
 			defer ticker.Stop()
 			var lastPosition data.Position
@@ -908,6 +918,12 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 
 	// Monitor goroutine: cancel bonus runs when leader creates new game or all done
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.bot.ctx.Logger.Error(fmt.Sprintf("Bonus run monitor panic recovered: %v", r))
+				bonusCancel()
+			}
+		}()
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -1085,6 +1101,11 @@ func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
 func (s *SinglePlayerSupervisor) callManagerWithTimeout(fn func() error) error {
 	errChan := make(chan error, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic in menu action: %v", r)
+			}
+		}()
 		errChan <- fn()
 	}()
 

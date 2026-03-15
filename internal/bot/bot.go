@@ -233,9 +233,15 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	// High priority loop, this will interrupt (pause) low priority loop
 	g.Go(func() error {
 		defer func() {
+			if r := recover(); r != nil {
+				if e, ok := r.(error); ok && errors.Is(e, health.ErrChicken) {
+					b.ctx.Logger.Warn("High-priority loop: chicken panic recovered", slog.Any("error", e))
+				} else {
+					b.ctx.Logger.Error(fmt.Sprintf("High-priority loop: panic recovered: %v", r))
+				}
+			}
 			cancel()
 			b.Stop()
-			recover()
 		}()
 
 		b.ctx.AttachRoutine(botCtx.PriorityHigh)

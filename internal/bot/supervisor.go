@@ -76,6 +76,14 @@ func (s *baseSupervisor) TogglePause() {
 }
 
 func (s *baseSupervisor) Stop() {
+	if s.bot == nil || s.bot.ctx == nil {
+		if s.cancelFn != nil {
+			s.cancelFn()
+		}
+		GetPartyRegistry().UnregisterMember(s.name)
+		return
+	}
+
 	s.bot.ctx.Logger.Info("Stopping...", slog.String("configuration", s.name))
 	if s.cancelFn != nil {
 		s.cancelFn()

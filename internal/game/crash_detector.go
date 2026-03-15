@@ -1,7 +1,9 @@
 package game
 
 import (
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -28,6 +30,12 @@ func NewCrashDetector(sup string, pid int32, hwnd uintptr, logger *slog.Logger, 
 }
 
 func (cd *CrashDetector) Start() {
+	defer func() {
+		if r := recover(); r != nil {
+			cd.logger.Error(fmt.Sprintf("Crash Detector panic recovered for %s: %v\nStacktrace: %s", cd.supervisor, r, debug.Stack()))
+		}
+	}()
+
 	cd.logger.Info("Starting Crash Detector ...", slog.Int("PID", int(cd.pid)), slog.String("Supervisor", cd.supervisor))
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()

@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -113,6 +114,11 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 
 	if config.Koolo.GameWindowArrangement {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					mng.logger.Error(fmt.Sprintf("Window rearrangement panic recovered: %v", r))
+				}
+			}()
 			// When the game starts, its doing some weird stuff like repositioning and resizing window automatically
 			// we need to wait until this is done in order to reposition, or it will be overridden
 			time.Sleep(time.Second * 5)
@@ -123,10 +129,17 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 	// Start the Crash Detector in a thread to avoid blocking and speed up start
 	go crashDetector.Start()
 
-	err = supervisor.Start()
-	if err != nil {
-		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
-	}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				mng.logger.Error(fmt.Sprintf("panic recovered in supervisor %s: %v\nStacktrace: %s", supervisorName, r, debug.Stack()))
+			}
+		}()
+		err = supervisor.Start()
+		if err != nil {
+			mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
+		}
+	}()
 
 	return nil
 }
@@ -333,8 +346,22 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 	// This function will be used to restart the client - passed to the crashDetector
 	restartFunc := func() {
+		defer func() {
+			if r := recover(); r != nil {
+				mng.logger.Error(fmt.Sprintf("panic recovered in restartFunc for %s: %v\nStacktrace: %s", supervisorName, r, debug.Stack()))
+			}
+		}()
 
 		ctx := supervisor.GetContext()
+		if ctx == nil {
+			mng.logger.Warn("restartFunc: supervisor context is nil, attempting restart", slog.String("supervisor", supervisorName))
+			mng.Stop(supervisorName)
+			time.Sleep(5 * time.Second)
+			if err := mng.Start(supervisorName, false, false); err != nil {
+				mng.logger.Error("Failed to restart supervisor after nil context", slog.String("supervisor", supervisorName), slog.String("error", err.Error()))
+			}
+			return
+		}
 
 		// Manual mode: just stop, don't restart
 		if ctx.ManualModeActive {

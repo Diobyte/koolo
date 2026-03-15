@@ -169,6 +169,11 @@ func main() {
 
 		// 3. Start Auto-Save Polling
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error(fmt.Sprintf("Window auto-save polling panic recovered: %v", r))
+				}
+			}()
 			handle := w.Window() // Get native Windows handle
 			user32 := syscall.NewLazyDLL("user32.dll")
 			getWindowRect := user32.NewProc("GetWindowRect")
@@ -210,6 +215,11 @@ func main() {
 
 		// 4. Randomly rotate window title to avoid identification
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error(fmt.Sprintf("Window title rotation panic recovered: %v", r))
+				}
+			}()
 			handle := w.Window()
 			for {
 				titlePtr, err := syscall.UTF16PtrFromString(windowname.RandomWebviewTitle())
