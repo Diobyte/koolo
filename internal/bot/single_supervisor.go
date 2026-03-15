@@ -636,6 +636,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 				}
 			}
 
+			// Dump armory data before exiting game so the armory reflects the final state
+			s.bot.ctx.RefreshGameData()
+			if dumpErr := s.dumpArmory(); dumpErr != nil {
+				s.bot.ctx.Logger.Debug("Failed to dump armory data before error game exit", slog.Any("error", dumpErr))
+			}
+
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
 				s.bot.ctx.Logger.Error(fmt.Sprintf("Error trying to exit game: %s", exitErr.Error()))
 				s.bot.ctx.Logger.Info("Killing client after failed game exit attempt.")
@@ -716,6 +722,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 			}
 			event.Send(event.ResetCompanionGameInfo(event.Text(s.name, "Game "+s.bot.ctx.Data.Game.LastGameName+" finished"), s.bot.ctx.CharacterCfg.CharacterName))
 		}
+		// Dump armory data one final time before exiting so the armory reflects the latest state
+		s.bot.ctx.RefreshGameData()
+		if dumpErr := s.dumpArmory(); dumpErr != nil {
+			s.bot.ctx.Logger.Debug("Failed to dump armory data before game exit", slog.Any("error", dumpErr))
+		}
+
 		if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {
 			errMsg := fmt.Sprintf("Error exiting game %s", exitErr.Error())
 			event.Send(event.GameFinished(event.WithScreenshot(s.name, errMsg, s.bot.ctx.GameReader.Screenshot()), event.FinishedError))

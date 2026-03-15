@@ -2560,6 +2560,7 @@
                     { items: armory.sharedStash3 || [], location: 'Shared Stash 3' },
                     { items: armory.sharedStash4 || [], location: 'Shared Stash 4' },
                     { items: armory.sharedStash5 || [], location: 'Shared Stash 5' },
+                    { items: armory.sharedStash6 || [], location: 'Shared Stash 6' },
                     { items: armory.gemsTab || [], location: 'Gems Tab' },
                     { items: armory.materialsTab || [], location: 'Materials Tab' },
                     { items: armory.runesTab || [], location: 'Runes Tab' },
@@ -2676,6 +2677,7 @@
                     ...(armory.sharedStash3 || []),
                     ...(armory.sharedStash4 || []),
                     ...(armory.sharedStash5 || []),
+                    ...(armory.sharedStash6 || []),
                     ...(armory.gemsTab || []),
                     ...(armory.materialsTab || []),
                     ...(armory.runesTab || [])
@@ -2813,6 +2815,12 @@
 
         async function loadRunewordPlanner() {
             const useAllStored = document.getElementById('showAllStoredPlayers')?.checked || false;
+            // Always re-fetch so the planner reflects the latest armory dumps
+            if (useAllStored) {
+                allStoredArmoryData = null;
+            } else {
+                allArmoryData = null;
+            }
             const data = useAllStored ? await fetchAllStoredArmoryData() : await fetchAllArmoryData();
             
             // Update header to reflect data source
@@ -2822,42 +2830,62 @@
                 header.innerHTML = '<i class="bi bi-collection"></i> Your Runes (' + label + ')';
             }
             
-            console.log('Runeword Planner - Fetched data:', data);
             runeInventory = {};
 
-            // Count all runes across all characters
-            for (const [charName, armory] of Object.entries(data)) {
-                console.log('Processing character:', charName, armory);
-                // Note: API returns lowercase property names (stash, sharedStash1, etc.)
-                const allItems = [
-                    ...(armory.stash || []),
-                    ...(armory.sharedStash1 || []),
-                    ...(armory.sharedStash2 || []),
-                    ...(armory.sharedStash3 || []),
-                    ...(armory.sharedStash4 || []),
-                    ...(armory.sharedStash5 || []),
-                    ...(armory.gemsTab || []),
-                    ...(armory.materialsTab || []),
-                    ...(armory.runesTab || []),
-                    ...(armory.inventory || []),
-                    ...(armory.cube || [])
-                ];
-                console.log('All items count:', allItems.length);
+            // Shared stash, gems, materials, and runes tabs are shared across all
+            // characters. Only count them once from the most recently dumped character
+            // to avoid inflating rune counts.
+            const entries = Object.entries(data);
+            let newestChar = null;
+            let newestTime = '';
+            for (const [charName, armory] of entries) {
+                const t = armory.dumpTime || '';
+                if (t > newestTime) {
+                    newestTime = t;
+                    newestChar = charName;
+                }
+            }
 
-                for (const item of allItems) {
-                    // Check by itemType first (most reliable), then fall back to name pattern
-                    const isRune = item.itemType === 'rune' || 
+            // Count shared storage items only once (from the freshest dump)
+            if (newestChar) {
+                const freshest = data[newestChar];
+                const sharedItems = [
+                    ...(freshest.sharedStash1 || []),
+                    ...(freshest.sharedStash2 || []),
+                    ...(freshest.sharedStash3 || []),
+                    ...(freshest.sharedStash4 || []),
+                    ...(freshest.sharedStash5 || []),
+                    ...(freshest.sharedStash6 || []),
+                    ...(freshest.gemsTab || []),
+                    ...(freshest.materialsTab || []),
+                    ...(freshest.runesTab || []),
+                ];
+                for (const item of sharedItems) {
+                    const isRune = item.itemType === 'rune' ||
                                    (item.name && item.name.toLowerCase().endsWith('rune'));
                     if (isRune && item.name) {
-                        // Handle both "RalRune" and "Ral Rune" formats
                         const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
-                        console.log('Found rune:', item.name, '->', runeName);
                         runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
                     }
                 }
             }
 
-            console.log('Final rune inventory:', runeInventory);
+            // Count per-character items (personal stash, inventory, cube)
+            for (const [charName, armory] of entries) {
+                const personalItems = [
+                    ...(armory.stash || []),
+                    ...(armory.inventory || []),
+                    ...(armory.cube || []),
+                ];
+                for (const item of personalItems) {
+                    const isRune = item.itemType === 'rune' ||
+                                   (item.name && item.name.toLowerCase().endsWith('rune'));
+                    if (isRune && item.name) {
+                        const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
+                    }
+                }
+            }
             
             // Scan for available bases (socketed items)
             scanForBases(data);
@@ -2930,51 +2958,68 @@
 
         function scanForBases(data) {
             availableBases = [];
-            
-            for (const [charName, armory] of Object.entries(data)) {
-                const allItems = [
-                    ...(armory.stash || []),
-                    ...(armory.sharedStash1 || []),
-                    ...(armory.sharedStash2 || []),
-                    ...(armory.sharedStash3 || []),
-                    ...(armory.sharedStash4 || []),
-                    ...(armory.sharedStash5 || []),
-                    ...(armory.gemsTab || []),
-                    ...(armory.materialsTab || []),
-                    ...(armory.runesTab || []),
-                    ...(armory.inventory || []),
-                    ...(armory.cube || [])
-                ];
+            const seenShared = new Set(); // deduplicate shared-stash bases
 
-                for (const item of allItems) {
-                    // Skip items that already have runes/gems socketed
-                    if (item.sockets && item.sockets.length > 0) continue;
-                    // Skip runewords
-                    if (item.isRuneword) continue;
-                    
-                    // Get socket count from various sources
-                    const sockets = getSocketCount(item);
-                    
-                    // Only include items with sockets (hasSockets or socketCount > 0)
-                    if (sockets > 0 || item.hasSockets) {
-                        const finalSockets = sockets > 0 ? sockets : 0;
-                        if (finalSockets > 0) {
-                            availableBases.push({
-                                name: item.name,
-                                itemType: item.itemType,
-                                sockets: finalSockets,
-                                ethereal: item.ethereal,
-                                character: charName,
-                                quality: item.quality,
-                                defense: item.defense,
-                                imageName: item.imageName
-                            });
-                        }
-                    }
+            // Find the freshest dump for shared storage (same logic as rune counting)
+            const entries = Object.entries(data);
+            let newestChar = null;
+            let newestTime = '';
+            for (const [charName, armory] of entries) {
+                const t = armory.dumpTime || '';
+                if (t > newestTime) {
+                    newestTime = t;
+                    newestChar = charName;
                 }
             }
-            
-            console.log('Available bases found:', availableBases);
+
+            function addBase(item, charName) {
+                if (item.sockets && item.sockets.length > 0) return;
+                if (item.isRuneword) return;
+                const sockets = getSocketCount(item);
+                if (sockets > 0) {
+                    availableBases.push({
+                        name: item.name,
+                        itemType: item.itemType,
+                        sockets: sockets,
+                        ethereal: item.ethereal,
+                        character: charName,
+                        quality: item.quality,
+                        defense: item.defense,
+                        imageName: item.imageName
+                    });
+                }
+            }
+
+            // Shared storage bases — only from the freshest dump
+            if (newestChar) {
+                const freshest = data[newestChar];
+                const sharedItems = [
+                    ...(freshest.sharedStash1 || []),
+                    ...(freshest.sharedStash2 || []),
+                    ...(freshest.sharedStash3 || []),
+                    ...(freshest.sharedStash4 || []),
+                    ...(freshest.sharedStash5 || []),
+                    ...(freshest.sharedStash6 || []),
+                    ...(freshest.gemsTab || []),
+                    ...(freshest.materialsTab || []),
+                    ...(freshest.runesTab || []),
+                ];
+                for (const item of sharedItems) {
+                    addBase(item, newestChar);
+                }
+            }
+
+            // Per-character bases (personal stash, inventory, cube)
+            for (const [charName, armory] of entries) {
+                const personalItems = [
+                    ...(armory.stash || []),
+                    ...(armory.inventory || []),
+                    ...(armory.cube || []),
+                ];
+                for (const item of personalItems) {
+                    addBase(item, charName);
+                }
+            }
         }
 
         function getMatchingBases(runewordBases, socketCount) {
