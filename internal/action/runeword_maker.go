@@ -183,9 +183,19 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 	if base.Location.LocationType == item.LocationSharedStash || base.Location.LocationType == item.LocationStash {
 		ctx.Logger.Debug("Base in stash - checking it fits")
 		if !itemFitsInventory(base) {
-			ctx.Logger.Error("Base item does not fit in inventory", "item", base.Name)
+			// Try to free inventory space by drinking potions before giving up
+			ctx.Logger.Info("Base item does not fit in inventory, drinking potions to free space", "item", base.Name)
 			step.CloseAllMenus()
-			return fmt.Errorf("base item %s does not fit in inventory", base.Name)
+			DrinkAllPotionsInInventory()
+			ctx.RefreshGameData()
+			if !itemFitsInventory(base) {
+				ctx.Logger.Error("Base item still does not fit in inventory after freeing space", "item", base.Name)
+				return fmt.Errorf("base item %s does not fit in inventory", base.Name)
+			}
+			// Reopen stash since we closed menus
+			if err := OpenStash(); err != nil {
+				return fmt.Errorf("could not reopen stash after freeing space: %w", err)
+			}
 		}
 
 		if base.Location.LocationType == item.LocationSharedStash {

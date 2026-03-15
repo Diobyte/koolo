@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	spiralDelay   = 25 * time.Millisecond
+	probeDelay    = 25 * time.Millisecond
 	pickupTimeout = 3 * time.Second
 )
 
@@ -95,10 +95,14 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 
 	// Track interaction state
 	waitingForInteraction := time.Time{}
-	spiralAttempt := 0
+	probeAttempt := 0
 	targetItem := it
 	lastMonsterCheck := time.Now()
 	const monsterCheckInterval = 150 * time.Millisecond
+
+	// Pre-generate probe positions: center-first, expanding rings, shuffled
+	probeOffsets := utils.PickupProbeOffsets(4)
+	probeIndex := 0
 
 	startTime := time.Now()
 
@@ -117,8 +121,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		// Check if item still exists
 		currentItem, exists := findItemOnGround(targetItem.UnitID)
 		if !exists {
-
-			ctx.Logger.Info(fmt.Sprintf("Picked up: %s [%s] | Item Pickup Attempt:%d | Spiral Attempt:%d", targetItem.Desc().Name, targetItem.Quality.ToString(), itemPickupAttempt, spiralAttempt))
+			ctx.Logger.Info(fmt.Sprintf("Picked up: %s [%s] | Item Pickup Attempt:%d | Probe Attempt:%d", targetItem.Desc().Name, targetItem.Quality.ToString(), itemPickupAttempt, probeAttempt))
 
 			ctx.CurrentGame.PickedUpItems[int(targetItem.UnitID)] = int(ctx.Data.PlayerUnit.Area.Area().ID)
 
@@ -126,19 +129,26 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		}
 
 		// Check timeout conditions
-		if spiralAttempt > maxInteractions ||
+		if probeAttempt > maxInteractions ||
 			(!waitingForInteraction.IsZero() && time.Since(waitingForInteraction) > pickupTimeout) ||
 			time.Since(startTime) > pickupTimeout {
-			return fmt.Errorf("failed to pick up %s after %d attempts", it.Desc().Name, spiralAttempt)
+			return fmt.Errorf("failed to pick up %s after %d attempts", it.Desc().Name, probeAttempt)
 		}
 
-		offsetX, offsetY := utils.ItemSpiral(spiralAttempt)
-		cursorX := baseScreenX + offsetX
-		cursorY := baseScreenY + offsetY
+		// Regenerate offsets if we exhaust the current set
+		if probeIndex >= len(probeOffsets) {
+			probeOffsets = utils.PickupProbeOffsets(4)
+			probeIndex = 0
+		}
 
-		// Move cursor directly to target position
+		offset := probeOffsets[probeIndex]
+		probeIndex++
+		cursorX := baseScreenX + offset[0]
+		cursorY := baseScreenY + offset[1]
+
+		// Move cursor to probe position
 		ctx.HID.MovePointer(cursorX, cursorY)
-		time.Sleep(spiralDelay)
+		time.Sleep(probeDelay)
 
 		// Click on item if mouse is hovering over
 		if currentItem.UnitID == ctx.GameReader.GameReader.GetData().HoverData.UnitID {
@@ -158,7 +168,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 			time.Sleep(50 * time.Millisecond)
 		}
 
-		spiralAttempt++
+		probeAttempt++
 	}
 }
 

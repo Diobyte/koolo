@@ -271,10 +271,11 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 			ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) — quest item", displayName, i.Quality.ToString()))
 			return true
 		}
-		// Personal stash full with a quest item stuck in inventory — flag it
-		// so that StashFull() returns true and auto-mule can trigger.
-		ctx.CurrentGame.StashFull = true
-		ctx.Logger.Warn(fmt.Sprintf("Failed to stash quest item %s to personal stash (tab 1) — tab may be full, flagging for mule", displayName))
+		// Personal stash full for a quest item. Do NOT flag StashFull — a mule
+		// can't solve this (quest items still require personal stash) and shared
+		// stash may have plenty of room for normal items. The item stays in
+		// inventory which is fine for gameplay.
+		ctx.Logger.Warn(fmt.Sprintf("Quest item %s could not fit in personal stash (tab 1) — leaving in inventory", displayName))
 		return false
 	}
 
@@ -324,6 +325,24 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 			itemStashed = true
 			ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) as fallback", displayName, i.Quality.ToString()))
 		}
+	}
+
+	// If the item started at personal and shared was the fallback range,
+	// but still couldn't be stashed, try personal again in case the loop
+	// started at tab 2 due to unique charm override.
+	if !itemStashed && targetStartTab != startTab && startTab == 1 {
+		SwitchStashTab(1)
+		if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+			itemStashed = true
+			ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) as charm fallback", displayName, i.Quality.ToString()))
+		}
+	}
+
+	// All tabs exhausted for a normal item — flag StashFull so the mule
+	// system knows there is genuinely no space left.
+	if !itemStashed {
+		ctx.CurrentGame.StashFull = true
+		ctx.Logger.Warn(fmt.Sprintf("Item %s could not be stashed in any tab — all stash space exhausted", displayName))
 	}
 
 	return itemStashed

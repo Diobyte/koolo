@@ -122,6 +122,14 @@ func (c Countess) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	// Clear enemies around the player before engaging the Countess.
+	// After teleporting in, surrounding monsters are active but KillCountess
+	// only targets the boss. This also gives time for the Countess monster
+	// data to load into memory after the teleport.
+	if err := action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter()); err != nil {
+		c.ctx.Logger.Warn("Failed to clear area around Countess room", slog.Any("error", err))
+	}
+
 	// Kill Countess
 	if err := c.ctx.Char.KillCountess(); err != nil {
 		return err

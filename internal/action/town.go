@@ -16,27 +16,25 @@ import (
 func StashFull() bool {
 	ctx := context.Get()
 
-	// If a previous stash attempt flagged that a quest item could not fit
-	// into the personal stash, honour that signal so auto-mule can trigger.
+	// If a previous stash attempt confirmed no tab had space for a normal
+	// item, honour that signal so auto-mule can trigger.
 	if ctx.CurrentGame.StashFull {
 		return true
 	}
 
+	// Count used space across personal AND shared stash so that one section
+	// being full while the other is empty does not falsely trigger muling.
 	totalUsedSpace := 0
-
-	// ByLocation(LocationSharedStash) returns items from ALL shared stash
-	// pages at once (each item carries a Location.Page field), so no stash
-	// opening or tab switching is needed — the memory reader sees everything.
-	sharedPages := SharedStashPageCount(ctx)
-
+	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationStash) {
+		totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
+	}
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationSharedStash) {
 		totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
 	}
 
-	// Each page has 100 spaces. 80% threshold for muling.
-	// Non-DLC: 3 pages × 100 = 300 spaces, 80% = 240
-	// DLC: 5 pages × 100 = 500 spaces, 80% = 400
-	maxSpace := sharedPages * 100
+	// Total capacity: 1 personal page + N shared pages, each 10×10 = 100 slots.
+	sharedPages := SharedStashPageCount(ctx)
+	maxSpace := (1 + sharedPages) * 100
 	threshold := int(float64(maxSpace) * 0.8)
 	return totalUsedSpace > threshold
 }

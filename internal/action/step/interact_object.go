@@ -196,12 +196,12 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 			}
 
 			mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
-			// In order to avoid the spiral (super slow and shitty) let's try to point the mouse to the top of the portal directly
+			// Try to point the mouse to the top of the portal directly
 			if mouseOverAttempts == 2 && o.IsPortal() {
 				mX, mY = ui.GameCoordsToScreenCords(objectX-4, objectY-4)
 			}
 
-			x, y := utils.Spiral(mouseOverAttempts)
+			x, y := utils.RandomOffset(5)
 			currentMouseCoords = data.Position{X: mX + x, Y: mY + y}
 			ctx.HID.MovePointer(mX+x, mY+y)
 			mouseOverAttempts++

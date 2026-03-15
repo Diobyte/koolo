@@ -164,11 +164,11 @@ func InteractEntranceMouse(targetArea area.ID) error {
 				utils.PingSleep(utils.Light, 200) // Light operation: Wait for click registration
 			}
 
-			x, y := utils.Spiral(interactionAttempts)
+			radius := 5
 			if ctx.Data.AreaData.Area == area.CanyonOfTheMagi {
-				x = x * 5
-				y = y * 5
+				radius = 25
 			}
+			x, y := utils.RandomOffset(radius)
 			currentMouseCoords = data.Position{X: lx + x, Y: ly + y}
 			ctx.HID.MovePointer(lx+x, ly+y)
 			interactionAttempts++

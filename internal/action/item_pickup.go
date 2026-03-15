@@ -296,6 +296,30 @@ outer:
 
 			err := step.PickupItem(itemToPickup, attempt)
 			if err == nil {
+				// For items that occupy inventory space (not gold/potions), verify the
+				// item actually landed in our inventory, belt, or cursor. The ground-based
+				// "item disappeared" check in step.PickupItem can false-positive if the
+				// item despawned or another entity grabbed it.
+				if itemNeedsInventorySpace(itemToPickup) {
+					ctx.RefreshInventory()
+					confirmedItem, found := ctx.Data.Inventory.FindByID(itemToPickup.UnitID)
+					if !found || confirmedItem.Location.LocationType == item.LocationGround {
+						ctx.Logger.Warn("Item disappeared from ground but NOT found in inventory — may not have been picked up",
+							slog.String("itemName", string(itemToPickup.Desc().Name)),
+							slog.Int("unitID", int(itemToPickup.UnitID)),
+							slog.Int("attempt", attempt),
+						)
+						// Remove the premature PickedUpItems entry that step.PickupItem set
+						delete(ctx.CurrentGame.PickedUpItems, int(itemToPickup.UnitID))
+						// Random movement to shift position before retrying
+						ctx.PathFinder.RandomMovement()
+						utils.Sleep(300)
+						totalAttemptCounter++
+						attempt++
+						continue
+					}
+				}
+
 				pickedUp = true
 				lastError = nil
 				if debugPickit {
@@ -380,6 +404,24 @@ outer:
 				if mvErr := MoveToCoords(beyondPos, step.WithIgnoreItems()); mvErr == nil {
 					err = step.PickupItem(itemToPickup, attempt)
 					if err == nil {
+						// Verify item landed in our inventory (same check as main pickup path)
+						if itemNeedsInventorySpace(itemToPickup) {
+							ctx.RefreshInventory()
+							confirmedItem, found := ctx.Data.Inventory.FindByID(itemToPickup.UnitID)
+							if !found || confirmedItem.Location.LocationType == item.LocationGround {
+								ctx.Logger.Warn("Item disappeared after LOS correction but NOT found in inventory",
+									slog.String("itemName", string(itemToPickup.Desc().Name)),
+									slog.Int("unitID", int(itemToPickup.UnitID)),
+								)
+								delete(ctx.CurrentGame.PickedUpItems, int(itemToPickup.UnitID))
+								ctx.PathFinder.RandomMovement()
+								utils.Sleep(300)
+								totalAttemptCounter++
+								attempt++
+								continue
+							}
+						}
+
 						pickedUp = true
 						lastError = nil
 						if debugPickit {

@@ -1354,6 +1354,19 @@ func UnEquipMercenary() error {
 
 	CloseStash()
 
+	// Verify inventory was actually cleared (stash may have been full)
+	*ctx.Data = ctx.GameReader.GetData()
+	remaining := 0
+	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if invItem.Name == "TomeOfTownPortal" || invItem.Name == "TomeOfIdentify" {
+			continue
+		}
+		remaining++
+	}
+	if remaining > 0 {
+		ctx.Logger.Warn(fmt.Sprintf("Could not stash all inventory items (%d remain), merc unequip may fail due to lack of space", remaining))
+	}
+
 	// Step 2: UnEquip the mercenary's gear.
 	ctx.Logger.Info("Stashing complete. Now unequipping mercenary gear.")
 
@@ -1368,6 +1381,7 @@ func UnEquipMercenary() error {
 
 	// Use predefined screen coordinates for the mercenary's gear slots
 	var mercGearCoords []data.Position
+	mercSlots := []item.LocationType{item.LocHead, item.LocTorso, item.LocLeftArm}
 	if ctx.Data.LegacyGraphics {
 		// D2 Classic
 		mercGearCoords = []data.Position{
@@ -1388,6 +1402,14 @@ func UnEquipMercenary() error {
 	for _, coords := range mercGearCoords {
 		ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
 		utils.Sleep(EquipDelayMS)
+	}
+
+	// Verify merc gear was actually unequipped
+	*ctx.Data = ctx.GameReader.GetData()
+	for _, loc := range mercSlots {
+		if mercItem := GetMercEquippedItem(ctx.Data.Inventory, loc); mercItem.UnitID != 0 {
+			return fmt.Errorf("failed to unequip mercenary %s slot — inventory may be full", loc)
+		}
 	}
 
 	return nil
