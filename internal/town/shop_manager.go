@@ -22,7 +22,9 @@ var questItems = []item.Name{
 	"AmuletOfTheViper",
 	"KhalimsFlail",
 	"KhalimsWill",
+	"TheGidbinn",
 	"HellforgeHammer",
+	"HoradricMalus",
 }
 
 func BuyConsumables(forceRefill bool) {

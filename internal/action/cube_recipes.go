@@ -562,7 +562,11 @@ func CubeRecipes() error {
 				// Add items to the cube and perform the transmutation
 				err := CubeAddItems(items...)
 				if err != nil {
-					return err
+					ctx.Logger.Warn("Failed to add items to cube, skipping recipe",
+						slog.String("recipe", recipe.Name),
+						slog.String("error", err.Error()))
+					continueProcessing = false
+					break
 				}
 				if err = CubeTransmute(); err != nil {
 					return err

@@ -141,11 +141,19 @@ func CubeAddItems(items ...data.Item) error {
 		if found != nil {
 			usedUnitIDs[found.UnitID] = struct{}{}
 		} else {
-			ctx.Logger.Warn("Item not found in inventory for cube",
+			ctx.Logger.Warn("Item not found in inventory for cube, aborting recipe",
 				slog.String("Item", string(itm.Name)),
 				slog.Int("UnitID", int(itm.UnitID)),
 			)
-			continue
+			// Try to return any items already placed in the cube back to inventory.
+			ctx.RefreshGameData()
+			for _, stuck := range ctx.Data.Inventory.ByLocation(item.LocationCube) {
+				sp := ui.GetScreenCoordsForItem(stuck)
+				ctx.HID.ClickWithModifier(game.LeftButton, sp.X, sp.Y, game.CtrlKey)
+				utils.PingSleep(utils.Light, 200)
+			}
+			step.CloseAllMenus()
+			return fmt.Errorf("item %s not found in inventory for cube (inventory may be full)", itm.Name)
 		}
 
 		screenPos := ui.GetScreenCoordsForItem(*found)
