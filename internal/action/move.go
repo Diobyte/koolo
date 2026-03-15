@@ -507,12 +507,27 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 					}
 					return filteredMonsters
 				})
-				_ = ClearAreaAroundPosition(ctx.Data.PlayerUnit.Position, clearPathDist, filters...)
-				if !opts.IgnoreItems() {
-					// After clearing, immediately try to pick up items
-					lootErr := ItemPickup(lootAfterCombatRadius)
-					if lootErr != nil {
-						ctx.Logger.Warn("Error picking up items after combat", slog.String("error", lootErr.Error()))
+
+				// Quick check: only engage combat (and loot afterward) when enemies
+				// are actually nearby. This avoids calling ItemPickup during calm
+				// movement — ItemPickup unconditionally waits 500ms for item drops
+				// on every invocation, which causes visible movement stuttering.
+				hasNearbyEnemies := false
+				for _, m := range ctx.Data.Monsters.Enemies(filters...) {
+					if pather.DistanceFromPoint(ctx.Data.PlayerUnit.Position, m.Position) <= clearPathDist {
+						hasNearbyEnemies = true
+						break
+					}
+				}
+
+				if hasNearbyEnemies {
+					_ = ClearAreaAroundPosition(ctx.Data.PlayerUnit.Position, clearPathDist, filters...)
+					if !opts.IgnoreItems() {
+						// After clearing, immediately try to pick up items
+						lootErr := ItemPickup(lootAfterCombatRadius)
+						if lootErr != nil {
+							ctx.Logger.Warn("Error picking up items after combat", slog.String("error", lootErr.Error()))
+						}
 					}
 				}
 			}

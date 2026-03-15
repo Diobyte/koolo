@@ -539,7 +539,7 @@ func CubeRecipes() error {
 					slog.Int("count", transmuteCount))
 				break
 			}
-			if items, hasItems := hasItemsForRecipe(ctx, recipe); hasItems {
+			if items, hasItems := hasItemsForRecipe(ctx, recipe, itemsInStash); hasItems {
 
 				// TODO: Check if we have the items in our storage and if not, purchase them, else take the item from the storage
 				if recipe.PurchaseRequired {
@@ -650,16 +650,13 @@ func CubeRecipes() error {
 	return nil
 }
 
-func hasItemsForRecipe(ctx *context.Status, recipe CubeRecipe) ([]data.Item, bool) {
+func hasItemsForRecipe(ctx *context.Status, recipe CubeRecipe, cachedItems []data.Item) ([]data.Item, bool) {
 
-	ctx.RefreshGameData()
-
-	// Build location list for material search - include DLC tabs if character has DLC
-	locations := []item.LocationType{item.LocationStash, item.LocationSharedStash}
-	if ctx.Data.IsDLC() {
-		locations = append(locations, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab)
-	}
-	items := FilterDLCGhostItems(ctx.Data.Inventory.ByLocation(locations...))
+	// Use the cached stash snapshot so we don't see gems that were just
+	// created by earlier recipe transmutations in this same CubeRecipes()
+	// call. Reading live game data here caused lower-tier gem recipes to
+	// cascade into higher tiers (e.g. Chipped→Flawed→Regular in one pass).
+	items := cachedItems
 
 	if strings.Contains(recipe.Name, "Add Sockets to") {
 		return hasItemsForSocketRecipe(ctx, recipe, items)
@@ -900,20 +897,38 @@ func isPerfectGem(item data.Item) bool {
 }
 
 func removeUsedItems(stash []data.Item, usedItems []data.Item) []data.Item {
-	remainingItems := make([]data.Item, 0)
+	remainingItems := make([]data.Item, 0, len(stash))
 	usedItemMap := make(map[string]int)
 
 	// Populate a map with the count of used items
-	for _, item := range usedItems {
-		usedItemMap[string(item.Name)] += 1 // Assuming 'ID' uniquely identifies items in 'usedItems'
+	for _, itm := range usedItems {
+		usedItemMap[string(itm.Name)]++
 	}
 
-	// Filter the stash by excluding used items based on the count in the map
-	for _, item := range stash {
-		if count, exists := usedItemMap[string(item.Name)]; exists && count > 0 {
-			usedItemMap[string(item.Name)] -= 1
+	// Filter the stash by excluding used items based on the count in the map.
+	// For DLC stacked items, decrement StackedQuantity instead of removing
+	// the entire entry — one stash entry can represent many physical items.
+	for _, itm := range stash {
+		count, exists := usedItemMap[string(itm.Name)]
+		if !exists || count <= 0 {
+			remainingItems = append(remainingItems, itm)
+			continue
+		}
+
+		stackedQty := isDLCStackedQuantity(itm)
+		if stackedQty > 1 {
+			// DLC stacked item: subtract used count from stack quantity
+			remove := min(count, stackedQty)
+			usedItemMap[string(itm.Name)] -= remove
+			newQty := stackedQty - remove
+			if newQty > 0 {
+				updated := itm
+				updated.StackedQuantity = newQty
+				remainingItems = append(remainingItems, updated)
+			}
 		} else {
-			remainingItems = append(remainingItems, item)
+			// Regular (non-stacked) item: consume one entry
+			usedItemMap[string(itm.Name)]--
 		}
 	}
 
