@@ -22,64 +22,39 @@ type CubeRecipe struct {
 var (
 	Recipes = []CubeRecipe{
 
-		// Flawed Gems (3x Chipped → 1 Flawed)
-		{
-			Name:  "Flawed Amethyst",
-			Items: []string{"ChippedAmethyst", "ChippedAmethyst", "ChippedAmethyst"},
-		},
-		{
-			Name:  "Flawed Diamond",
-			Items: []string{"ChippedDiamond", "ChippedDiamond", "ChippedDiamond"},
-		},
-		{
-			Name:  "Flawed Emerald",
-			Items: []string{"ChippedEmerald", "ChippedEmerald", "ChippedEmerald"},
-		},
-		{
-			Name:  "Flawed Ruby",
-			Items: []string{"ChippedRuby", "ChippedRuby", "ChippedRuby"},
-		},
-		{
-			Name:  "Flawed Sapphire",
-			Items: []string{"ChippedSapphire", "ChippedSapphire", "ChippedSapphire"},
-		},
-		{
-			Name:  "Flawed Topaz",
-			Items: []string{"ChippedTopaz", "ChippedTopaz", "ChippedTopaz"},
-		},
-		{
-			Name:  "Flawed Skull",
-			Items: []string{"ChippedSkull", "ChippedSkull", "ChippedSkull"},
-		},
+		// Gem recipes are ordered highest-to-lowest tier so that we always
+		// upgrade the most-refined gems first. This prevents lower-tier
+		// transmutations from producing intermediates that immediately
+		// cascade into the next tier within the same CubeRecipes() call.
 
-		// Regular Gems (3x Flawed → 1 Regular)
+		// Perfect Gems (3x Flawless → 1 Perfect)
 		{
-			Name:  "Amethyst",
-			Items: []string{"FlawedAmethyst", "FlawedAmethyst", "FlawedAmethyst"},
+			Name:  "Perfect Amethyst",
+			Items: []string{"FlawlessAmethyst", "FlawlessAmethyst", "FlawlessAmethyst"},
 		},
 		{
-			Name:  "Diamond",
-			Items: []string{"FlawedDiamond", "FlawedDiamond", "FlawedDiamond"},
+			Name:  "Perfect Diamond",
+			Items: []string{"FlawlessDiamond", "FlawlessDiamond", "FlawlessDiamond"},
 		},
 		{
-			Name:  "Emerald",
-			Items: []string{"FlawedEmerald", "FlawedEmerald", "FlawedEmerald"},
+			Name:  "Perfect Emerald",
+			Items: []string{"FlawlessEmerald", "FlawlessEmerald", "FlawlessEmerald"},
 		},
 		{
-			Name:  "Ruby",
-			Items: []string{"FlawedRuby", "FlawedRuby", "FlawedRuby"},
+			Name:  "Perfect Ruby",
+			Items: []string{"FlawlessRuby", "FlawlessRuby", "FlawlessRuby"},
 		},
 		{
-			Name:  "Sapphire",
-			Items: []string{"FlawedSapphire", "FlawedSapphire", "FlawedSapphire"},
+			Name:  "Perfect Sapphire",
+			Items: []string{"FlawlessSapphire", "FlawlessSapphire", "FlawlessSapphire"},
 		},
 		{
-			Name:  "Topaz",
-			Items: []string{"FlawedTopaz", "FlawedTopaz", "FlawedTopaz"},
+			Name:  "Perfect Topaz",
+			Items: []string{"FlawlessTopaz", "FlawlessTopaz", "FlawlessTopaz"},
 		},
 		{
-			Name:  "Skull",
-			Items: []string{"FlawedSkull", "FlawedSkull", "FlawedSkull"},
+			Name:  "Perfect Skull",
+			Items: []string{"FlawlessSkull", "FlawlessSkull", "FlawlessSkull"},
 		},
 
 		// Flawless Gems (3x Regular → 1 Flawless)
@@ -112,34 +87,64 @@ var (
 			Items: []string{"Skull", "Skull", "Skull"},
 		},
 
-		// Perfect Gems (3x Flawless → 1 Perfect)
+		// Regular Gems (3x Flawed → 1 Regular)
 		{
-			Name:  "Perfect Amethyst",
-			Items: []string{"FlawlessAmethyst", "FlawlessAmethyst", "FlawlessAmethyst"},
+			Name:  "Amethyst",
+			Items: []string{"FlawedAmethyst", "FlawedAmethyst", "FlawedAmethyst"},
 		},
 		{
-			Name:  "Perfect Diamond",
-			Items: []string{"FlawlessDiamond", "FlawlessDiamond", "FlawlessDiamond"},
+			Name:  "Diamond",
+			Items: []string{"FlawedDiamond", "FlawedDiamond", "FlawedDiamond"},
 		},
 		{
-			Name:  "Perfect Emerald",
-			Items: []string{"FlawlessEmerald", "FlawlessEmerald", "FlawlessEmerald"},
+			Name:  "Emerald",
+			Items: []string{"FlawedEmerald", "FlawedEmerald", "FlawedEmerald"},
 		},
 		{
-			Name:  "Perfect Ruby",
-			Items: []string{"FlawlessRuby", "FlawlessRuby", "FlawlessRuby"},
+			Name:  "Ruby",
+			Items: []string{"FlawedRuby", "FlawedRuby", "FlawedRuby"},
 		},
 		{
-			Name:  "Perfect Sapphire",
-			Items: []string{"FlawlessSapphire", "FlawlessSapphire", "FlawlessSapphire"},
+			Name:  "Sapphire",
+			Items: []string{"FlawedSapphire", "FlawedSapphire", "FlawedSapphire"},
 		},
 		{
-			Name:  "Perfect Topaz",
-			Items: []string{"FlawlessTopaz", "FlawlessTopaz", "FlawlessTopaz"},
+			Name:  "Topaz",
+			Items: []string{"FlawedTopaz", "FlawedTopaz", "FlawedTopaz"},
 		},
 		{
-			Name:  "Perfect Skull",
-			Items: []string{"FlawlessSkull", "FlawlessSkull", "FlawlessSkull"},
+			Name:  "Skull",
+			Items: []string{"FlawedSkull", "FlawedSkull", "FlawedSkull"},
+		},
+
+		// Flawed Gems (3x Chipped → 1 Flawed)
+		{
+			Name:  "Flawed Amethyst",
+			Items: []string{"ChippedAmethyst", "ChippedAmethyst", "ChippedAmethyst"},
+		},
+		{
+			Name:  "Flawed Diamond",
+			Items: []string{"ChippedDiamond", "ChippedDiamond", "ChippedDiamond"},
+		},
+		{
+			Name:  "Flawed Emerald",
+			Items: []string{"ChippedEmerald", "ChippedEmerald", "ChippedEmerald"},
+		},
+		{
+			Name:  "Flawed Ruby",
+			Items: []string{"ChippedRuby", "ChippedRuby", "ChippedRuby"},
+		},
+		{
+			Name:  "Flawed Sapphire",
+			Items: []string{"ChippedSapphire", "ChippedSapphire", "ChippedSapphire"},
+		},
+		{
+			Name:  "Flawed Topaz",
+			Items: []string{"ChippedTopaz", "ChippedTopaz", "ChippedTopaz"},
+		},
+		{
+			Name:  "Flawed Skull",
+			Items: []string{"ChippedSkull", "ChippedSkull", "ChippedSkull"},
 		},
 
 		// Token
