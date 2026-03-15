@@ -1,0 +1,103 @@
+//Grail
+
+[type] == ring 				&& [quality] == unique # [strength] >= 500
+[type] == ring 				&& [quality] == set # [strength] >= 500
+
+[type] == amulet 			&& [quality] == unique # [strength] >= 500
+[type] == amulet 			&& [quality] == set # [strength] >= 500
+
+[type] == helm 				&& [quality] == unique # [strength] >= 500
+[type] == helm 				&& [quality] == set # [strength] >= 500
+
+[type] == circlet 			&& [quality] == unique # [strength] >= 500
+[type] == circlet 			&& [quality] == set # [strength] >= 500
+
+[type] == pelt 				&& [quality] == unique # [strength] >= 500
+[type] == pelt 				&& [quality] == set # [strength] >= 500
+
+[type] == primalhelm 		&& [quality] == unique # [strength] >= 500
+[type] == primalhelm 		&& [quality] == set # [strength] >= 500
+
+[type] == armor 			&& [quality] == unique # [strength] >= 500
+[type] == armor 			&& [quality] == set # [strength] >= 500
+
+[type] == gloves 			&& [quality] == unique # [strength] >= 500
+[type] == gloves 			&& [quality] == set # [strength] >= 500
+
+[type] == belt 				&& [quality] == unique # [strength] >= 500
+[type] == belt 				&& [quality] == set # [strength] >= 500
+
+[type] == boots 			&& [quality] == unique # [strength] >= 500
+[type] == boots 			&& [quality] == set # [strength] >= 500
+
+[type] == shield 			&& [quality] == unique # [strength] >= 500
+[type] == shield 			&& [quality] == set # [strength] >= 500
+
+[type] == auricshields 		&& [quality] == unique # [strength] >= 500
+[type] == auricshields 		&& [quality] == set # [strength] >= 500
+
+[type] == staff 			&& [quality] == unique # [strength] >= 500
+[type] == staff 			&& [quality] == set # [strength] >= 500
+
+[type] == wand 				&& [quality] == unique # [strength] >= 500
+[type] == wand 				&& [quality] == set # [strength] >= 500
+
+[type] == assassinclaw 		&& [quality] == unique # [strength] >= 500
+[type] == assassinclaw 		&& [quality] == set # [strength] >= 500
+
+[type] == orb 				&& [quality] == unique # [strength] >= 500
+[type] == orb 				&& [quality] == set # [strength] >= 500
+
+[type] == polearm 			&& [quality] == unique # [strength] >= 500
+[type] == polearm 			&& [quality] == set # [strength] >= 500
+
+[type] == spear 			&& [quality] == unique # [strength] >= 500
+[type] == spear 			&& [quality] == set # [strength] >= 500
+
+[type] == voodooheads 		&& [quality] == unique # [strength] >= 500
+[type] == voodooheads 		&& [quality] == set # [strength] >= 500
+
+[type] == scepter 			&& [quality] == unique # [strength] >= 500
+[type] == scepter 			&& [quality] == set # [strength] >= 500
+
+[type] == mace 				&& [quality] == unique # [strength] >= 500
+[type] == mace 				&& [quality] == set # [strength] >= 500
+
+[type] == club 				&& [quality] == unique # [strength] >= 500
+[type] == club 				&& [quality] == set # [strength] >= 500
+
+[type] == sword 			&& [quality] == unique # [strength] >= 500
+[type] == sword 			&& [quality] == set # [strength] >= 500
+
+[type] == axe 				&& [quality] == unique # [strength] >= 500
+[type] == axe				&& [quality] == set # [strength] >= 500
+
+[type] == bow 				&& [quality] == unique # [strength] >= 500
+[type] == bow				&& [quality] == set # [strength] >= 500
+
+[type] == javelin 			&& [quality] == unique # [strength] >= 500
+[type] == javelin			&& [quality] == set # [strength] >= 500
+
+[type] == hammer 			&& [quality] == unique # [strength] >= 500
+[type] == hammer			&& [quality] == set # [strength] >= 500
+
+[type] == knife 			&& [quality] == unique # [strength] >= 500
+[type] == knife				&& [quality] == set # [strength] >= 500
+
+[type] == crossbow 			&& [quality] == unique # [strength] >= 500
+[type] == crossbow			&& [quality] == set # [strength] >= 500
+
+[type] == throwingknife 	&& [quality] == unique # [strength] >= 500
+[type] == throwingknife		&& [quality] == set # [strength] >= 500
+
+[type] == throwingaxe 		&& [quality] == unique # [strength] >= 500
+[type] == throwingaxe		&& [quality] == set # [strength] >= 500
+
+[type] == katar 			&& [quality] == unique # [strength] >= 500
+[type] == katar				&& [quality] == set # [strength] >= 500
+
+[type] == dagger 			&& [quality] == unique # [strength] >= 500
+[type] == dagger			&& [quality] == set # [strength] >= 500
+
+[type] == maul 				&& [quality] == unique # [strength] >= 500
+[type] == maul				&& [quality] == set # [strength] >= 500

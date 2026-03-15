@@ -103,6 +103,7 @@ func ItemPickup(maxDistance int) error {
 	// to avoid infinite town-loops when an item will never fit due to charm layout, etc.
 	townCleanupByUnitID := map[data.UnitID]int{}
 	consecutiveNoFitTownTrips := 0
+	hasWaitedForDrops := false
 
 outer:
 	for {
@@ -113,6 +114,13 @@ outer:
 
 		itemsToPickup := GetItemsToPickup(maxDistance)
 		if len(itemsToPickup) == 0 {
+			// Items may not appear in memory immediately after a kill (e.g.,
+			// boss death animation delay). Wait briefly and re-check once.
+			if !hasWaitedForDrops {
+				hasWaitedForDrops = true
+				utils.Sleep(500)
+				continue
+			}
 			return nil
 		}
 
