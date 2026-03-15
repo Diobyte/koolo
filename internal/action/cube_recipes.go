@@ -12,6 +12,9 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
+// DLC gem/rune/material stacks in Reign of the Warlock are capped at 99.
+const dlcMaxStackSize = 99
+
 type CubeRecipe struct {
 	Name             string
 	Items            []string
@@ -546,6 +549,25 @@ func CubeRecipes() error {
 			}
 			if items, hasItems := hasItemsForRecipe(ctx, recipe, itemsInStash); hasItems {
 
+				// On DLC characters, check whether the output gem stack is
+				// already at 99. If so, skip this recipe to avoid the
+				// Ctrl+click freeze where the game refuses to place the result.
+				if ctx.Data.IsDLC() {
+					if outputName := gemRecipeOutputName(recipe); outputName != "" {
+						ctx.RefreshGameData()
+						allStash := FilterDLCGhostItems(ctx.Data.Inventory.ByLocation(
+							item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab,
+						))
+						if isDLCGemStackFull(outputName, allStash) {
+							ctx.Logger.Info("Skipping cube recipe: DLC stack for output gem is at max (99)",
+								slog.String("recipe", recipe.Name),
+								slog.String("output", string(outputName)))
+							continueProcessing = false
+							break
+						}
+					}
+				}
+
 				// TODO: Check if we have the items in our storage and if not, purchase them, else take the item from the storage
 				if recipe.PurchaseRequired {
 					err := GambleSingleItem(recipe.PurchaseItems, item.QualityMagic)
@@ -889,6 +911,42 @@ func isDLCStackedQuantity(itm data.Item) int {
 		return 0 // ghost entry, should have been filtered
 	}
 	return 1
+}
+
+// gemRecipeOutputName returns the item.Name the game creates when a gem
+// recipe is transmuted (e.g. "Perfect Amethyst" → "PerfectAmethyst").
+// Returns "" for non-gem recipes.
+func gemRecipeOutputName(recipe CubeRecipe) item.Name {
+	gemPrefixes := []string{"Perfect ", "Flawless ", "Flawed "}
+	for _, p := range gemPrefixes {
+		if strings.HasPrefix(recipe.Name, p) {
+			return item.Name(strings.ReplaceAll(recipe.Name, " ", ""))
+		}
+	}
+	// Single-word gem names (Amethyst, Diamond, etc.) — the recipe name is
+	// already the output item name when it matches a known gem.
+	singleGems := []string{"Amethyst", "Diamond", "Emerald", "Ruby", "Sapphire", "Topaz", "Skull"}
+	for _, g := range singleGems {
+		if recipe.Name == g {
+			return item.Name(g)
+		}
+	}
+	return ""
+}
+
+// isDLCGemStackFull checks whether the DLC tab stack for the given item name
+// is already at the 99-item cap. When true the game silently refuses to add
+// more via Ctrl+click, which causes the bot to freeze.
+func isDLCGemStackFull(outputName item.Name, stashItems []data.Item) bool {
+	for _, itm := range stashItems {
+		switch itm.Location.LocationType {
+		case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
+			if itm.Name == outputName && itm.StackedQuantity >= dlcMaxStackSize {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func isPerfectGem(item data.Item) bool {

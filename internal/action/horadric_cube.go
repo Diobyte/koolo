@@ -184,11 +184,62 @@ func CubeTransmute() error {
 
 	ctx.RefreshGameData()
 
-	// Take the transmuted items out of the cube
+	// Take the transmuted items out of the cube.
+	// Ctrl+click is the fast path — it auto-stacks DLC items. But if the
+	// target stack is already at 99 the game silently refuses, leaving the
+	// item in the cube. We detect that and fall back to manual placement
+	// in inventory, or drop the item on the ground as a last resort.
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationCube) {
 		screenPos := ui.GetScreenCoordsForItem(itm)
+
+		// Attempt 1: Ctrl+click (auto-stack / auto-place)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.PingSleep(utils.Light, 200)
+		utils.PingSleep(utils.Light, 300)
+
+		ctx.RefreshGameData()
+		if len(ctx.Data.Inventory.ByLocation(item.LocationCube)) == 0 {
+			continue // item moved out successfully
+		}
+
+		ctx.Logger.Warn("Ctrl+click failed to move item out of cube (DLC stack likely full), trying manual placement",
+			slog.String("item", string(itm.Name)))
+
+		// Attempt 2: Pick up the item and manually place it in an open
+		// inventory slot. Re-read the cube in case positions shifted.
+		ctx.RefreshGameData()
+		cubeItems := ctx.Data.Inventory.ByLocation(item.LocationCube)
+		if len(cubeItems) == 0 {
+			continue
+		}
+		stuckItem := cubeItems[0]
+		sp := ui.GetScreenCoordsForItem(stuckItem)
+
+		// Left-click to pick up onto cursor
+		ctx.HID.Click(game.LeftButton, sp.X, sp.Y)
+		utils.PingSleep(utils.Light, 300)
+
+		ctx.RefreshGameData()
+		if len(ctx.Data.Inventory.ByLocation(item.LocationCursor)) > 0 {
+			// Try to place in an open inventory slot (roughly center of the grid).
+			invPos := ui.GetScreenCoordsForInventoryPosition(data.Position{X: 4, Y: 2}, item.LocationInventory)
+			ctx.HID.Click(game.LeftButton, invPos.X, invPos.Y)
+			utils.PingSleep(utils.Light, 300)
+
+			ctx.RefreshGameData()
+			if len(ctx.Data.Inventory.ByLocation(item.LocationCursor)) > 0 {
+				// Attempt 3: Drop on ground — better than being stuck forever
+				ctx.Logger.Warn("Could not place item in inventory, dropping on ground",
+					slog.String("item", string(stuckItem.Name)))
+				ctx.HID.Click(game.LeftButton, 500, 400)
+				utils.PingSleep(utils.Light, 300)
+			}
+		} else if len(ctx.Data.Inventory.ByLocation(item.LocationCube)) > 0 {
+			// Could not pick up — force close and move on
+			ctx.Logger.Warn("Could not pick up stuck cube item, closing menus",
+				slog.String("item", string(stuckItem.Name)))
+			step.CloseAllMenus()
+			return fmt.Errorf("item %s stuck in cube — DLC stack may be full at 99", stuckItem.Name)
+		}
 	}
 
 	return step.CloseAllMenus()
