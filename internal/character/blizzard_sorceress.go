@@ -28,8 +28,9 @@ const (
 	coldImmuneMaxAttacks            = 12 // Reduced budget for cold immunes — let merc handle
 	minBlizzSorceressAttackDistance = 8
 	maxBlizzSorceressAttackDistance = 16
-	dangerDistance                  = 8  // Monsters closer than this are considered dangerous
-	safeDistance                    = 10 // Distance to teleport away to
+	dangerDistance                  = 8                       // Monsters closer than this are considered dangerous
+	safeDistance                    = 10                      // Distance to teleport away to
+	blizzardCooldown                = 1800 * time.Millisecond // Blizzard fixed cooldown (18 frames @ 25fps)
 )
 
 type BlizzardSorceress struct {
@@ -74,6 +75,7 @@ func (s BlizzardSorceress) KillMonsterSequence(
 	completedAttackLoops := 0
 	previousUnitID := 0
 	lastReposition := time.Now()
+	lastBlizzardCast := time.Time{} // Time-based Blizzard cooldown tracker
 	ctx := context.Get()
 
 	attackOpts := step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance)
@@ -142,9 +144,11 @@ func (s BlizzardSorceress) KillMonsterSequence(
 		if isColdImmune {
 			// Cold immunes: conserve mana, let merc deal damage
 			step.PrimaryAttack(id, 1, true, attackOpts)
-		} else if !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-			// Blizzard off cooldown: cast immediately
+		} else if (lastBlizzardCast.IsZero() || time.Since(lastBlizzardCast) >= blizzardCooldown) &&
+			!s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+			// Blizzard off cooldown: cast immediately (verified by both timer and game state)
 			step.SecondaryAttack(skill.Blizzard, id, 1, attackOpts)
+			lastBlizzardCast = time.Now()
 		} else if hasGlacialSpike {
 			// Blizzard on cooldown: GlacialSpike freezes enemies and deals cold damage
 			step.SecondaryAttack(skill.GlacialSpike, id, 1, attackOpts)
@@ -414,6 +418,7 @@ func (s BlizzardSorceress) KillMephisto() error {
 
 		maxAttack := 100
 		attackCount := 0
+		lastMoatBlizzard := time.Time{}
 
 		for attackCount < maxAttack {
 			ctx.PauseIfNotPriority()
@@ -428,8 +433,10 @@ func (s BlizzardSorceress) KillMephisto() error {
 				return nil
 			}
 
-			if !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+			if (lastMoatBlizzard.IsZero() || time.Since(lastMoatBlizzard) >= blizzardCooldown) &&
+				!s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 				step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
+				lastMoatBlizzard = time.Now()
 			} else {
 				step.PrimaryAttack(monster.UnitID, 1, true, opts)
 			}
