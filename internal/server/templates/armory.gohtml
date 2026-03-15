@@ -2865,7 +2865,8 @@
                                    (item.name && item.name.toLowerCase().endsWith('rune'));
                     if (isRune && item.name) {
                         const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
-                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
+                        const qty = item.stackedQuantity > 0 ? item.stackedQuantity : 1;
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + qty;
                     }
                 }
             }
@@ -2882,7 +2883,8 @@
                                    (item.name && item.name.toLowerCase().endsWith('rune'));
                     if (isRune && item.name) {
                         const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
-                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
+                        const qty = item.stackedQuantity > 0 ? item.stackedQuantity : 1;
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + qty;
                     }
                 }
             }
