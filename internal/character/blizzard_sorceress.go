@@ -229,7 +229,7 @@ func (s BlizzardSorceress) KillCouncil() error {
 	councilMembers := make([]data.Monster, 0, 12)
 	coldImmunes := make([]data.Monster, 0, 12)
 
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+	monsterSelector := func(d game.Data) (data.UnitID, bool) {
 		councilMembers = councilMembers[:0]
 		coldImmunes = coldImmunes[:0]
 		for _, m := range d.Monsters.Enemies() {
@@ -249,7 +249,23 @@ func (s BlizzardSorceress) KillCouncil() error {
 		}
 
 		return 0, false
-	}, nil)
+	}
+
+	// KillMonsterSequence returns when the attack budget is exhausted on one
+	// target, but other council members may still be alive. Retry so the sorc
+	// re-engages remaining members instead of leaving early.
+	const maxPasses = 6
+	for i := 0; i < maxPasses; i++ {
+		if _, found := monsterSelector(*s.Data); !found {
+			return nil
+		}
+
+		if err := s.KillMonsterSequence(monsterSelector, nil); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 /*
