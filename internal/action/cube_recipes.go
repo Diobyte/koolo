@@ -22,7 +22,97 @@ type CubeRecipe struct {
 var (
 	Recipes = []CubeRecipe{
 
-		// Perfects
+		// Flawed Gems (3x Chipped → 1 Flawed)
+		{
+			Name:  "Flawed Amethyst",
+			Items: []string{"ChippedAmethyst", "ChippedAmethyst", "ChippedAmethyst"},
+		},
+		{
+			Name:  "Flawed Diamond",
+			Items: []string{"ChippedDiamond", "ChippedDiamond", "ChippedDiamond"},
+		},
+		{
+			Name:  "Flawed Emerald",
+			Items: []string{"ChippedEmerald", "ChippedEmerald", "ChippedEmerald"},
+		},
+		{
+			Name:  "Flawed Ruby",
+			Items: []string{"ChippedRuby", "ChippedRuby", "ChippedRuby"},
+		},
+		{
+			Name:  "Flawed Sapphire",
+			Items: []string{"ChippedSapphire", "ChippedSapphire", "ChippedSapphire"},
+		},
+		{
+			Name:  "Flawed Topaz",
+			Items: []string{"ChippedTopaz", "ChippedTopaz", "ChippedTopaz"},
+		},
+		{
+			Name:  "Flawed Skull",
+			Items: []string{"ChippedSkull", "ChippedSkull", "ChippedSkull"},
+		},
+
+		// Regular Gems (3x Flawed → 1 Regular)
+		{
+			Name:  "Amethyst",
+			Items: []string{"FlawedAmethyst", "FlawedAmethyst", "FlawedAmethyst"},
+		},
+		{
+			Name:  "Diamond",
+			Items: []string{"FlawedDiamond", "FlawedDiamond", "FlawedDiamond"},
+		},
+		{
+			Name:  "Emerald",
+			Items: []string{"FlawedEmerald", "FlawedEmerald", "FlawedEmerald"},
+		},
+		{
+			Name:  "Ruby",
+			Items: []string{"FlawedRuby", "FlawedRuby", "FlawedRuby"},
+		},
+		{
+			Name:  "Sapphire",
+			Items: []string{"FlawedSapphire", "FlawedSapphire", "FlawedSapphire"},
+		},
+		{
+			Name:  "Topaz",
+			Items: []string{"FlawedTopaz", "FlawedTopaz", "FlawedTopaz"},
+		},
+		{
+			Name:  "Skull",
+			Items: []string{"FlawedSkull", "FlawedSkull", "FlawedSkull"},
+		},
+
+		// Flawless Gems (3x Regular → 1 Flawless)
+		{
+			Name:  "Flawless Amethyst",
+			Items: []string{"Amethyst", "Amethyst", "Amethyst"},
+		},
+		{
+			Name:  "Flawless Diamond",
+			Items: []string{"Diamond", "Diamond", "Diamond"},
+		},
+		{
+			Name:  "Flawless Emerald",
+			Items: []string{"Emerald", "Emerald", "Emerald"},
+		},
+		{
+			Name:  "Flawless Ruby",
+			Items: []string{"Ruby", "Ruby", "Ruby"},
+		},
+		{
+			Name:  "Flawless Sapphire",
+			Items: []string{"Sapphire", "Sapphire", "Sapphire"},
+		},
+		{
+			Name:  "Flawless Topaz",
+			Items: []string{"Topaz", "Topaz", "Topaz"},
+		},
+		{
+			Name:  "Flawless Skull",
+			Items: []string{"Skull", "Skull", "Skull"},
+		},
+
+		// Perfect Gems (3x Flawless → 1 Perfect)
 		{
 			Name:  "Perfect Amethyst",
 			Items: []string{"FlawlessAmethyst", "FlawlessAmethyst", "FlawlessAmethyst"},
