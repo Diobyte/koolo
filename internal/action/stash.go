@@ -381,6 +381,20 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return false, false, "", ""
 	}
 
+	// DLC stackable items (gems, runes, materials) whose dedicated tab is
+	// already at the 99-item cap cannot be stashed anywhere. Return early
+	// to avoid repeated fruitless stash attempts every game loop.
+	if ctx.Data.IsDLC() && dlcTabForItem(i) != 0 {
+		for _, d := range ctx.Data.Inventory.AllItems {
+			switch d.Location.LocationType {
+			case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
+				if d.Name == i.Name && d.StackedQuantity >= dlcMaxStackSize {
+					return false, false, "", ""
+				}
+			}
+		}
+	}
+
 	if firstRun {
 		return true, false, "FirstRun", ""
 	}
